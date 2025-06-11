@@ -1,4 +1,4 @@
-// === script.js (Advanced Settings + Fixes) ===
+// === script.js (ドラッガブル詳細設定パネル対応版) ===
 let members = [];
 let preloadedImages = {};
 let grid = [];
@@ -9,89 +9,94 @@ const ctx = canvas.getContext("2d");
 const baseCanvasWidth = canvas.width;
 let baseAspect;
 
-// 詳細設定初期値(mm換算): canvas は 300dpi => 118.11px/cm => 29.53px/inch
-const settings = {
-  performanceName: { fontSize: 24, letterSpacing: 0, x:10, y:30 },
-  fullName: { fontSize: null, letterSpacing: 0, x:0, yOffset:0 },
-  nickname: { fontSize: 20, letterSpacing: 0, x:0, yOffset:0 },
-  periodText: { fontSize: 20, letterSpacing: 0, x:0, yOffset:0 },
-  photo: { x:0, yOffset:0, width: null, height: null },
-  pushText1: { x:0, yOffset:0, fontSize:18 },
-  pushText2: { x:0, yOffset:0, fontSize:18 },
+// 詳細設定オブジェクト（日本語キー）
+const 設定 = {
+  公演名: { フォントサイズ:24, 文字間隔:0, X:10, Y:30 },
+  全名: { フォントサイズ:null, 文字間隔:0, X:0, Y:0 },
+  ニックネーム: { フォントサイズ:20, 文字間隔:0, X:0, Y:0 },
+  期別: { フォントサイズ:20, 文字間隔:0, X:0, Y:0 },
+  写真: { X:0, Y:0, 幅:null, 高さ:null },
+  色塊: { X:0, Y:0, 幅:null },
+  色文字1: { X:0, Y:0, フォントサイズ:18 },
+  色文字2: { X:0, Y:0, フォントサイズ:18 },
 };
 
+// 画像プリロード
 async function preloadAll() {
   const res = await fetch("members.json");
   members = await res.json();
   baseAspect = canvas.height / canvas.width;
   await Promise.all(members.map(m => new Promise(r => {
     const img = new Image(); img.src = m.image;
-    img.onload = () => { preloadedImages[m.name_ja] = img; r(); };
-    img.onerror = () => { preloadedImages[m.name_ja] = null; r(); };
+    img.onload = () => { preloadedImages[m.name_ja]=img; r(); };
+    img.onerror = () => { preloadedImages[m.name_ja]=null; r(); };
   })));
 }
 
-preloadAll().then(() => {
-  injectAdvancedPanel();
-  makeResponsive();
-  setupListeners();
-  updateAndRender();
-});
+// 初期化
+preloadAll().then(() => { createSettingsPanel(); makeResponsive(); setupListeners(); updateAndRender(); });
 
-// 注入「詳細設定」パネル
-function injectAdvancedPanel() {
-  const panel = document.createElement('details');
-  panel.id = 'advSettings';
-  panel.innerHTML = `<summary>詳細設定</summary><div id="advControls"></div>`;
-  document.getElementById('controls').append(panel);
-  const adv = document.getElementById('advControls');
-  // 各設定生成
-  Object.keys(settings).forEach(key => {
-    const cfg = settings[key];
-    const group = document.createElement('div');
-    group.className = 'adv-group';
-    ['x','yOffset','fontSize','letterSpacing','width','height'].forEach(prop => {
-      if(cfg[prop] !== undefined) {
-        const label = document.createElement('label');
-        label.innerText = `${key}.${prop}`;
-        const inp = document.createElement('input');
-        inp.type = 'number'; inp.value = cfg[prop];
-        inp.step = '1'; inp.addEventListener('input', ()=>{
-          settings[key][prop] = parseFloat(inp.value);
-          updateAndRender();
-        });
-        label.append(inp);
-        group.append(label);
-      }
+// ドラッガブル詳細設定パネル作成
+function createSettingsPanel() {
+  const panel = document.createElement('div');
+  panel.id = '設定パネル';
+  panel.style.position = 'fixed';
+  panel.style.top = '100px'; panel.style.left = '50px';
+  panel.style.width = '240px'; panel.style.background = '#fff';
+  panel.style.border = '2px solid #F676A6'; panel.style.padding = '10px';
+  panel.style.zIndex = '1000'; panel.style.cursor = 'move';
+  panel.innerHTML = `<strong>詳細設定</strong><div id="詳細中身"></div>`;
+  document.body.append(panel);
+  makeDraggable(panel);
+  const body = panel.querySelector('#詳細中身');
+  Object.keys(設定).forEach(key => {
+    const cfg = 設定[key];
+    const grp = document.createElement('div'); grp.style.marginBottom='8px';
+    const title = document.createElement('div'); title.textContent=key; title.style.fontWeight='bold';
+    grp.append(title);
+    Object.keys(cfg).forEach(prop => {
+      const lbl = document.createElement('label'); lbl.style.display='block';
+      lbl.textContent = `${prop}: `;
+      const inp = document.createElement('input'); inp.type='number'; inp.value = cfg[prop]||0;
+      inp.style.width='60px'; inp.addEventListener('input', ()=>{ 設定[key][prop]=parseFloat(inp.value); updateAndRender(); });
+      lbl.append(inp);
+      grp.append(lbl);
     });
-    adv.append(group);
+    body.append(grp);
   });
 }
 
-function makeResponsive() {
-  canvas.style.display = 'block';
-  canvas.style.margin = '0 auto';
-  canvas.style.width = '100%';
-  canvas.style.height = 'auto';
-  window.addEventListener('resize', ()=>{ canvas.style.height='auto'; });
+// ドラッグ実装
+function makeDraggable(el) {
+  let offsetX, offsetY;
+  el.addEventListener('mousedown', e => {
+    offsetX = e.clientX - el.offsetLeft;
+    offsetY = e.clientY - el.offsetTop;
+    function onMouseMove(e) { el.style.left = e.clientX - offsetX + 'px'; el.style.top = e.clientY - offsetY + 'px'; }
+    document.addEventListener('mousemove', onMouseMove);
+    document.addEventListener('mouseup', () => { document.removeEventListener('mousemove', onMouseMove); }, { once: true });
+  });
 }
 
-function updateAndRender() {
-  updateGrid();
-  renderGrid();
+// レスポンシブ
+function makeResponsive() {
+  canvas.style.display='block'; canvas.style.margin='0 auto';
+  canvas.style.width='100%'; canvas.style.height='auto';
 }
+
+function updateAndRender() { updateGrid(); renderGrid(); }
 
 function updateGrid() {
   const [cols, rows] = document.getElementById("ninzuSelect").value.split("x").map(Number);
-  const showAll = document.getElementById("showAll").checked;
-  const useFilter = document.getElementById("showKibetsu").checked;
-  const selFilter = document.getElementById("kibetsuSelect").value;
-  if (showAll) {
-    grid = Array(cols * Math.ceil(members.length / cols)).fill(null);
+  const 全員 = document.getElementById("showAll").checked;
+  const フィルタ = document.getElementById("showKibetsu").checked;
+  const val = document.getElementById("kibetsuSelect").value;
+  if(全員) {
+    grid = Array(cols * Math.ceil(members.length/cols)).fill(null);
     members.forEach((m,i)=>grid[i]=m.name_ja);
-  } else if (useFilter) {
-    const f = members.filter(m=>m.ki===selFilter).map(m=>m.name_ja);
-    grid = Array(cols * Math.ceil(f.length / cols)).fill(null);
+  } else if(フィルタ) {
+    const f = members.filter(m=>m.ki===val).map(m=>m.name_ja);
+    grid = Array(cols * Math.ceil(f.length/cols)).fill(null);
     f.forEach((n,i)=>grid[i]=n);
   } else {
     grid = Array(cols*rows).fill(null).map((_,i)=>grid[i]||null);
@@ -100,106 +105,97 @@ function updateGrid() {
 }
 function resizeCanvas(cols,total) {
   const rows = Math.ceil(total/cols);
-  const cellW = canvas.width/cols;
-  const cellH = cellW*baseAspect;
-  const headerH = document.getElementById("showKonmei").checked?40:0;
-  canvas.height = rows*cellH + headerH;
+  const cw = canvas.width/cols;
+  const ch = cw*baseAspect;
+  const hd = document.getElementById("showKonmei").checked ? 40 : 0;
+  canvas.height = rows*ch + hd;
 }
 
 async function renderGrid(tc=canvas,tcx=ctx) {
   const isDL = tc!==canvas;
   const scale = tc.width/baseCanvasWidth;
-  tcx.fillStyle='#fff4f6';tcx.fillRect(0,0,tc.width,tc.height);
+  tcx.fillStyle='#fff4f6'; tcx.fillRect(0,0,tc.width,tc.height);
   const hasKon = document.getElementById("showKonmei").checked;
-  const hdr = hasKon?40*scale:0;
+  const hv = hasKon ? 設定.公演名.Y*scale : 0;
   if(hasKon) {
-    tcx.fillStyle='#F676A6';tcx.font=`${settings.performanceName.fontSize*scale}px KozGoPr6N`;
-    tcx.textAlign='left';tcx.textBaseline='top';
+    tcx.fillStyle='#F676A6';
+    tcx.font=`${設定.公演名.フォントサイズ*scale}px KozGoPr6N`;
+    tcx.textAlign='left'; tcx.textBaseline='top';
     const v = document.getElementById("konmeiSelect").value;
     const t = v==='other'?document.getElementById("customKonmei").value.trim():v;
-    tcx.fillText(t,settings.performanceName.x*scale,settings.performanceName.y*scale);
+    tcx.fillText(t, 設定.公演名.X*scale, 設定.公演名.Y*scale);
   }
   const cols = +document.getElementById("ninzuSelect").value.split("x")[0];
-  const cellW = tc.width/cols; const cellH = cellW*baseAspect;
+  const cw = tc.width/cols; const ch = cw*baseAspect;
   const showPhoto = document.getElementById("showPhoto").checked;
-  const showNick = document.getElementById("showNickname").checked;
+  const showNick  = document.getElementById("showNickname").checked;
   const showKiTxt = document.getElementById("showKi").checked;
   let showBlk = document.getElementById("showColorBlock").checked;
   let showTxt = document.getElementById("showColorText").checked;
-  if(showBlk===showTxt){showTxt=true;showBlk=false;document.getElementById("showColorBlock").checked=false;document.getElementById("showColorText").checked=true;}
+  if(showBlk===showTxt){ showTxt=true; showBlk=false; document.getElementById("showColorText").checked=true; document.getElementById("showColorBlock").checked=false; }
   for(let i=0;i<grid.length;i++){
-    const name=grid[i];const r=Math.floor(i/cols),c=i%cols;
-    const x=c*cellW,y=r*cellH+hdr;
-    tcx.fillStyle='#fff4f6';tcx.fillRect(x,y,cellW,cellH);tcx.strokeStyle='#F676A6';tcx.strokeRect(x,y,cellW,cellH);
-    if(!name){if(!isDL){tcx.fillStyle='#F676A6';tcx.font=`${24*scale}px KozGoPr6N`;tcx.textAlign='center';tcx.textBaseline='middle';tcx.fillText('+',x+cellW/2,y+cellH/2);}continue;}
-    const mem=members.find(m=>m.name_ja===name);
-    let y0=y+settings.photo.yOffset*scale;
+    const name=grid[i]; const r=Math.floor(i/cols), c=i%cols;
+    const x=c*cw, y=r*ch + (hasKon?40:0);
+    tcx.fillStyle='#fff4f6'; tcx.fillRect(x,y,cw,ch);
+    tcx.strokeStyle='#F676A6'; tcx.strokeRect(x,y,cw,ch);
+    if(!name){ if(!isDL){ tcx.fillStyle='#F676A6'; tcx.font=`${24*scale}px KozGoPr6N`; tcx.textAlign='center'; tcx.textBaseline='middle'; tcx.fillText('+',x+cw/2,y+ch/2);} continue; }
+    const mem = members.find(m=>m.name_ja===name);
+    let y0 = y + 設定.写真.Y*scale;
     if(showPhoto && preloadedImages[name]){
-      const img=preloadedImages[name];const asp=img.naturalWidth/img.naturalHeight;
-      let h=settings.photo.height||cellH*0.25,w=h*asp; if(w>cellW*0.8){w=cellW*0.8;h=w/asp;}
-      tcx.drawImage(img,x+(cellW-w)/2,y0,w,h);
-      y0+=h+5*scale;
+      const img = preloadedImages[name]; const asp=img.naturalWidth/img.naturalHeight;
+      let h = 設定.写真.高さ || ch*0.25, w=h*asp;
+      if(w>cw*0.8){w=cw*0.8;h=w/asp;}
+      tcx.drawImage(img,x+(cw-w)/2, y0, w, h);
+      y0 += h + 5*scale;
     }
-    let used=0; if(showPhoto)used+=cellH*0.3; if(showNick)used+=cellH*0.1; if(showBlk||showTxt)used+=cellH*0.15;
-    const avail=cellH-used-(showPhoto?5*scale:0);
-    // full name
-    const L=name.length;let sz=Math.min(settings.fullName.fontSize||avail*0.4,(cellW-20)/(L*0.6));
-    tcx.fillStyle='#F676A6';tcx.textAlign='center';tcx.textBaseline='top';tcx.font=`${sz}px KozGoPr6N`;
-    tcx.fillText(name,x+cellW/2 + settings.fullName.x*scale,y0 + settings.fullName.yOffset*scale);
-    y0+=sz+3;
+    let used=0; if(showPhoto) used+=ch*0.3; if(showNick) used+=ch*0.1; if(showBlk||showTxt) used+=ch*0.15;
+    const avail = ch - used - (showPhoto?5*scale:0);
+    // 全名
+    const L=name.length; let fs = 設定.全名.フォントサイズ || Math.min(avail*0.4,(cw-20)/(L*0.6));
+    tcx.fillStyle='#F676A6'; tcx.textAlign='center'; tcx.textBaseline='top';
+    tcx.font=`${fs}px KozGoPr6N`;
+    tcx.fillText(name, x+cw/2 + 設定.全名.X*scale, y0 + 設定.全名.Y*scale);
+    y0 += fs + 3;
     // nickname
-    if(showNick){let s=settings.nickname.fontSize||Math.min(20,avail*0.15);
+    if(showNick){ let s=設定.ニックネーム.フォントサイズ || Math.min(20,avail*0.15);
       tcx.font=`${s}px KozGoPr6N`;
-      tcx.fillText(mem.nickname,x+cellW/2+settings.nickname.x*scale,y0+settings.nickname.yOffset*scale);
-      y0+=s+3;
+      tcx.fillText(mem.nickname, x+cw/2 + 設定.ニックネーム.X*scale, y0 + 設定.ニックネーム.Y*scale);
+      y0 += s+3;
     }
     // period
-    if(showKiTxt){let s=settings.periodText.fontSize||Math.min(20,avail*0.15);
+    if(showKiTxt){ let s=設定.期別.フォントサイズ || Math.min(20,avail*0.15);
       tcx.font=`${s}px KozGoPr6N`;
-      tcx.fillText(mem.ki,x+cellW/2+settings.periodText.x*scale,y0+settings.periodText.yOffset*scale);
+      tcx.fillText(mem.ki, x+cw/2+設定.期別.X*scale, y0+設定.期別.Y*scale);
       y0+=s+3;
     }
-    // push text
-    if(showTxt){
-      const map={'#FF0000':'赤','#FFA500':'オレンジ','#FFFF00':'黄','#0000FF':'青','#00FF00':'緑','#FFFFFF':'白','#FF69B4':'濃いピンク','#FFB6C1':'薄ピンク','#32CD32':'黄緑'};
-      tcx.textBaseline='middle';
-      const arr=mem.colors,sep=' x ';
-      let tot=0;arr.forEach((c,i)=>{const t=map[c]||'';tot+=tcx.measureText(t).width+(i<arr.length-1?tcx.measureText(sep).width:0);});
-      let xx=x+(cellW-tot)/2+settings.pushText1.x*scale;
+    // color text
+    if(showTxt){ const map={'#FF0000':'赤','#FFA500':'オレンジ','#FFFF00':'黄','#0000FF':'青','#00FF00':'緑','#FFFFFF':'白','#FF69B4':'濃いピンク','#FFB6C1':'薄ピンク','#32CD32':'黄緑'};
+      tcx.textBaseline='middle'; const arr=mem.colors, sep=' x ';
+      let tot=0; arr.forEach((c,i)=>{ const t=map[c]||''; tot+=tcx.measureText(t).width + (i<arr.length-1?tcx.measureText(sep).width:0); });
+      let xx=x+(cw-tot)/2+設定.色文字1.X*scale;
       arr.forEach((c,i)=>{
         const t=map[c]||'';
         tcx.fillStyle=(c==='#FFFFFF')?'#f5f2f2':c;
-        tcx.font=`${settings['pushText'+(i+1)].fontSize}px KozGoPr6N`;
-        tcx.fillText(t,xx,y+cellH*0.75+settings['pushText'+(i+1)].yOffset*scale);
+        tcx.font=`${設定['色文字'+(i+1)].フォントサイズ}px KozGoPr6N`;
+        tcx.fillText(t, xx, y+ch*0.75 + 設定['色文字'+(i+1)].Y*scale);
         xx+=tcx.measureText(t).width;
-        if(i<arr.length-1){tcx.fillStyle='#F676A6';tcx.fillText(sep.trim(),xx,y+cellH*0.75);xx+=tcx.measureText(sep.trim()).width;}
-      });
-    }
-    // color blocks
-    else if(showBlk){
-      const arr=mem.colors;const blkW=cellW*(0.5/arr.length);
-      const tw=blkW*arr.length;
-      arr.forEach((c,j)=>{tcx.fillStyle=c||'#f0f0f0';tcx.fillRect(x+(cellW-tw)/2+j*blkW,y+cellH*0.8,blkW,blkW);});
-    }
-    if(!isDL){tcx.fillStyle='#F676A6';tcx.font=`12px KozGoPr6N`;tcx.textAlign='right';tcx.textBaseline='top';tcx.fillText('選択',x+cellW-10,y+10);}
+        if(i<arr.length-1){ tcx.fillStyle='#F676A6'; tcx.fillText(sep.trim(),xx,y+ch*0.75); xx+=tcx.measureText(sep.trim()).width; }
+      }); }
+    else if(showBlk){ const arr=mem.colors; const bw=cw*(0.5/arr.length); const tw=bw*arr.length;
+      arr.forEach((c,j)=>{tcx.fillStyle=c||'#f0f0f0'; tcx.fillRect(x+(cw-tw)/2+j*bw, y+ch*0.8+設定.色塊.Y*scale, bw*設定.色塊.幅, bw*設定.色塊.幅);}); }
+    if(!isDL){ tcx.fillStyle='#F676A6'; tcx.font=`12px KozGoPr6N`; tcx.textAlign='right'; tcx.textBaseline='top'; tcx.fillText('選択',x+cw-10,y+10); }
   }
 }
 
-// setup listeners
 function setupListeners(){
-  // mutual exclusive mandatory push-color
   const b=document.getElementById('showColorBlock'), t=document.getElementById('showColorText');
   b.addEventListener('change',e=>{if(e.target.checked){t.checked=false;}else{e.target.checked=true;}updateAndRender();});
   t.addEventListener('change',e=>{if(e.target.checked){b.checked=false;}else{e.target.checked=true;}updateAndRender();});
-  // period filter
   document.getElementById('showKibetsu').addEventListener('change',()=>{document.getElementById('showAll').checked=false;updateAndRender();});
   document.getElementById('kibetsuSelect').addEventListener('change',()=>{if(document.getElementById('showKibetsu').checked) updateAndRender();});
-  // other controls
   document.querySelectorAll('#controls input:not(#showColorBlock):not(#showColorText):not(#showKibetsu), #controls select:not(#kibetsuSelect)')
     .forEach(el=>el.addEventListener('change',updateAndRender));
-  // popup
   canvas.addEventListener('click',e=>{const r=canvas.getBoundingClientRect();const off=document.getElementById("showKonmei").checked?40:0;const mx=e.clientX-r.left,my=e.clientY-r.top-off;const cols=+document.getElementById("ninzuSelect").value.split("x")[0];const cw=canvas.width/cols,ch=cw*baseAspect;const col=Math.floor(mx/cw),row=Math.floor(my/ch),idx=row*cols+col;if(idx>=0&&idx<grid.length) showPopup(idx);});
-  // download
   document.getElementById('downloadButton').addEventListener('click',async()=>{await preloadAll();const tmp=document.createElement('canvas');tmp.width=canvas.width*2;tmp.height=canvas.height*2;const p=tmp.getContext('2d');p.fillStyle='#fff4f6';p.fillRect(0,0,tmp.width,tmp.height);await renderGrid(tmp,p);const a=document.createElement('a');a.download='penlight_colors_300dpi.png';a.href=tmp.toDataURL();a.click();});
 }
 
