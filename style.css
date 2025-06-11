@@ -70,6 +70,37 @@ h1 {
   border-radius: 6px;
   box-shadow: 0 0 10px rgba(0,0,0,0.2);
   z-index: 1000;
+  max-height: 80vh;
+  overflow-y: auto;
+}
+
+#popup #accordion {
+  margin-bottom: 10px;
+}
+
+#popup summary {
+  font-size: 1.1em;
+  padding: 5px;
+  cursor: pointer;
+  background-color: #f0f0f0;
+}
+
+#popup .member-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  padding: 10px;
+}
+
+#popup .member-item {
+  display: flex;
+  align-items: center;
+  cursor: pointer;
+  padding: 5px;
+}
+
+#popup .member-item:hover {
+  background-color: #f9f9f9;
 }
 
 #popup select {
@@ -134,5 +165,15 @@ select {
   #downloadButton {
     width: 100%;
     max-width: 200px;
+  }
+  #popup {
+    width: 90%;
+    max-height: 70vh;
+  }
+  #popup .member-item img {
+    width: 40px;
+  }
+  #popup .member-item span {
+    font-size: 14px;
   }
 }
