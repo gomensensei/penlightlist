@@ -1,306 +1,272 @@
-// script.js
 let grid = [];
 let currentIndex = null;
-const canvas = document.getElementById('renderCanvas');
-const ctx = canvas.getContext('2d');
+const canvas = document.getElementById("renderCanvas");
+const ctx = canvas.getContext("2d");
+
 let members = [];
-const preloadedImages = {};
-
-// 色名對應表
-const colorNames = {
-  '#FF0000': '赤', '#00FF00': '緑', '#0000FF': '青',
-  '#FFFF00': '黄', '#FFFFFF': '白', '#FF69B4': 'ピンク',
-  '#FFA500': 'オレンジ', '#800080': '紫', '#00CED1': '水色',
-  '#FFB6C1': '薄ピンク'
-};
-
-// 初始設定：固定 1600x900
-canvas.width = 1600;
-canvas.height = 900;
-
-// 讀取成員資料並預載圖片
-fetch('members.json')
-  .then(r => r.json())
+let preloadedImages = {};
+fetch("members.json")
+  .then(res => res.json())
   .then(data => {
     members = data;
     members.forEach(m => {
       const img = new Image();
       img.src = m.image;
       img.onload = () => preloadedImages[m.name_ja] = img;
+      img.onerror = () => console.error("Image load failed:", m.image);
     });
     initialize();
+  })
+  .catch(error => {
+    console.error("Error loading members.json:", error);
+    alert("メンバーデータの読み込みに失敗しました。");
   });
 
 function initialize() {
-  bindControls();
   updateGridSize();
   renderGrid();
-}
-
-function bindControls() {
-  // 畫布點擊
-  canvas.addEventListener('click', onCanvasClick);
-  // 控制項變化
-  document.querySelectorAll('#controls input, #controls select').forEach(el => el.addEventListener('change', onControlChange));
-  // 自訂公演名即時更新
-  const custom = document.getElementById('customKonmei');
-  document.getElementById('konmeiSelect').addEventListener('change', () => {
-    custom.value = '';
-    custom.style.display = document.getElementById('konmeiSelect').value === 'other' ? 'inline-block' : 'none';
-    renderGrid();
-  });
-  custom.addEventListener('input', renderGrid);
-  // 離開他模式清除殘影
-  custom.addEventListener('focus', () => renderGrid());
-  // 下載
-  document.getElementById('downloadButton').addEventListener('click', onDownload);
-}
-
-function onControlChange(e) {
-  const id = e.target.id;
-  if (id === 'showAll' && e.target.checked) return filterAll();
-  if (id === 'showKibetsu' && e.target.checked) return filterByKi();
-  if (id === 'kibetsuSelect' && document.getElementById('showKibetsu').checked) return filterByKi();
-  if (id === 'showNinzu' && e.target.checked) {
-    document.getElementById('showAll').checked = false;
-    document.getElementById('showKibetsu').checked = false;
-  }
-  if (id === 'showColorBlock' && e.target.checked) document.getElementById('showColorText').checked = false;
-  if (id === 'showColorText' && e.target.checked) document.getElementById('showColorBlock').checked = false;
-  updateGridSize();
-  renderGrid();
-}
-
-function filterAll() {
-  document.getElementById('showNinzu').checked = false;
-  document.getElementById('showKibetsu').checked = false;
-  document.getElementById('ninzuSelect').value = '5x10';
-  grid = members.map(m => m.name_ja);
-  updateGridSize();
-  renderGrid();
-}
-
-function filterByKi() {
-  document.getElementById('showAll').checked = false;
-  document.getElementById('showNinzu').checked = false;
-  const ki = document.getElementById('kibetsuSelect').value;
-  const list = members.filter(m => m.ki === ki).map(m => m.name_ja);
-  const cols = Math.min(5, list.length);
-  const rows = Math.ceil(list.length / cols);
-  document.getElementById('ninzuSelect').value = `${cols}x${rows}`;
-  grid = list;
-  updateGridSize();
-  renderGrid();
+  setupEventListeners();
 }
 
 function updateGridSize() {
-  const [cols, rows] = document.getElementById('ninzuSelect').value.split('x').map(Number);
-  // 重新建立並保留既有選擇
-  const newGrid = Array(cols * rows).fill(null);
-  for (let i = 0; i < grid.length && i < newGrid.length; i++) {
-    newGrid[i] = grid[i];
-  }
-  grid = newGrid;
+  const [cols, rows] = document.getElementById("ninzuSelect").value.split("x").map(Number);
+  grid = Array(cols * rows).fill(null).map((_, i) => grid[i] || null);
 }
 
-function onCanvasClick(e) {
-  const rect = canvas.getBoundingClientRect();
-  const x = (e.clientX - rect.left) * (canvas.width / rect.width);
-  const y = (e.clientY - rect.top) * (canvas.height / rect.height) - 40;
-  const [cols, rows] = document.getElementById('ninzuSelect').value.split('x').map(Number);
-  const w = canvas.width / cols;
-  const h = (canvas.height - 40) / rows;
-  const c = Math.floor(x / w);
-  const r = Math.floor(y / h);
-  const idx = r * cols + c;
-  if (idx < grid.length && !grid[idx]) showPopup(idx);
-}
+function renderGrid(targetCanvas = canvas, targetCtx = ctx) {
+  targetCtx.clearRect(0, 0, targetCanvas.width, targetCanvas.height);
+  const [cols, rows] = document.getElementById("ninzuSelect").value.split("x").map(Number);
+  const cellW = targetCanvas.width / cols;
+  const cellH = targetCanvas.height / rows;
+  targetCanvas.height = rows * cellH;
 
-function renderGrid() {
-  // 填背景
-  ctx.fillStyle = '#fff4f6';
-  ctx.fillRect(0, 0, canvas.width, canvas.height);
-  
-  // 公演名
-  if (document.getElementById('showKonmei').checked) {
-    let txt = document.getElementById('konmeiSelect').value;
-    if (txt === 'other') txt = document.getElementById('customKonmei').value;
-    if (txt) {
-      ctx.fillStyle = '#f676a6';
-      ctx.font = '36px KozGoPr6N';
-      ctx.textAlign = 'left';
-      ctx.fillText(txt, 20, 36);
-    }
+  if (document.getElementById("showKonmei").checked) {
+    targetCtx.fillStyle = '#F676A6';
+    targetCtx.font = '24px KozGoPr6N';
+    const customKonmei = document.getElementById("customKonmei").value.trim();
+    targetCtx.textAlign = 'left';
+    targetCtx.fillText(customKonmei || 'カスタム公演', 10, 30); // 移除 "other"
   }
 
-  const [cols, rows] = document.getElementById('ninzuSelect').value.split('x').map(Number);
-  const w = canvas.width / cols;
-  const h = (canvas.height - 40) / rows;
+  for (let i = 0; i < grid.length; i++) {
+    const row = Math.floor(i / cols);
+    const col = i % cols;
+    const x = col * cellW;
+    const y = row * cellH + 40;
+    targetCtx.strokeStyle = '#f676a6';
+    targetCtx.strokeRect(x, y, cellW, cellH);
 
-  // 顯示格線
-  ctx.strokeStyle = '#f676a6';
-  for (let i = 0; i <= cols; i++) ctx.strokeRect(i * w, 40, 0.5, rows * h);
-  for (let j = 0; j <= rows; j++) ctx.strokeRect(0, j * h + 40, cols * w, 0.5);
-
-  grid.forEach((name, i) => {
-    const c = i % cols;
-    const r = Math.floor(i / cols);
-    const x = c * w;
-    const y = r * h + 40;
-
-    // 空格 + 號
-    if (!name) {
-      ctx.fillStyle = '#f676a6';
-      ctx.font = '48px KozGoPr6N';
-      ctx.textAlign = 'center';
-      ctx.textBaseline = 'middle';
-      ctx.fillText('+', x + w / 2, y + h / 2);
-      return;
+    if (!grid[i]) {
+      targetCtx.fillStyle = '#fff4f6';
+      targetCtx.fillRect(x, y, cellW, cellH);
+      targetCtx.font = '24px KozGoPr6N';
+      targetCtx.fillStyle = '#f676a6';
+      targetCtx.textAlign = 'center';
+      targetCtx.textBaseline = 'middle';
+      targetCtx.fillText('+', x + cellW / 2, y + cellH / 2);
+      continue;
     }
 
-    const m = members.find(m => m.name_ja === name);
-    let offsetY = y;
-
-    // 顯示照片 (h*0.3)
-    if (document.getElementById('showPhoto').checked && preloadedImages[name]) {
-      const img = preloadedImages[name];
-      const imgH = h * 0.3;
-      const imgW = imgH * (img.naturalWidth / img.naturalHeight);
-      ctx.drawImage(img, x + (w - imgW) / 2, offsetY, imgW, imgH);
-      offsetY += imgH + 5;
+    const member = members.find(m => m.name_ja === grid[i]);
+    let yOffset = cellH / 2 - 50; // 調整起始位置，預留更多空間
+    if (document.getElementById("showPhoto").checked && member.name_ja in preloadedImages) {
+      const img = preloadedImages[member.name_ja];
+      const aspectRatio = img.naturalWidth / img.naturalHeight;
+      const maxHeight = cellH * 0.3;
+      let drawHeight = maxHeight;
+      let drawWidth = drawHeight * aspectRatio;
+      if (drawWidth > cellW - 20) {
+        drawWidth = cellW - 20;
+        drawHeight = drawWidth / aspectRatio;
+      }
+      targetCtx.drawImage(img, x + (cellW - drawWidth) / 2, y + yOffset - (drawHeight / 2), drawWidth, drawHeight);
+      yOffset += drawHeight / 2 + 15; // 增加間距
+    }
+    if (yOffset + 30 <= y + cellH) {
+      targetCtx.fillStyle = '#F676A6';
+      targetCtx.textAlign = 'center';
+      targetCtx.textBaseline = 'middle';
+      targetCtx.font = '24px KozGoPr6N';
+      targetCtx.fillText(member.name_ja, x + cellW / 2, y + yOffset);
+      yOffset += 30;
+    }
+    if (document.getElementById("showNickname").checked && yOffset + 28 <= y + cellH) {
+      targetCtx.font = '22px KozGoPr6N';
+      targetCtx.fillText(member.nickname, x + cellW / 2, y + yOffset);
+      yOffset += 28;
+    }
+    if (document.getElementById("showKi").checked && yOffset + 28 <= y + cellH) {
+      targetCtx.font = '22px KozGoPr6N';
+      targetCtx.fillText(member.ki, x + cellW / 2, y + yOffset);
+      yOffset += 28;
+    }
+    if (document.getElementById("showColorBlock").checked || document.getElementById("showColorText").checked) {
+      if (!document.getElementById("showColorBlock").checked && !document.getElementById("showColorText").checked) {
+        document.getElementById("showColorBlock").checked = true;
+      }
+      if (document.getElementById("showColorBlock").checked && yOffset + 40 <= y + cellH) {
+        member.colors.forEach((color, j) => {
+          targetCtx.fillStyle = color === '#FFFFFF' ? '#f0f0f0' : color;
+          targetCtx.fillRect(x + (cellW - (member.colors.length * 40)) / 2 + j * 40, y + yOffset, 40, 40);
+        });
+        yOffset += 45;
+      } else if (document.getElementById("showColorText").checked && yOffset + 28 <= y + cellH) {
+        const colorMap = { '#FF0000': '赤', '#00FF00': '緑', '#FFFF00': '黄', '#0000FF': '青', '#FFFFFF': '白', '#FF69B4': 'ピンク', '#00CED1': '水', '#FFA500': 'オレンジ', '#800080': '紫', '#FFB6C1': '薄ピンク', '#FF1493': '深ピンク', '#32CD32': 'ライム' };
+        targetCtx.font = '22px KozGoPr6N';
+        let xOffset = x + cellW / 2 - (member.colors.length * 20);
+        member.colors.forEach((color, j) => {
+          const colorName = colorMap[color] || color;
+          targetCtx.fillStyle = color;
+          const textWidth = targetCtx.measureText(colorName + (j < member.colors.length - 1 ? ' x ' : '')).width;
+          targetCtx.fillText(colorName + (j < member.colors.length - 1 ? ' x ' : ''), xOffset, y + yOffset);
+          xOffset += textWidth;
+        });
+        yOffset += 28;
+      }
     }
 
-    // 顯示文字 (h*0.5 區域)
-    ctx.textAlign = 'center';
-    ctx.textBaseline = 'top';
-    ctx.fillStyle = '#f676a6';
-    ctx.font = '28px KozGoPr6N';
-    ctx.fillText(m.name_ja, x + w / 2, offsetY);
-    offsetY += 32;
-    if (document.getElementById('showNickname').checked) {
-      ctx.font = '24px KozGoPr6N';
-      ctx.fillText(m.nickname, x + w / 2, offsetY);
-      offsetY += 28;
+    if (grid[i] && y + 20 <= y + cellH) {
+      targetCtx.fillStyle = '#f676a6';
+      targetCtx.beginPath();
+      targetCtx.moveTo(x + cellW - 20, y + 10);
+      targetCtx.lineTo(x + cellW - 10, y + 20);
+      targetCtx.moveTo(x + cellW - 10, y + 10);
+      targetCtx.lineTo(x + cellW - 20, y + 20);
+      targetCtx.stroke();
     }
-    if (document.getElementById('showKi').checked) {
-      ctx.font = '24px KozGoPr6N';
-      ctx.fillText(m.ki, x + w / 2, offsetY);
-      offsetY += 28;
-    }
+  }
+}
 
-    // 顏色區 (h*0.2)
-    const blockY = y + h * 0.8;
-    const blockH = h * 0.2;
-    if (document.getElementById('showColorBlock').checked) {
-      const blockW = w / m.colors.length;
-      m.colors.forEach((colc, idx) => {
-        ctx.fillStyle = colc;
-        ctx.fillRect(x + idx * blockW, blockY, blockW, blockH);
+function updateGridSize() {
+  const [cols, rows] = document.getElementById("ninzuSelect").value.split("x").map(Number);
+  grid = Array(cols * rows).fill(null).map((_, i) => grid[i] || null);
+}
+
+function setupEventListeners() {
+  canvas.addEventListener('click', e => {
+    const rect = canvas.getBoundingClientRect();
+    const x = e.clientX - rect.left;
+    const y = e.clientY - rect.top - 40;
+    const [cols, rows] = document.getElementById("ninzuSelect").value.split("x").map(Number);
+    const cellW = canvas.width / cols;
+    const cellH = canvas.height / rows;
+    const col = Math.floor(x / cellW);
+    const row = Math.floor(y / cellH);
+    const index = row * cols + col;
+    if (index < grid.length) {
+      if (!grid[index]) {
+        showPopup(index);
+      } else if (e.type === 'dblclick' && x > canvas.width - cellW + 10 && x < canvas.width - cellW + 20 && y < 20) {
+        grid[index] = null;
+        renderGrid();
+      }
+    }
+  });
+
+  document.querySelectorAll('#controls input, #controls select').forEach(el => {
+    el.addEventListener('change', (e) => {
+      e.preventDefault();
+      e.stopPropagation();
+      if (el.id === 'showColorBlock' && el.checked) document.getElementById('showColorText').checked = false;
+      if (el.id === 'showColorText' && el.checked) document.getElementById('showColorBlock').checked = false;
+      if (el.id === 'konmeiSelect') {
+        document.getElementById('customKonmei').style.display = el.value === 'other' ? 'inline' : 'none';
+      }
+      if (el.id === 'showAll' && el.checked) {
+        document.getElementById('showKibetsu').checked = false;
+        document.getElementById('showNinzu').checked = false;
+        grid = members.map(m => m.name_ja);
+        document.getElementById('ninzuSelect').value = '5x10';
+        updateGridSize();
+        renderGrid();
+      }
+      if (el.id === 'showKibetsu' && el.checked) {
+        document.getElementById('showAll').checked = false;
+        document.getElementById('showNinzu').checked = false;
+        const ki = document.getElementById('kibetsuSelect').value;
+        const filtered = members.filter(m => m.ki === ki);
+        grid = filtered.map(m => m.name_ja);
+        const cols = Math.min(Math.ceil(Math.sqrt(filtered.length)), 4);
+        const rows = Math.ceil(filtered.length / cols);
+        document.getElementById('ninzuSelect').value = `${cols}x${rows}`;
+        updateGridSize();
+        renderGrid();
+      }
+      if (el.id === 'showNinzu' && el.checked) {
+        document.getElementById('showAll').checked = false;
+        document.getElementById('showKibetsu').checked = false;
+      }
+      updateGridSize();
+      renderGrid();
+    });
+  });
+
+  document.getElementById('customKonmei').addEventListener('input', renderGrid);
+  document.getElementById('popupCloseBtn').addEventListener('click', () => {
+    document.getElementById('popup').style.display = 'none';
+  });
+  document.getElementById('popupSelectBtn').addEventListener('click', () => {
+    console.log('Popup select clicked, currentIndex:', currentIndex); // 調試
+    const selected = document.querySelector('#accordion .member-item.selected')?.querySelector('span')?.textContent;
+    if (selected && currentIndex !== null) {
+      console.log('Selected member:', selected); // 調試
+      grid[currentIndex] = selected;
+      document.getElementById('popup').style.display = 'none';
+      renderGrid();
+    }
+  });
+
+  document.getElementById('downloadButton').addEventListener('click', async () => {
+    try {
+      const tempCanvas = document.createElement('canvas');
+      tempCanvas.width = canvas.width * 2;
+      tempCanvas.height = canvas.height * 2;
+      const tempCtx = tempCanvas.getContext('2d');
+      tempCtx.fillStyle = '#fff4f6';
+      tempCtx.fillRect(0, 0, tempCanvas.width, tempCanvas.height);
+      tempCtx.font = '48px KozGoPr6N';
+      tempCtx.fillStyle = '#F676A6';
+      await new Promise(resolve => {
+        const checkImages = () => {
+          if (Object.keys(preloadedImages).length === members.length) resolve();
+          else setTimeout(checkImages, 100);
+        };
+        checkImages();
       });
-    }
-
-    // 顏色文字
-    if (document.getElementById('showColorText').checked) {
-      m.colors.forEach((colc, idx) => {
-        const txtCol = colorNames[colc] || '';
-        ctx.fillStyle = colc;
-        ctx.font = '24px KozGoPr6N';
-        const totalW = m.colors.length * 60;
-        const startX = x + (w - totalW) / 2 + idx * 60 + 30;
-        ctx.textBaseline = 'middle';
-        ctx.fillText(txtCol, startX, blockY + blockH / 2);
-      });
+      renderGrid(tempCanvas, tempCtx);
+      const link = document.createElement('a');
+      link.download = 'penlight_colors_300dpi.png';
+      link.href = tempCanvas.toDataURL('image/png');
+      link.click();
+    } catch (error) {
+      console.error("Download failed:", error);
+      alert("ダウンロードに失敗しました。");
     }
   });
 }
-  }
-  const [cols, rows] = document.getElementById('ninzuSelect').value.split('x').map(Number);
-  const w = canvas.width / cols;
-  const h = (canvas.height - 40) / rows;
-  // 格線
-  ctx.strokeStyle = '#f676a6';
-  for (let i = 0; i <= cols; i++) ctx.strokeRect(i * w, 40, 0.5, rows * h);
-  for (let j = 0; j <= rows; j++) ctx.strokeRect(0, j * h + 40, cols * w, 0.5);
-  // 內容
-  grid.forEach((name, i) => {
-    const c = i % cols;
-    const r = Math.floor(i / cols);
-    const x = c * w;
-    const y = r * h + 40;
-    if (!name) {
-      ctx.fillStyle = '#f676a6';
-      ctx.font = '48px KozGoPr6N';
-      ctx.textAlign = 'center';
-      ctx.textBaseline = 'middle';
-      ctx.fillText('+', x + w / 2, y + h / 2);
-      return;
-    }
-    const m = members.find(m => m.name_ja === name);
-    // 文字區 (h/2)
-    const ty = y;
-    ctx.textAlign = 'center';
-    ctx.textBaseline = 'middle';
-    ctx.fillStyle = '#f676a6';
-    ctx.font = '20px KozGoPr6N';
-    ctx.fillText(m.name_ja, x + w / 2, ty + h * 0.25);
-    ctx.font = '18px KozGoPr6N';
-    if (document.getElementById('showNickname').checked)
-      ctx.fillText(m.nickname, x + w / 2, ty + h * 0.45);
-    if (document.getElementById('showKi').checked)
-      ctx.fillText(m.ki, x + w / 2, ty + h * 0.65);
-    // 色塊區 (h/3)
-    const by = y + h * 2 / 3;
-    if (document.getElementById('showColorBlock').checked) {
-      const bw = w / m.colors.length;
-      m.colors.forEach((colc, idx) => {
-        ctx.fillStyle = colc;
-        ctx.fillRect(x + idx * bw, by, bw, h / 3);
-      });
-    }
-    // 色名文字
-    if (document.getElementById('showColorText').checked) {
-      m.colors.forEach((colc, idx) => {
-        const nameTxt = colorNames[colc] || colc;
-        ctx.fillStyle = colc;
-        ctx.font = '18px KozGoPr6N';
-        const totalW = m.colors.length * 40;
-        const sx = x + (w - totalW) / 2 + idx * 40 + 20;
-        ctx.fillText(nameTxt, sx, by + h / 6);
-      });
-    }
-  });
-}
 
-function showPopup(idx) {
-  currentIndex = idx;
-  const popup = document.getElementById('popup');
-  popup.innerHTML = '<div id="accordion"></div>' +
-    '<div style="text-align:right;"><button id="selBtn">選択</button><button id="closeBtn">閉じる</button></div>';
-  const ac = popup.querySelector('#accordion');
-  Array.from(new Set(members.map(m => m.ki))).forEach(ki => {
-    const det = document.createElement('details');
-    const sum = document.createElement('summary'); sum.textContent = ki;
-    const div = document.createElement('div'); div.style.display = 'flex'; div.style.flexWrap = 'wrap'; div.style.gap = '8px'; div.style.margin = '8px 0';
-    members.filter(m => m.ki === ki).forEach(m => {
-      const it = document.createElement('div'); it.className = 'member-item'; it.style.cursor = 'pointer';
-      it.innerHTML = `<img src="${m.image}" width="40"/><div>${m.name_ja}</div>`;
-      it.onclick = () => { popup.querySelectorAll('.member-item').forEach(el => el.classList.remove('sel')); it.classList.add('sel'); };
-      div.appendChild(it);
-    }); det.append(sum, div); ac.appendChild(det);
+function showPopup(index) {
+  currentIndex = index;
+  let popupContent = '<div id="accordion">';
+  const periods = [...new Set(members.map(m => m.ki))];
+  periods.forEach(period => {
+    const periodMembers = members.filter(m => m.ki === period);
+    popupContent += `
+      <details>
+        <summary>${period} <span>▼</span></summary>
+        <div class="member-list">`;
+    periodMembers.forEach(m => {
+      popupContent += `<div class="member-item"><img src="${m.image}" width="50"><span>${m.name_ja}</span></div>`;
+    });
+    popupContent += `</div></details>`;
   });
-  popup.querySelector('#closeBtn').onclick = () => popup.style.display = 'none';
-  popup.querySelector('#selBtn').onclick = () => {
-    const sel = popup.querySelector('.member-item.sel');
-    if (sel) { grid[currentIndex] = sel.querySelector('div').textContent; renderGrid(); popup.style.display = 'none'; }
-  };
-  popup.style.display = 'block';
-}
-
-function onDownload() {
-  const tmp = document.createElement('canvas'); tmp.width = 1600 * 2; tmp.height = 900 * 2;
-  const tctx = tmp.getContext('2d');
-  tctx.fillStyle = '#fff4f6'; tctx.fillRect(0, 0, tmp.width, tmp.height);
-  tctx.scale(2, 2);
-  renderGrid();
-  const link = document.createElement('a'); link.download = 'penlight_colors_300dpi.png'; link.href = tmp.toDataURL('image/png'); link.click();
+  popupContent += '</div>';
+  document.getElementById('popup').innerHTML = popupContent + '<br><button id="popupSelectBtn">選択</button><button id="popupCloseBtn">閉じる</button>';
+  document.getElementById('popup').style.display = 'block';
+  document.querySelectorAll('.member-item').forEach(item => {
+    item.addEventListener('click', () => {
+      document.querySelectorAll('.member-item').forEach(i => i.classList.remove('selected'));
+      item.classList.add('selected');
+    });
+  });
 }
