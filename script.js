@@ -112,19 +112,102 @@ function onCanvasClick(e) {
 }
 
 function renderGrid() {
-  // 背景
+  // 填背景
   ctx.fillStyle = '#fff4f6';
   ctx.fillRect(0, 0, canvas.width, canvas.height);
+  
   // 公演名
   if (document.getElementById('showKonmei').checked) {
     let txt = document.getElementById('konmeiSelect').value;
     if (txt === 'other') txt = document.getElementById('customKonmei').value;
     if (txt) {
       ctx.fillStyle = '#f676a6';
-      ctx.font = '32px KozGoPr6N';
+      ctx.font = '36px KozGoPr6N';
       ctx.textAlign = 'left';
-      ctx.fillText(txt, 20, 32);
+      ctx.fillText(txt, 20, 36);
     }
+  }
+
+  const [cols, rows] = document.getElementById('ninzuSelect').value.split('x').map(Number);
+  const w = canvas.width / cols;
+  const h = (canvas.height - 40) / rows;
+
+  // 顯示格線
+  ctx.strokeStyle = '#f676a6';
+  for (let i = 0; i <= cols; i++) ctx.strokeRect(i * w, 40, 0.5, rows * h);
+  for (let j = 0; j <= rows; j++) ctx.strokeRect(0, j * h + 40, cols * w, 0.5);
+
+  grid.forEach((name, i) => {
+    const c = i % cols;
+    const r = Math.floor(i / cols);
+    const x = c * w;
+    const y = r * h + 40;
+
+    // 空格 + 號
+    if (!name) {
+      ctx.fillStyle = '#f676a6';
+      ctx.font = '48px KozGoPr6N';
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'middle';
+      ctx.fillText('+', x + w / 2, y + h / 2);
+      return;
+    }
+
+    const m = members.find(m => m.name_ja === name);
+    let offsetY = y;
+
+    // 顯示照片 (h*0.3)
+    if (document.getElementById('showPhoto').checked && preloadedImages[name]) {
+      const img = preloadedImages[name];
+      const imgH = h * 0.3;
+      const imgW = imgH * (img.naturalWidth / img.naturalHeight);
+      ctx.drawImage(img, x + (w - imgW) / 2, offsetY, imgW, imgH);
+      offsetY += imgH + 5;
+    }
+
+    // 顯示文字 (h*0.5 區域)
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'top';
+    ctx.fillStyle = '#f676a6';
+    ctx.font = '28px KozGoPr6N';
+    ctx.fillText(m.name_ja, x + w / 2, offsetY);
+    offsetY += 32;
+    if (document.getElementById('showNickname').checked) {
+      ctx.font = '24px KozGoPr6N';
+      ctx.fillText(m.nickname, x + w / 2, offsetY);
+      offsetY += 28;
+    }
+    if (document.getElementById('showKi').checked) {
+      ctx.font = '24px KozGoPr6N';
+      ctx.fillText(m.ki, x + w / 2, offsetY);
+      offsetY += 28;
+    }
+
+    // 顏色區 (h*0.2)
+    const blockY = y + h * 0.8;
+    const blockH = h * 0.2;
+    if (document.getElementById('showColorBlock').checked) {
+      const blockW = w / m.colors.length;
+      m.colors.forEach((colc, idx) => {
+        ctx.fillStyle = colc;
+        ctx.fillRect(x + idx * blockW, blockY, blockW, blockH);
+      });
+    }
+
+    // 顏色文字
+    if (document.getElementById('showColorText').checked) {
+      m.colors.forEach((colc, idx) => {
+        const txtCol = colorNames[colc] || '';
+        ctx.fillStyle = colc;
+        ctx.font = '24px KozGoPr6N';
+        const totalW = m.colors.length * 60;
+        const startX = x + (w - totalW) / 2 + idx * 60 + 30;
+        ctx.textBaseline = 'middle';
+        ctx.fillText(txtCol, startX, blockY + blockH / 2);
+      });
+    }
+  });
+}
   }
   const [cols, rows] = document.getElementById('ninzuSelect').value.split('x').map(Number);
   const w = canvas.width / cols;
