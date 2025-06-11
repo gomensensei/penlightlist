@@ -22,8 +22,8 @@ function initialize() {
 }
 
 function updateGridSize() {
-  const [cols, rows] = document.getElementById("ninzuSelect").value.split("x").map(Number); // 調整為橫×直
-  grid = Array(cols * rows).fill(null);
+  const [cols, rows] = document.getElementById("ninzuSelect").value.split("x").map(Number);
+  grid = Array(cols * rows).fill(null).map((_, i) => grid[i] || null); // 保留現有成員
 }
 
 function renderGrid(targetCanvas = canvas, targetCtx = ctx) {
@@ -33,16 +33,25 @@ function renderGrid(targetCanvas = canvas, targetCtx = ctx) {
   const cellH = targetCanvas.height / rows;
   targetCanvas.height = rows * cellH;
 
+  // 渲染公演名作為標題
+  if (document.getElementById("showKonmei").checked) {
+    targetCtx.fillStyle = '#333';
+    targetCtx.font = '20px KozGoPr6N';
+    const konmei = document.getElementById("customKonmei").style.display === "inline" && document.getElementById("customKonmei").value.trim() ? document.getElementById("customKonmei").value : document.getElementById("konmeiSelect").value;
+    targetCtx.textAlign = 'left';
+    targetCtx.fillText(konmei, 10, 30);
+  }
+
   for (let i = 0; i < grid.length; i++) {
     const row = Math.floor(i / cols);
     const col = i % cols;
     const x = col * cellW;
-    const y = row * cellH;
+    const y = row * cellH + 40; // 留出標題空間
     targetCtx.strokeStyle = '#f676a6';
     targetCtx.strokeRect(x, y, cellW, cellH);
 
     if (!grid[i]) {
-      targetCtx.fillStyle = '#fff4f6'; // 空格底色同網站背景
+      targetCtx.fillStyle = '#fff4f6'; // 空格底色
       targetCtx.fillRect(x, y, cellW, cellH);
       targetCtx.font = '24px KozGoPr6N';
       targetCtx.fillStyle = '#f676a6';
@@ -53,55 +62,48 @@ function renderGrid(targetCanvas = canvas, targetCtx = ctx) {
     }
 
     const member = members.find(m => m.name_ja === grid[i]);
-    targetCtx.fillStyle = '#fff';
-    targetCtx.fillRect(x, y, cellW, cellH);
-
     let yOffset = 10;
-    if (document.getElementById("showKonmei").checked) {
-      targetCtx.fillStyle = '#333';
-      targetCtx.font = '16px KozGoPr6N';
-      const konmei = document.getElementById("customKonmei").style.display === "inline" && document.getElementById("customKonmei").value.trim() ? document.getElementById("customKonmei").value : document.getElementById("konmeiSelect").value;
-      targetCtx.textAlign = 'center';
-      targetCtx.fillText(konmei, x + cellW / 2, y + yOffset);
-      yOffset += 20;
-    }
     if (document.getElementById("showPhoto").checked && member.image) {
       const img = new Image();
       img.onload = () => {
-        targetCtx.drawImage(img, x + 5, y + yOffset, cellW - 10, cellH * 0.4);
-        renderGrid(targetCanvas, targetCtx); // 重新渲染
+        targetCtx.drawImage(img, x + (cellW - (cellW - 10)) / 2, y + yOffset, cellW - 10, cellH * 0.4);
+        renderGrid(targetCanvas, targetCtx);
       };
       img.src = member.image;
       yOffset += cellH * 0.4 + 5;
     }
-    targetCtx.fillStyle = '#333';
+    targetCtx.fillStyle = '#F676A6';
     targetCtx.textAlign = 'center';
     targetCtx.textBaseline = 'top';
-    targetCtx.font = '16px KozGoPr6N';
+    targetCtx.font = '20px KozGoPr6N'; // 增大字型
     targetCtx.fillText(member.name_ja, x + cellW / 2, y + yOffset);
-    yOffset += 20;
+    yOffset += 25;
     if (document.getElementById("showNickname").checked) {
-      targetCtx.font = '14px KozGoPr6N';
+      targetCtx.font = '18px KozGoPr6N';
       targetCtx.fillText(member.nickname, x + cellW / 2, y + yOffset);
-      yOffset += 18;
+      yOffset += 22;
     }
     if (document.getElementById("showKi").checked) {
-      targetCtx.font = '14px KozGoPr6N';
+      targetCtx.font = '18px KozGoPr6N';
       targetCtx.fillText(member.ki, x + cellW / 2, y + yOffset);
-      yOffset += 18;
+      yOffset += 22;
     }
-    if (document.getElementById("showColorBlock").checked) {
-      member.colors.forEach((color, j) => {
-        targetCtx.fillStyle = color === '#FFFFFF' ? '#f0f0f0' : color; // 處理白色
-        targetCtx.fillRect(x + cellW - 25 - (j * 25), y + yOffset, 20, 20);
-      });
-      yOffset += 25;
-    } else if (document.getElementById("showColorText").checked) {
-      const colorMap = { '#FF0000': '赤', '#00FF00': '緑', '#FFFF00': '黄', '#0000FF': '青', '#FFFFFF': '白', '#FF69B4': 'ピンク', '#00CED1': '水' };
-      targetCtx.font = '14px KozGoPr6N';
-      targetCtx.fillStyle = '#333';
-      targetCtx.fillText(member.colors.map(c => colorMap[c] || c).join(' x '), x + cellW / 2, y + yOffset);
-      yOffset += 18;
+    if (document.getElementById("showColorBlock").checked || document.getElementById("showColorText").checked) {
+      if (!document.getElementById("showColorBlock").checked) document.getElementById("showColorBlock").checked = true; // 確保至少一個勾選
+      if (document.getElementById("showColorBlock").checked) {
+        member.colors.forEach((color, j) => {
+          targetCtx.fillStyle = color === '#FFFFFF' ? '#f0f0f0' : color;
+          targetCtx.fillRect(x + (cellW - (member.colors.length * 30)) / 2 + j * 30, y + yOffset, 25, 25); // 增大色格，置中
+        });
+        yOffset += 30;
+      } else if (document.getElementById("showColorText").checked) {
+        const colorMap = { '#FF0000': '赤', '#00FF00': '緑', '#FFFF00': '黄', '#0000FF': '青', '#FFFFFF': '白', '#FF69B4': 'ピンク', '#00CED1': '水', '#FFA500': 'オレンジ', '#800080': '紫', '#FFB6C1': '薄ピンク', '#FF1493': '深ピンク', '#32CD32': 'ライム' };
+        targetCtx.font = '18px KozGoPr6N';
+        targetCtx.fillStyle = '#333';
+        const colorText = member.colors.map(c => `<span style="color: ${c}">${colorMap[c] || c}</span>`).join(' x ');
+        targetCtx.fillText(colorText, x + cellW / 2, y + yOffset);
+        yOffset += 22;
+      }
     }
 
     // 右上角交叉制
@@ -119,14 +121,14 @@ function renderGrid(targetCanvas = canvas, targetCtx = ctx) {
 
 function updateGridSize() {
   const [cols, rows] = document.getElementById("ninzuSelect").value.split("x").map(Number);
-  grid = Array(cols * rows).fill(null).map((_, i) => grid[i] || null); // 保留現有成員
+  grid = Array(cols * rows).fill(null).map((_, i) => grid[i] || null);
 }
 
 function setupEventListeners() {
   canvas.addEventListener('click', e => {
     const rect = canvas.getBoundingClientRect();
     const x = e.clientX - rect.left;
-    const y = e.clientY - rect.top;
+    const y = e.clientY - rect.top - 40; // 調整標題偏移
     const [cols, rows] = document.getElementById("ninzuSelect").value.split("x").map(Number);
     const cellW = canvas.width / cols;
     const cellH = canvas.height / rows;
@@ -136,7 +138,7 @@ function setupEventListeners() {
     if (index < grid.length) {
       if (!grid[index]) {
         showPopup(index);
-      } else if (x > canvas.width - 20 && y < 20) { // 點擊交叉制
+      } else if (x > canvas.width - cellW + 10 && x < canvas.width - cellW + 20 && y < 20) { // 優化交叉制點擊區域
         grid[index] = null;
         renderGrid();
       }
@@ -154,7 +156,7 @@ function setupEventListeners() {
         document.getElementById('showKibetsu').checked = false;
         document.getElementById('showNinzu').checked = false;
         grid = members.map(m => m.name_ja);
-        document.getElementById('ninzuSelect').value = `${Math.ceil(members.length / 4)}x4`;
+        document.getElementById('ninzuSelect').value = '5x10';
       }
       if (el.id === 'showKibetsu' && el.checked) {
         document.getElementById('showAll').checked = false;
@@ -162,10 +164,8 @@ function setupEventListeners() {
         const ki = document.getElementById('kibetsuSelect').value;
         const filtered = members.filter(m => m.ki === ki);
         grid = filtered.map(m => m.name_ja);
-        const [cols, rows] = ['4x2', '3x2', '2x2', '2x1'].find(size => {
-          const [c, r] = size.split('x').map(Number);
-          return c * r >= filtered.length;
-        }).split('x').map(Number);
+        const cols = Math.min(Math.ceil(Math.sqrt(filtered.length)), 4);
+        const rows = Math.ceil(filtered.length / cols);
         document.getElementById('ninzuSelect').value = `${cols}x${rows}`;
       }
       if (el.id === 'showNinzu' && el.checked) {
@@ -182,7 +182,7 @@ function setupEventListeners() {
     document.getElementById('popup').style.display = 'none';
   });
   document.getElementById('popupSelectBtn').addEventListener('click', () => {
-    const selected = document.getElementById('memberSelect').value;
+    const selected = document.getElementById('memberSelect')?.value;
     if (selected && currentIndex !== null) grid[currentIndex] = selected;
     document.getElementById('popup').style.display = 'none';
     renderGrid();
@@ -194,7 +194,7 @@ function setupEventListeners() {
     tempCanvas.height = canvas.height * 3;
     const tempCtx = tempCanvas.getContext('2d');
     tempCtx.scale(3, 3);
-    renderGrid(tempCanvas, tempCtx); // 確保渲染所有內容
+    renderGrid(tempCanvas, tempCtx);
     const link = document.createElement('a');
     link.download = 'penlight_colors_300dpi.png';
     link.href = tempCanvas.toDataURL('image/png');
