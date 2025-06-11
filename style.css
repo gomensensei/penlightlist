@@ -11,13 +11,14 @@ body {
 
 #container {
   max-width: 1000px;
-  margin: 0 auto; /* 置中 */
+  margin: 0 auto;
   padding: 20px;
   text-align: center;
 }
 
 h1 {
   font-size: 2.5em;
+  color: #F676A6; /* 主題色 */
   margin-bottom: 15px;
 }
 
@@ -34,11 +35,12 @@ h1 {
   display: flex;
   align-items: center;
   gap: 4px;
+  color: #F676A6; /* 主題色 */
 }
 
 #renderCanvas {
   display: block;
-  margin: 0 auto 20px auto; /* 置中 */
+  margin: 0 auto;
   border: 2px solid #F676A6;
   background-color: #fff;
 }
@@ -104,6 +106,10 @@ h1 {
   background-color: #f9f9f9;
 }
 
+#popup .member-item.selected {
+  background-color: #e0e0e0;
+}
+
 #popup select {
   font-size: 1em;
   margin-bottom: 10px;
@@ -151,6 +157,7 @@ input[type="radio"] {
 select {
   font-size: 0.95em;
   padding: 4px;
+  color: #F676A6; /* 主題色 */
 }
 
 @media (max-width: 768px) {
@@ -178,6 +185,6 @@ select {
     font-size: 14px;
   }
   #renderCanvas canvas {
-    font-size: 18px !important; /* 手機版增大字型 */
+    font-size: 24px !important;
   }
 }
