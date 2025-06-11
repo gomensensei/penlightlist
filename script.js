@@ -43,7 +43,7 @@ function renderGrid(targetCanvas = canvas, targetCtx = ctx) {
   if (document.getElementById("showKonmei").checked) {
     targetCtx.fillStyle = '#F676A6';
     targetCtx.font = '24px KozGoPr6N';
-    const customKonmei = document.getElementById("customKonmei").value.trim() || '';
+    const customKonmei = document.getElementById("customKonmei").value.trim();
     const konmei = customKonmei || document.getElementById("konmeiSelect").value;
     targetCtx.textAlign = 'left';
     targetCtx.fillText(konmei, 10, 30);
@@ -69,11 +69,11 @@ function renderGrid(targetCanvas = canvas, targetCtx = ctx) {
     }
 
     const member = members.find(m => m.name_ja === grid[i]);
-    let yOffset = cellH / 2 - 20;
+    let yOffset = cellH / 2 - 40; // 調整起始位置，預留空間
     if (document.getElementById("showPhoto").checked && member.name_ja in preloadedImages) {
       const img = preloadedImages[member.name_ja];
       const aspectRatio = img.naturalWidth / img.naturalHeight;
-      const maxHeight = cellH * 0.3; // 縮小圖片
+      const maxHeight = cellH * 0.3;
       let drawHeight = maxHeight;
       let drawWidth = drawHeight * aspectRatio;
       if (drawWidth > cellW - 20) {
@@ -81,20 +81,22 @@ function renderGrid(targetCanvas = canvas, targetCtx = ctx) {
         drawHeight = drawWidth / aspectRatio;
       }
       targetCtx.drawImage(img, x + (cellW - drawWidth) / 2, y + yOffset - (drawHeight / 2), drawWidth, drawHeight);
-      yOffset += drawHeight / 2 + 5;
+      yOffset += drawHeight / 2 + 10; // 增加間距
     }
-    targetCtx.fillStyle = '#F676A6';
-    targetCtx.textAlign = 'center';
-    targetCtx.textBaseline = 'middle';
-    targetCtx.font = '24px KozGoPr6N';
-    targetCtx.fillText(member.name_ja, x + cellW / 2, y + yOffset);
-    yOffset += 30;
-    if (document.getElementById("showNickname").checked) {
+    if (yOffset + 30 <= y + cellH) {
+      targetCtx.fillStyle = '#F676A6';
+      targetCtx.textAlign = 'center';
+      targetCtx.textBaseline = 'middle';
+      targetCtx.font = '24px KozGoPr6N';
+      targetCtx.fillText(member.name_ja, x + cellW / 2, y + yOffset);
+      yOffset += 30;
+    }
+    if (document.getElementById("showNickname").checked && yOffset + 28 <= y + cellH) {
       targetCtx.font = '22px KozGoPr6N';
       targetCtx.fillText(member.nickname, x + cellW / 2, y + yOffset);
       yOffset += 28;
     }
-    if (document.getElementById("showKi").checked) {
+    if (document.getElementById("showKi").checked && yOffset + 28 <= y + cellH) {
       targetCtx.font = '22px KozGoPr6N';
       targetCtx.fillText(member.ki, x + cellW / 2, y + yOffset);
       yOffset += 28;
@@ -106,7 +108,7 @@ function renderGrid(targetCanvas = canvas, targetCtx = ctx) {
       if (document.getElementById("showColorBlock").checked && yOffset + 40 <= y + cellH) {
         member.colors.forEach((color, j) => {
           targetCtx.fillStyle = color === '#FFFFFF' ? '#f0f0f0' : color;
-          targetCtx.fillRect(x + (cellW - (member.colors.length * 40)) / 2 + j * 40, y + yOffset, 40, 40); // 增大色塊
+          targetCtx.fillRect(x + (cellW - (member.colors.length * 40)) / 2 + j * 40, y + yOffset, 40, 40);
         });
         yOffset += 45;
       } else if (document.getElementById("showColorText").checked && yOffset + 28 <= y + cellH) {
@@ -155,17 +157,39 @@ function setupEventListeners() {
     if (index < grid.length) {
       if (!grid[index]) {
         showPopup(index);
-      } else if (e.button === 0 && x > canvas.width - cellW + 10 && x < canvas.width - cellW + 20 && y < 20) {
+      } else if (e.type === 'click' && e.button === 0 && x > canvas.width - cellW + 10 && x < canvas.width - cellW + 20 && y < 20) {
         grid[index] = null;
         renderGrid();
-      } else if (e.button === 2) {
-        showContextMenu(index, x, y);
-        e.preventDefault();
       }
     }
   });
 
-  canvas.addEventListener('contextmenu', e => e.preventDefault());
+  // 長按觸發菜單（手機兼容）
+  let touchStartTime = null;
+  canvas.addEventListener('touchstart', e => {
+    touchStartTime = Date.now();
+    const touch = e.touches[0];
+    const x = touch.clientX - canvas.getBoundingClientRect().left;
+    const y = touch.clientY - canvas.getBoundingClientRect().top - 40;
+    const [cols, rows] = document.getElementById("ninzuSelect").value.split("x").map(Number);
+    const cellW = canvas.width / cols;
+    const cellH = canvas.height / rows;
+    const col = Math.floor(x / cellW);
+    const row = Math.floor(y / cellH);
+    const index = row * cols + col;
+    if (index < grid.length && grid[index]) {
+      currentIndex = index;
+    }
+  });
+
+  canvas.addEventListener('touchend', e => {
+    const touchEndTime = Date.now();
+    if (touchEndTime - touchStartTime > 500 && currentIndex !== null) { // 長按500ms
+      showTouchMenu(currentIndex, e.changedTouches[0].clientX, e.changedTouches[0].clientY - 40);
+      e.preventDefault();
+    }
+    touchStartTime = null;
+  });
 
   document.querySelectorAll('#controls input, #controls select').forEach(el => {
     el.addEventListener('change', (e) => {
@@ -218,7 +242,7 @@ function setupEventListeners() {
     }
   });
 
-  document.getElementById('downloadButton').addEventListener('click', () => {
+  document.getElementById('downloadButton').addEventListener('click', async () => {
     try {
       const tempCanvas = document.createElement('canvas');
       tempCanvas.width = canvas.width * 2;
@@ -228,6 +252,14 @@ function setupEventListeners() {
       tempCtx.fillRect(0, 0, tempCanvas.width, tempCanvas.height);
       tempCtx.font = '48px KozGoPr6N';
       tempCtx.fillStyle = '#F676A6';
+      // 等待圖片載入
+      await new Promise(resolve => {
+        const checkImages = () => {
+          if (Object.keys(preloadedImages).length === members.length) resolve();
+          else setTimeout(checkImages, 100);
+        };
+        checkImages();
+      });
       renderGrid(tempCanvas, tempCtx);
       const link = document.createElement('a');
       link.download = 'penlight_colors_300dpi.png';
@@ -266,7 +298,7 @@ function showPopup(index) {
   });
 }
 
-function showContextMenu(index, x, y) {
+function showTouchMenu(index, x, y) {
   const menu = document.createElement('div');
   menu.style.position = 'absolute';
   menu.style.left = `${x}px`;
