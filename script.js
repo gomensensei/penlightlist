@@ -95,7 +95,12 @@ function filterByKi() {
 
 function updateGridSize() {
   const [cols, rows] = document.getElementById('ninzuSelect').value.split('x').map(Number);
-  grid.length = cols * rows;
+  // 重新建立並保留既有選擇
+  const newGrid = Array(cols * rows).fill(null);
+  for (let i = 0; i < grid.length && i < newGrid.length; i++) {
+    newGrid[i] = grid[i];
+  }
+  grid = newGrid;
 }
 
 function onCanvasClick(e) {
