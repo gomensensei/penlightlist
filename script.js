@@ -9,7 +9,6 @@ fetch("members.json")
   .then(res => res.json())
   .then(data => {
     members = data;
-    // 預載圖片
     members.forEach(m => {
       const img = new Image();
       img.src = m.image;
@@ -41,7 +40,6 @@ function renderGrid(targetCanvas = canvas, targetCtx = ctx) {
   const cellH = targetCanvas.height / rows;
   targetCanvas.height = rows * cellH;
 
-  // 渲染公演名作為標題
   if (document.getElementById("showKonmei").checked) {
     targetCtx.fillStyle = '#F676A6';
     targetCtx.font = '24px KozGoPr6N';
@@ -71,10 +69,19 @@ function renderGrid(targetCanvas = canvas, targetCtx = ctx) {
     }
 
     const member = members.find(m => m.name_ja === grid[i]);
-    let yOffset = cellH / 2; // 置中
+    let yOffset = cellH / 2 - 20;
     if (document.getElementById("showPhoto").checked && member.name_ja in preloadedImages) {
-      targetCtx.drawImage(preloadedImages[member.name_ja], x + (cellW - (cellW - 10)) / 2, y + yOffset - (cellH * 0.2), cellW - 10, cellH * 0.4);
-      yOffset += cellH * 0.2 + 5;
+      const img = preloadedImages[member.name_ja];
+      const aspectRatio = img.naturalWidth / img.naturalHeight;
+      const maxHeight = cellH * 0.3; // 縮小圖片
+      let drawHeight = maxHeight;
+      let drawWidth = drawHeight * aspectRatio;
+      if (drawWidth > cellW - 20) {
+        drawWidth = cellW - 20;
+        drawHeight = drawWidth / aspectRatio;
+      }
+      targetCtx.drawImage(img, x + (cellW - drawWidth) / 2, y + yOffset - (drawHeight / 2), drawWidth, drawHeight);
+      yOffset += drawHeight / 2 + 5;
     }
     targetCtx.fillStyle = '#F676A6';
     targetCtx.textAlign = 'center';
@@ -96,16 +103,16 @@ function renderGrid(targetCanvas = canvas, targetCtx = ctx) {
       if (!document.getElementById("showColorBlock").checked && !document.getElementById("showColorText").checked) {
         document.getElementById("showColorBlock").checked = true;
       }
-      if (document.getElementById("showColorBlock").checked) {
+      if (document.getElementById("showColorBlock").checked && yOffset + 40 <= y + cellH) {
         member.colors.forEach((color, j) => {
           targetCtx.fillStyle = color === '#FFFFFF' ? '#f0f0f0' : color;
-          targetCtx.fillRect(x + (cellW - (member.colors.length * 30)) / 2 + j * 30, y + yOffset, 30, 30);
+          targetCtx.fillRect(x + (cellW - (member.colors.length * 40)) / 2 + j * 40, y + yOffset, 40, 40); // 增大色塊
         });
-        yOffset += 35;
-      } else if (document.getElementById("showColorText").checked) {
+        yOffset += 45;
+      } else if (document.getElementById("showColorText").checked && yOffset + 28 <= y + cellH) {
         const colorMap = { '#FF0000': '赤', '#00FF00': '緑', '#FFFF00': '黄', '#0000FF': '青', '#FFFFFF': '白', '#FF69B4': 'ピンク', '#00CED1': '水', '#FFA500': 'オレンジ', '#800080': '紫', '#FFB6C1': '薄ピンク', '#FF1493': '深ピンク', '#32CD32': 'ライム' };
         targetCtx.font = '22px KozGoPr6N';
-        let xOffset = x + cellW / 2 - (member.colors.length * 20); // 動態調整起始位置
+        let xOffset = x + cellW / 2 - (member.colors.length * 20);
         member.colors.forEach((color, j) => {
           const colorName = colorMap[color] || color;
           targetCtx.fillStyle = color;
@@ -117,8 +124,7 @@ function renderGrid(targetCanvas = canvas, targetCtx = ctx) {
       }
     }
 
-    // 右上角交叉制
-    if (grid[i]) {
+    if (grid[i] && y + 20 <= y + cellH) {
       targetCtx.fillStyle = '#f676a6';
       targetCtx.beginPath();
       targetCtx.moveTo(x + cellW - 20, y + 10);
@@ -149,12 +155,17 @@ function setupEventListeners() {
     if (index < grid.length) {
       if (!grid[index]) {
         showPopup(index);
-      } else if (x > canvas.width - cellW + 10 && x < canvas.width - cellW + 20 && y < 20) {
+      } else if (e.button === 0 && x > canvas.width - cellW + 10 && x < canvas.width - cellW + 20 && y < 20) {
         grid[index] = null;
         renderGrid();
+      } else if (e.button === 2) {
+        showContextMenu(index, x, y);
+        e.preventDefault();
       }
     }
   });
+
+  canvas.addEventListener('contextmenu', e => e.preventDefault());
 
   document.querySelectorAll('#controls input, #controls select').forEach(el => {
     el.addEventListener('change', (e) => {
@@ -170,6 +181,7 @@ function setupEventListeners() {
         document.getElementById('showNinzu').checked = false;
         grid = members.map(m => m.name_ja);
         document.getElementById('ninzuSelect').value = '5x10';
+        updateGridSize();
         renderGrid();
       }
       if (el.id === 'showKibetsu' && el.checked) {
@@ -181,6 +193,7 @@ function setupEventListeners() {
         const cols = Math.min(Math.ceil(Math.sqrt(filtered.length)), 4);
         const rows = Math.ceil(filtered.length / cols);
         document.getElementById('ninzuSelect').value = `${cols}x${rows}`;
+        updateGridSize();
         renderGrid();
       }
       if (el.id === 'showNinzu' && el.checked) {
@@ -206,19 +219,24 @@ function setupEventListeners() {
   });
 
   document.getElementById('downloadButton').addEventListener('click', () => {
-    const tempCanvas = document.createElement('canvas');
-    tempCanvas.width = canvas.width * 2; // 移除過高縮放，直接調整內容
-    tempCanvas.height = canvas.height * 2;
-    const tempCtx = tempCanvas.getContext('2d');
-    tempCtx.fillStyle = '#fff4f6';
-    tempCtx.fillRect(0, 0, tempCanvas.width, tempCanvas.height);
-    tempCtx.font = '48px KozGoPr6N'; // 增大字型
-    tempCtx.fillStyle = '#F676A6';
-    renderGrid(tempCanvas, tempCtx); // 渲染時使用較大字型
-    const link = document.createElement('a');
-    link.download = 'penlight_colors_300dpi.png';
-    link.href = tempCanvas.toDataURL('image/png');
-    link.click();
+    try {
+      const tempCanvas = document.createElement('canvas');
+      tempCanvas.width = canvas.width * 2;
+      tempCanvas.height = canvas.height * 2;
+      const tempCtx = tempCanvas.getContext('2d');
+      tempCtx.fillStyle = '#fff4f6';
+      tempCtx.fillRect(0, 0, tempCanvas.width, tempCanvas.height);
+      tempCtx.font = '48px KozGoPr6N';
+      tempCtx.fillStyle = '#F676A6';
+      renderGrid(tempCanvas, tempCtx);
+      const link = document.createElement('a');
+      link.download = 'penlight_colors_300dpi.png';
+      link.href = tempCanvas.toDataURL('image/png');
+      link.click();
+    } catch (error) {
+      console.error("Download failed:", error);
+      alert("ダウンロードに失敗しました。");
+    }
   });
 }
 
@@ -246,4 +264,20 @@ function showPopup(index) {
       item.classList.add('selected');
     });
   });
+}
+
+function showContextMenu(index, x, y) {
+  const menu = document.createElement('div');
+  menu.style.position = 'absolute';
+  menu.style.left = `${x}px`;
+  menu.style.top = `${y}px`;
+  menu.style.background = '#fff';
+  menu.style.border = '1px solid #f676a6';
+  menu.style.padding = '5px';
+  menu.innerHTML = `
+    <div style="cursor: pointer; padding: 2px;" onclick="grid[${index}] = null; renderGrid(); document.body.removeChild(this.parentElement);">移除</div>
+    <div style="cursor: pointer; padding: 2px;" onclick="showPopup(${index}); document.body.removeChild(this.parentElement);">更換</div>
+  `;
+  document.body.appendChild(menu);
+  menu.addEventListener('mouseleave', () => document.body.removeChild(menu));
 }
