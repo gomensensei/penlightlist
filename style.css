@@ -187,4 +187,11 @@ select {
   #renderCanvas canvas {
     font-size: 24px !important;
   }
+  #renderCanvas {
+  display: block;
+  margin: 0 auto;
+  width: 100%;
+  height: auto;
+}
+
 }
