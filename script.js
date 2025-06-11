@@ -23,7 +23,7 @@ function initialize() {
 
 function updateGridSize() {
   const [cols, rows] = document.getElementById("ninzuSelect").value.split("x").map(Number);
-  grid = Array(cols * rows).fill(null).map((_, i) => grid[i] || null); // 保留現有成員
+  grid = Array(cols * rows).fill(null).map((_, i) => grid[i] || null);
 }
 
 function renderGrid(targetCanvas = canvas, targetCtx = ctx) {
@@ -35,8 +35,8 @@ function renderGrid(targetCanvas = canvas, targetCtx = ctx) {
 
   // 渲染公演名作為標題
   if (document.getElementById("showKonmei").checked) {
-    targetCtx.fillStyle = '#333';
-    targetCtx.font = '20px KozGoPr6N';
+    targetCtx.fillStyle = '#F676A6';
+    targetCtx.font = '24px KozGoPr6N'; // 增大字型
     const konmei = document.getElementById("customKonmei").style.display === "inline" && document.getElementById("customKonmei").value.trim() ? document.getElementById("customKonmei").value : document.getElementById("konmeiSelect").value;
     targetCtx.textAlign = 'left';
     targetCtx.fillText(konmei, 10, 30);
@@ -72,37 +72,39 @@ function renderGrid(targetCanvas = canvas, targetCtx = ctx) {
       img.src = member.image;
       yOffset += cellH * 0.4 + 5;
     }
-    targetCtx.fillStyle = '#F676A6';
+    targetCtx.fillStyle = '#F676A6'; // 主題色
     targetCtx.textAlign = 'center';
     targetCtx.textBaseline = 'top';
-    targetCtx.font = '20px KozGoPr6N'; // 增大字型
+    targetCtx.font = '24px KozGoPr6N'; // 增大字型
     targetCtx.fillText(member.name_ja, x + cellW / 2, y + yOffset);
-    yOffset += 25;
+    yOffset += 30;
     if (document.getElementById("showNickname").checked) {
-      targetCtx.font = '18px KozGoPr6N';
+      targetCtx.font = '22px KozGoPr6N';
       targetCtx.fillText(member.nickname, x + cellW / 2, y + yOffset);
-      yOffset += 22;
+      yOffset += 28;
     }
     if (document.getElementById("showKi").checked) {
-      targetCtx.font = '18px KozGoPr6N';
+      targetCtx.font = '22px KozGoPr6N';
       targetCtx.fillText(member.ki, x + cellW / 2, y + yOffset);
-      yOffset += 22;
+      yOffset += 28;
     }
     if (document.getElementById("showColorBlock").checked || document.getElementById("showColorText").checked) {
-      if (!document.getElementById("showColorBlock").checked) document.getElementById("showColorBlock").checked = true; // 確保至少一個勾選
+      if (!document.getElementById("showColorBlock").checked && !document.getElementById("showColorText").checked) {
+        document.getElementById("showColorBlock").checked = true; // 確保至少一個勾選
+      }
       if (document.getElementById("showColorBlock").checked) {
         member.colors.forEach((color, j) => {
           targetCtx.fillStyle = color === '#FFFFFF' ? '#f0f0f0' : color;
-          targetCtx.fillRect(x + (cellW - (member.colors.length * 30)) / 2 + j * 30, y + yOffset, 25, 25); // 增大色格，置中
+          targetCtx.fillRect(x + (cellW - (member.colors.length * 30)) / 2 + j * 30, y + yOffset, 30, 30); // 增大色格
         });
-        yOffset += 30;
+        yOffset += 35;
       } else if (document.getElementById("showColorText").checked) {
         const colorMap = { '#FF0000': '赤', '#00FF00': '緑', '#FFFF00': '黄', '#0000FF': '青', '#FFFFFF': '白', '#FF69B4': 'ピンク', '#00CED1': '水', '#FFA500': 'オレンジ', '#800080': '紫', '#FFB6C1': '薄ピンク', '#FF1493': '深ピンク', '#32CD32': 'ライム' };
-        targetCtx.font = '18px KozGoPr6N';
-        targetCtx.fillStyle = '#333';
+        targetCtx.font = '22px KozGoPr6N';
         const colorText = member.colors.map(c => `<span style="color: ${c}">${colorMap[c] || c}</span>`).join(' x ');
+        targetCtx.fillStyle = '#333';
         targetCtx.fillText(colorText, x + cellW / 2, y + yOffset);
-        yOffset += 22;
+        yOffset += 28;
       }
     }
 
@@ -128,7 +130,7 @@ function setupEventListeners() {
   canvas.addEventListener('click', e => {
     const rect = canvas.getBoundingClientRect();
     const x = e.clientX - rect.left;
-    const y = e.clientY - rect.top - 40; // 調整標題偏移
+    const y = e.clientY - rect.top - 40;
     const [cols, rows] = document.getElementById("ninzuSelect").value.split("x").map(Number);
     const cellW = canvas.width / cols;
     const cellH = canvas.height / rows;
@@ -138,7 +140,7 @@ function setupEventListeners() {
     if (index < grid.length) {
       if (!grid[index]) {
         showPopup(index);
-      } else if (x > canvas.width - cellW + 10 && x < canvas.width - cellW + 20 && y < 20) { // 優化交叉制點擊區域
+      } else if (x > canvas.width - cellW + 10 && x < canvas.width - cellW + 20 && y < 20) {
         grid[index] = null;
         renderGrid();
       }
@@ -146,7 +148,8 @@ function setupEventListeners() {
   });
 
   document.querySelectorAll('#controls input, #controls select').forEach(el => {
-    el.addEventListener('change', () => {
+    el.addEventListener('change', (e) => {
+      e.stopPropagation(); // 避免事件衝突
       if (el.id === 'showColorBlock' && el.checked) document.getElementById('showColorText').checked = false;
       if (el.id === 'showColorText' && el.checked) document.getElementById('showColorBlock').checked = false;
       if (el.id === 'konmeiSelect') {
@@ -157,6 +160,7 @@ function setupEventListeners() {
         document.getElementById('showNinzu').checked = false;
         grid = members.map(m => m.name_ja);
         document.getElementById('ninzuSelect').value = '5x10';
+        renderGrid();
       }
       if (el.id === 'showKibetsu' && el.checked) {
         document.getElementById('showAll').checked = false;
@@ -167,6 +171,7 @@ function setupEventListeners() {
         const cols = Math.min(Math.ceil(Math.sqrt(filtered.length)), 4);
         const rows = Math.ceil(filtered.length / cols);
         document.getElementById('ninzuSelect').value = `${cols}x${rows}`;
+        renderGrid();
       }
       if (el.id === 'showNinzu' && el.checked) {
         document.getElementById('showAll').checked = false;
@@ -182,7 +187,7 @@ function setupEventListeners() {
     document.getElementById('popup').style.display = 'none';
   });
   document.getElementById('popupSelectBtn').addEventListener('click', () => {
-    const selected = document.getElementById('memberSelect')?.value;
+    const selected = document.querySelector('#accordion .member-item.selected')?.querySelector('span')?.textContent;
     if (selected && currentIndex !== null) grid[currentIndex] = selected;
     document.getElementById('popup').style.display = 'none';
     renderGrid();
@@ -190,10 +195,12 @@ function setupEventListeners() {
 
   document.getElementById('downloadButton').addEventListener('click', () => {
     const tempCanvas = document.createElement('canvas');
-    tempCanvas.width = canvas.width * 3;
-    tempCanvas.height = canvas.height * 3;
+    tempCanvas.width = canvas.width * 6; // 增大至 6 倍
+    tempCanvas.height = canvas.height * 6;
     const tempCtx = tempCanvas.getContext('2d');
-    tempCtx.scale(3, 3);
+    tempCtx.scale(6, 6);
+    tempCtx.fillStyle = '#fff4f6'; // 粉紅色背景
+    tempCtx.fillRect(0, 0, tempCanvas.width, tempCanvas.height);
     renderGrid(tempCanvas, tempCtx);
     const link = document.createElement('a');
     link.download = 'penlight_colors_300dpi.png';
@@ -222,9 +229,8 @@ function showPopup(index) {
   document.getElementById('popup').style.display = 'block';
   document.querySelectorAll('.member-item').forEach(item => {
     item.addEventListener('click', () => {
-      grid[currentIndex] = item.querySelector('span').textContent;
-      document.getElementById('popup').style.display = 'none';
-      renderGrid();
+      document.querySelectorAll('.member-item').forEach(i => i.classList.remove('selected'));
+      item.classList.add('selected');
     });
   });
 }
