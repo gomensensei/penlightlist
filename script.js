@@ -36,8 +36,9 @@ function renderGrid(targetCanvas = canvas, targetCtx = ctx) {
   // 渲染公演名作為標題
   if (document.getElementById("showKonmei").checked) {
     targetCtx.fillStyle = '#F676A6';
-    targetCtx.font = '24px KozGoPr6N'; // 增大字型
-    const konmei = document.getElementById("customKonmei").style.display === "inline" && document.getElementById("customKonmei").value.trim() ? document.getElementById("customKonmei").value : document.getElementById("konmeiSelect").value;
+    targetCtx.font = '24px KozGoPr6N';
+    const customKonmei = document.getElementById("customKonmei").value.trim() || '';
+    const konmei = document.getElementById("konmeiSelect").value === 'other' && customKonmei ? customKonmei : document.getElementById("konmeiSelect").value;
     targetCtx.textAlign = 'left';
     targetCtx.fillText(konmei, 10, 30);
   }
@@ -46,12 +47,12 @@ function renderGrid(targetCanvas = canvas, targetCtx = ctx) {
     const row = Math.floor(i / cols);
     const col = i % cols;
     const x = col * cellW;
-    const y = row * cellH + 40; // 留出標題空間
+    const y = row * cellH + 40;
     targetCtx.strokeStyle = '#f676a6';
     targetCtx.strokeRect(x, y, cellW, cellH);
 
     if (!grid[i]) {
-      targetCtx.fillStyle = '#fff4f6'; // 空格底色
+      targetCtx.fillStyle = '#fff4f6';
       targetCtx.fillRect(x, y, cellW, cellH);
       targetCtx.font = '24px KozGoPr6N';
       targetCtx.fillStyle = '#f676a6';
@@ -69,13 +70,14 @@ function renderGrid(targetCanvas = canvas, targetCtx = ctx) {
         targetCtx.drawImage(img, x + (cellW - (cellW - 10)) / 2, y + yOffset, cellW - 10, cellH * 0.4);
         renderGrid(targetCanvas, targetCtx);
       };
+      img.onerror = () => console.error("Image load failed:", member.image);
       img.src = member.image;
       yOffset += cellH * 0.4 + 5;
     }
-    targetCtx.fillStyle = '#F676A6'; // 主題色
+    targetCtx.fillStyle = '#F676A6';
     targetCtx.textAlign = 'center';
     targetCtx.textBaseline = 'top';
-    targetCtx.font = '24px KozGoPr6N'; // 增大字型
+    targetCtx.font = '24px KozGoPr6N';
     targetCtx.fillText(member.name_ja, x + cellW / 2, y + yOffset);
     yOffset += 30;
     if (document.getElementById("showNickname").checked) {
@@ -90,20 +92,24 @@ function renderGrid(targetCanvas = canvas, targetCtx = ctx) {
     }
     if (document.getElementById("showColorBlock").checked || document.getElementById("showColorText").checked) {
       if (!document.getElementById("showColorBlock").checked && !document.getElementById("showColorText").checked) {
-        document.getElementById("showColorBlock").checked = true; // 確保至少一個勾選
+        document.getElementById("showColorBlock").checked = true;
       }
       if (document.getElementById("showColorBlock").checked) {
         member.colors.forEach((color, j) => {
           targetCtx.fillStyle = color === '#FFFFFF' ? '#f0f0f0' : color;
-          targetCtx.fillRect(x + (cellW - (member.colors.length * 30)) / 2 + j * 30, y + yOffset, 30, 30); // 增大色格
+          targetCtx.fillRect(x + (cellW - (member.colors.length * 30)) / 2 + j * 30, y + yOffset, 30, 30);
         });
         yOffset += 35;
       } else if (document.getElementById("showColorText").checked) {
         const colorMap = { '#FF0000': '赤', '#00FF00': '緑', '#FFFF00': '黄', '#0000FF': '青', '#FFFFFF': '白', '#FF69B4': 'ピンク', '#00CED1': '水', '#FFA500': 'オレンジ', '#800080': '紫', '#FFB6C1': '薄ピンク', '#FF1493': '深ピンク', '#32CD32': 'ライム' };
         targetCtx.font = '22px KozGoPr6N';
-        const colorText = member.colors.map(c => `<span style="color: ${c}">${colorMap[c] || c}</span>`).join(' x ');
-        targetCtx.fillStyle = '#333';
-        targetCtx.fillText(colorText, x + cellW / 2, y + yOffset);
+        let xOffset = x + cellW / 2;
+        member.colors.forEach((color, j) => {
+          const colorName = colorMap[color] || color;
+          targetCtx.fillStyle = color;
+          targetCtx.fillText(colorName, xOffset, y + yOffset);
+          xOffset += targetCtx.measureText(colorName + (j < member.colors.length - 1 ? ' x ' : '')).width;
+        });
         yOffset += 28;
       }
     }
@@ -149,7 +155,7 @@ function setupEventListeners() {
 
   document.querySelectorAll('#controls input, #controls select').forEach(el => {
     el.addEventListener('change', (e) => {
-      e.stopPropagation(); // 避免事件衝突
+      e.stopPropagation();
       if (el.id === 'showColorBlock' && el.checked) document.getElementById('showColorText').checked = false;
       if (el.id === 'showColorText' && el.checked) document.getElementById('showColorBlock').checked = false;
       if (el.id === 'konmeiSelect') {
@@ -188,17 +194,19 @@ function setupEventListeners() {
   });
   document.getElementById('popupSelectBtn').addEventListener('click', () => {
     const selected = document.querySelector('#accordion .member-item.selected')?.querySelector('span')?.textContent;
-    if (selected && currentIndex !== null) grid[currentIndex] = selected;
-    document.getElementById('popup').style.display = 'none';
-    renderGrid();
+    if (selected && currentIndex !== null) {
+      grid[currentIndex] = selected;
+      document.getElementById('popup').style.display = 'none';
+      renderGrid();
+    }
   });
 
   document.getElementById('downloadButton').addEventListener('click', () => {
     const tempCanvas = document.createElement('canvas');
-    tempCanvas.width = canvas.width * 6; // 增大至 6 倍
-    tempCanvas.height = canvas.height * 6;
+    tempCanvas.width = canvas.width * 12; // 增大至 12 倍
+    tempCanvas.height = canvas.height * 12;
     const tempCtx = tempCanvas.getContext('2d');
-    tempCtx.scale(6, 6);
+    tempCtx.scale(12, 12);
     tempCtx.fillStyle = '#fff4f6'; // 粉紅色背景
     tempCtx.fillRect(0, 0, tempCanvas.width, tempCanvas.height);
     renderGrid(tempCanvas, tempCtx);
