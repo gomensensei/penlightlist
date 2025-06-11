@@ -22,74 +22,104 @@ function initialize() {
 }
 
 function updateGridSize() {
-  const [rows, cols] = document.getElementById("ninzuSelect").value.split("x").map(Number);
-  grid = Array(rows * cols).fill(null);
+  const [cols, rows] = document.getElementById("ninzuSelect").value.split("x").map(Number); // 調整為橫×直
+  grid = Array(cols * rows).fill(null);
 }
 
-function renderGrid() {
-  ctx.clearRect(0, 0, canvas.width, canvas.height);
-  const [rows, cols] = document.getElementById("ninzuSelect").value.split("x").map(Number);
-  const cellW = canvas.width / cols;
-  const cellH = canvas.height / rows; // 根據實際高度計算
-  canvas.height = rows * cellH;
+function renderGrid(targetCanvas = canvas, targetCtx = ctx) {
+  targetCtx.clearRect(0, 0, targetCanvas.width, targetCanvas.height);
+  const [cols, rows] = document.getElementById("ninzuSelect").value.split("x").map(Number);
+  const cellW = targetCanvas.width / cols;
+  const cellH = targetCanvas.height / rows;
+  targetCanvas.height = rows * cellH;
 
   for (let i = 0; i < grid.length; i++) {
     const row = Math.floor(i / cols);
     const col = i % cols;
     const x = col * cellW;
     const y = row * cellH;
-    ctx.strokeStyle = '#f676a6';
-    ctx.strokeRect(x, y, cellW, cellH);
+    targetCtx.strokeStyle = '#f676a6';
+    targetCtx.strokeRect(x, y, cellW, cellH);
 
     if (!grid[i]) {
-      ctx.font = '24px KozGoPr6N';
-      ctx.fillStyle = '#f676a6';
-      ctx.textAlign = 'center';
-      ctx.textBaseline = 'middle';
-      ctx.fillText('+', x + cellW / 2, y + cellH / 2);
+      targetCtx.fillStyle = '#fff4f6'; // 空格底色同網站背景
+      targetCtx.fillRect(x, y, cellW, cellH);
+      targetCtx.font = '24px KozGoPr6N';
+      targetCtx.fillStyle = '#f676a6';
+      targetCtx.textAlign = 'center';
+      targetCtx.textBaseline = 'middle';
+      targetCtx.fillText('+', x + cellW / 2, y + cellH / 2);
       continue;
     }
 
     const member = members.find(m => m.name_ja === grid[i]);
+    targetCtx.fillStyle = '#fff';
+    targetCtx.fillRect(x, y, cellW, cellH);
+
     let yOffset = 10;
+    if (document.getElementById("showKonmei").checked) {
+      targetCtx.fillStyle = '#333';
+      targetCtx.font = '16px KozGoPr6N';
+      const konmei = document.getElementById("customKonmei").style.display === "inline" && document.getElementById("customKonmei").value.trim() ? document.getElementById("customKonmei").value : document.getElementById("konmeiSelect").value;
+      targetCtx.textAlign = 'center';
+      targetCtx.fillText(konmei, x + cellW / 2, y + yOffset);
+      yOffset += 20;
+    }
     if (document.getElementById("showPhoto").checked && member.image) {
       const img = new Image();
       img.onload = () => {
-        ctx.drawImage(img, x + 5, y + yOffset, cellW - 10, cellH * 0.4);
-        renderGrid(); // 重新渲染以顯示圖片
+        targetCtx.drawImage(img, x + 5, y + yOffset, cellW - 10, cellH * 0.4);
+        renderGrid(targetCanvas, targetCtx); // 重新渲染
       };
       img.src = member.image;
       yOffset += cellH * 0.4 + 5;
     }
-
-    ctx.fillStyle = '#000';
-    ctx.textAlign = 'left';
-    ctx.textBaseline = 'top';
-    ctx.font = '16px KozGoPr6N';
-    ctx.fillText(member.name_ja, x + 5, y + yOffset);
+    targetCtx.fillStyle = '#333';
+    targetCtx.textAlign = 'center';
+    targetCtx.textBaseline = 'top';
+    targetCtx.font = '16px KozGoPr6N';
+    targetCtx.fillText(member.name_ja, x + cellW / 2, y + yOffset);
     yOffset += 20;
-
     if (document.getElementById("showNickname").checked) {
-      ctx.font = '14px KozGoPr6N';
-      ctx.fillText(member.nickname, x + 5, y + yOffset);
+      targetCtx.font = '14px KozGoPr6N';
+      targetCtx.fillText(member.nickname, x + cellW / 2, y + yOffset);
       yOffset += 18;
     }
     if (document.getElementById("showKi").checked) {
-      ctx.font = '14px KozGoPr6N';
-      ctx.fillText(member.ki, x + 5, y + yOffset);
+      targetCtx.font = '14px KozGoPr6N';
+      targetCtx.fillText(member.ki, x + cellW / 2, y + yOffset);
       yOffset += 18;
     }
     if (document.getElementById("showColorBlock").checked) {
       member.colors.forEach((color, j) => {
-        ctx.fillStyle = color;
-        ctx.fillRect(x + 5 + j * 25, y + yOffset, 20, 20);
+        targetCtx.fillStyle = color === '#FFFFFF' ? '#f0f0f0' : color; // 處理白色
+        targetCtx.fillRect(x + cellW - 25 - (j * 25), y + yOffset, 20, 20);
       });
+      yOffset += 25;
     } else if (document.getElementById("showColorText").checked) {
-      ctx.font = '14px KozGoPr6N';
-      ctx.fillStyle = '#000';
-      ctx.fillText(member.colors.join(' x '), x + 5, y + yOffset);
+      const colorMap = { '#FF0000': '赤', '#00FF00': '緑', '#FFFF00': '黄', '#0000FF': '青', '#FFFFFF': '白', '#FF69B4': 'ピンク', '#00CED1': '水' };
+      targetCtx.font = '14px KozGoPr6N';
+      targetCtx.fillStyle = '#333';
+      targetCtx.fillText(member.colors.map(c => colorMap[c] || c).join(' x '), x + cellW / 2, y + yOffset);
+      yOffset += 18;
+    }
+
+    // 右上角交叉制
+    if (grid[i]) {
+      targetCtx.fillStyle = '#f676a6';
+      targetCtx.beginPath();
+      targetCtx.moveTo(x + cellW - 20, y + 10);
+      targetCtx.lineTo(x + cellW - 10, y + 20);
+      targetCtx.moveTo(x + cellW - 10, y + 10);
+      targetCtx.lineTo(x + cellW - 20, y + 20);
+      targetCtx.stroke();
     }
   }
+}
+
+function updateGridSize() {
+  const [cols, rows] = document.getElementById("ninzuSelect").value.split("x").map(Number);
+  grid = Array(cols * rows).fill(null).map((_, i) => grid[i] || null); // 保留現有成員
 }
 
 function setupEventListeners() {
@@ -97,14 +127,19 @@ function setupEventListeners() {
     const rect = canvas.getBoundingClientRect();
     const x = e.clientX - rect.left;
     const y = e.clientY - rect.top;
-    const [rows, cols] = document.getElementById("ninzuSelect").value.split("x").map(Number);
+    const [cols, rows] = document.getElementById("ninzuSelect").value.split("x").map(Number);
     const cellW = canvas.width / cols;
     const cellH = canvas.height / rows;
     const col = Math.floor(x / cellW);
     const row = Math.floor(y / cellH);
     const index = row * cols + col;
-    if (index < grid.length && !grid[index]) {
-      showPopup(index);
+    if (index < grid.length) {
+      if (!grid[index]) {
+        showPopup(index);
+      } else if (x > canvas.width - 20 && y < 20) { // 點擊交叉制
+        grid[index] = null;
+        renderGrid();
+      }
     }
   });
 
@@ -127,11 +162,11 @@ function setupEventListeners() {
         const ki = document.getElementById('kibetsuSelect').value;
         const filtered = members.filter(m => m.ki === ki);
         grid = filtered.map(m => m.name_ja);
-        const [rows, cols] = ['4x2', '3x2', '2x2', '2x1'].find(size => {
-          const [r, c] = size.split('x').map(Number);
-          return r * c >= filtered.length;
+        const [cols, rows] = ['4x2', '3x2', '2x2', '2x1'].find(size => {
+          const [c, r] = size.split('x').map(Number);
+          return c * r >= filtered.length;
         }).split('x').map(Number);
-        document.getElementById('ninzuSelect').value = `${rows}x${cols}`;
+        document.getElementById('ninzuSelect').value = `${cols}x${rows}`;
       }
       if (el.id === 'showNinzu' && el.checked) {
         document.getElementById('showAll').checked = false;
@@ -159,7 +194,7 @@ function setupEventListeners() {
     tempCanvas.height = canvas.height * 3;
     const tempCtx = tempCanvas.getContext('2d');
     tempCtx.scale(3, 3);
-    renderGrid.call({ canvas: tempCanvas, getContext: () => tempCtx }); // 重新渲染
+    renderGrid(tempCanvas, tempCtx); // 確保渲染所有內容
     const link = document.createElement('a');
     link.download = 'penlight_colors_300dpi.png';
     link.href = tempCanvas.toDataURL('image/png');
@@ -169,8 +204,27 @@ function setupEventListeners() {
 
 function showPopup(index) {
   currentIndex = index;
-  const select = document.getElementById('memberSelect');
-  select.innerHTML = '<option value="">選択なし</option>' +
-    members.map(m => `<option value="${m.name_ja}">${m.name_ja} (${m.nickname}, ${m.ki})</option>`).join('');
+  let popupContent = '<div id="accordion">';
+  const periods = [...new Set(members.map(m => m.ki))];
+  periods.forEach(period => {
+    const periodMembers = members.filter(m => m.ki === period);
+    popupContent += `
+      <details>
+        <summary>${period} <span>▼</span></summary>
+        <div class="member-list">`;
+    periodMembers.forEach(m => {
+      popupContent += `<div class="member-item"><img src="${m.image}" width="50"><span>${m.name_ja}</span></div>`;
+    });
+    popupContent += `</div></details>`;
+  });
+  popupContent += '</div>';
+  document.getElementById('popup').innerHTML = popupContent + '<br><button id="popupSelectBtn">選択</button><button id="popupCloseBtn">閉じる</button>';
   document.getElementById('popup').style.display = 'block';
+  document.querySelectorAll('.member-item').forEach(item => {
+    item.addEventListener('click', () => {
+      grid[currentIndex] = item.querySelector('span').textContent;
+      document.getElementById('popup').style.display = 'none';
+      renderGrid();
+    });
+  });
 }
