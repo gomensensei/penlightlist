@@ -11,7 +11,7 @@ body {
 
 #container {
   max-width: 1000px;
-  margin: auto;
+  margin: 0 auto; /* 置中 */
   padding: 20px;
   text-align: center;
 }
@@ -38,7 +38,7 @@ h1 {
 
 #renderCanvas {
   display: block;
-  margin: 0 auto 20px auto;
+  margin: 0 auto 20px auto; /* 置中 */
   border: 2px solid #F676A6;
   background-color: #fff;
 }
@@ -82,7 +82,8 @@ h1 {
   font-size: 1.1em;
   padding: 5px;
   cursor: pointer;
-  background-color: #f0f0f0;
+  background-color: #F676A6;
+  color: #fff;
 }
 
 #popup .member-list {
@@ -175,5 +176,8 @@ select {
   }
   #popup .member-item span {
     font-size: 14px;
+  }
+  #renderCanvas canvas {
+    font-size: 18px !important; /* 手機版增大字型 */
   }
 }
