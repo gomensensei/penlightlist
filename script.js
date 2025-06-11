@@ -33,19 +33,25 @@ function updateGridSize() {
   grid = Array(cols * rows).fill(null).map((_, i) => grid[i] || null);
 }
 
-function renderGrid(targetCanvas = canvas, targetCtx = ctx) {
+function renderGrid(targetCanvas = canvas, targetCtx = ctx, isDownload = false) {
   targetCtx.clearRect(0, 0, targetCanvas.width, targetCanvas.height);
   const [cols, rows] = document.getElementById("ninzuSelect").value.split("x").map(Number);
   const cellW = targetCanvas.width / cols;
   const cellH = targetCanvas.height / rows;
   targetCanvas.height = rows * cellH;
 
+  // 填充背景
+  targetCtx.fillStyle = '#fff4f6';
+  targetCtx.fillRect(0, 0, targetCanvas.width, targetCanvas.height);
+
   if (document.getElementById("showKonmei").checked) {
     targetCtx.fillStyle = '#F676A6';
     targetCtx.font = '24px KozGoPr6N';
     const customKonmei = document.getElementById("customKonmei").value.trim();
+    const konmeiSelect = document.getElementById("konmeiSelect").value;
+    const konmei = customKonmei || (konmeiSelect === 'other' ? '' : konmeiSelect) || 'カスタム公演';
     targetCtx.textAlign = 'left';
-    targetCtx.fillText(customKonmei || 'カスタム公演', 10, 30); // 移除 "other"
+    targetCtx.fillText(konmei, 10, 30);
   }
 
   for (let i = 0; i < grid.length; i++) {
@@ -53,12 +59,12 @@ function renderGrid(targetCanvas = canvas, targetCtx = ctx) {
     const col = i % cols;
     const x = col * cellW;
     const y = row * cellH + 40;
+    targetCtx.fillStyle = '#fff4f6';
+    targetCtx.fillRect(x, y, cellW, cellH);
     targetCtx.strokeStyle = '#f676a6';
     targetCtx.strokeRect(x, y, cellW, cellH);
 
     if (!grid[i]) {
-      targetCtx.fillStyle = '#fff4f6';
-      targetCtx.fillRect(x, y, cellW, cellH);
       targetCtx.font = '24px KozGoPr6N';
       targetCtx.fillStyle = '#f676a6';
       targetCtx.textAlign = 'center';
@@ -68,36 +74,36 @@ function renderGrid(targetCanvas = canvas, targetCtx = ctx) {
     }
 
     const member = members.find(m => m.name_ja === grid[i]);
-    let yOffset = cellH / 2 - 50; // 調整起始位置，預留更多空間
+    let yOffset = y + 10; // 從格頂開始
+    const maxHeight = cellH - 20; // 預留邊距
     if (document.getElementById("showPhoto").checked && member.name_ja in preloadedImages) {
       const img = preloadedImages[member.name_ja];
       const aspectRatio = img.naturalWidth / img.naturalHeight;
-      const maxHeight = cellH * 0.3;
-      let drawHeight = maxHeight;
+      let drawHeight = Math.min(maxHeight * 0.3, cellH / 2);
       let drawWidth = drawHeight * aspectRatio;
       if (drawWidth > cellW - 20) {
         drawWidth = cellW - 20;
         drawHeight = drawWidth / aspectRatio;
       }
-      targetCtx.drawImage(img, x + (cellW - drawWidth) / 2, y + yOffset - (drawHeight / 2), drawWidth, drawHeight);
-      yOffset += drawHeight / 2 + 15; // 增加間距
+      targetCtx.drawImage(img, x + (cellW - drawWidth) / 2, yOffset, drawWidth, drawHeight);
+      yOffset += drawHeight + 5;
     }
     if (yOffset + 30 <= y + cellH) {
       targetCtx.fillStyle = '#F676A6';
       targetCtx.textAlign = 'center';
       targetCtx.textBaseline = 'middle';
       targetCtx.font = '24px KozGoPr6N';
-      targetCtx.fillText(member.name_ja, x + cellW / 2, y + yOffset);
+      targetCtx.fillText(member.name_ja, x + cellW / 2, yOffset + 15);
       yOffset += 30;
     }
     if (document.getElementById("showNickname").checked && yOffset + 28 <= y + cellH) {
       targetCtx.font = '22px KozGoPr6N';
-      targetCtx.fillText(member.nickname, x + cellW / 2, y + yOffset);
+      targetCtx.fillText(member.nickname, x + cellW / 2, yOffset + 14);
       yOffset += 28;
     }
     if (document.getElementById("showKi").checked && yOffset + 28 <= y + cellH) {
       targetCtx.font = '22px KozGoPr6N';
-      targetCtx.fillText(member.ki, x + cellW / 2, y + yOffset);
+      targetCtx.fillText(member.ki, x + cellW / 2, yOffset + 14);
       yOffset += 28;
     }
     if (document.getElementById("showColorBlock").checked || document.getElementById("showColorText").checked) {
@@ -107,7 +113,7 @@ function renderGrid(targetCanvas = canvas, targetCtx = ctx) {
       if (document.getElementById("showColorBlock").checked && yOffset + 40 <= y + cellH) {
         member.colors.forEach((color, j) => {
           targetCtx.fillStyle = color === '#FFFFFF' ? '#f0f0f0' : color;
-          targetCtx.fillRect(x + (cellW - (member.colors.length * 40)) / 2 + j * 40, y + yOffset, 40, 40);
+          targetCtx.fillRect(x + (cellW - (member.colors.length * 40)) / 2 + j * 40, yOffset, 40, 40);
         });
         yOffset += 45;
       } else if (document.getElementById("showColorText").checked && yOffset + 28 <= y + cellH) {
@@ -118,21 +124,17 @@ function renderGrid(targetCanvas = canvas, targetCtx = ctx) {
           const colorName = colorMap[color] || color;
           targetCtx.fillStyle = color;
           const textWidth = targetCtx.measureText(colorName + (j < member.colors.length - 1 ? ' x ' : '')).width;
-          targetCtx.fillText(colorName + (j < member.colors.length - 1 ? ' x ' : ''), xOffset, y + yOffset);
+          targetCtx.fillText(colorName + (j < member.colors.length - 1 ? ' x ' : ''), xOffset, yOffset);
           xOffset += textWidth;
         });
         yOffset += 28;
       }
     }
 
-    if (grid[i] && y + 20 <= y + cellH) {
+    if (grid[i] && !isDownload && y + 20 <= y + cellH) {
       targetCtx.fillStyle = '#f676a6';
-      targetCtx.beginPath();
-      targetCtx.moveTo(x + cellW - 20, y + 10);
-      targetCtx.lineTo(x + cellW - 10, y + 20);
-      targetCtx.moveTo(x + cellW - 10, y + 10);
-      targetCtx.lineTo(x + cellW - 20, y + 20);
-      targetCtx.stroke();
+      targetCtx.font = '16px KozGoPr6N';
+      targetCtx.fillText('選択', x + cellW - 30, y + 15);
     }
   }
 }
@@ -156,9 +158,8 @@ function setupEventListeners() {
     if (index < grid.length) {
       if (!grid[index]) {
         showPopup(index);
-      } else if (e.type === 'dblclick' && x > canvas.width - cellW + 10 && x < canvas.width - cellW + 20 && y < 20) {
-        grid[index] = null;
-        renderGrid();
+      } else if (x > canvas.width - cellW + 10 && x < canvas.width - cellW + 40 && y < 30) {
+        showPopup(index);
       }
     }
   });
@@ -203,10 +204,11 @@ function setupEventListeners() {
 
   document.getElementById('customKonmei').addEventListener('input', renderGrid);
   document.getElementById('popupCloseBtn').addEventListener('click', () => {
+    console.log('Close button clicked'); // 調試
     document.getElementById('popup').style.display = 'none';
   });
   document.getElementById('popupSelectBtn').addEventListener('click', () => {
-    console.log('Popup select clicked, currentIndex:', currentIndex); // 調試
+    console.log('Select button clicked, currentIndex:', currentIndex); // 調試
     const selected = document.querySelector('#accordion .member-item.selected')?.querySelector('span')?.textContent;
     if (selected && currentIndex !== null) {
       console.log('Selected member:', selected); // 調試
@@ -219,12 +221,12 @@ function setupEventListeners() {
   document.getElementById('downloadButton').addEventListener('click', async () => {
     try {
       const tempCanvas = document.createElement('canvas');
-      tempCanvas.width = canvas.width * 2;
-      tempCanvas.height = canvas.height * 2;
+      tempCanvas.width = canvas.width * 4; // 增大分辨率
+      tempCanvas.height = canvas.height * 4;
       const tempCtx = tempCanvas.getContext('2d');
       tempCtx.fillStyle = '#fff4f6';
       tempCtx.fillRect(0, 0, tempCanvas.width, tempCanvas.height);
-      tempCtx.font = '48px KozGoPr6N';
+      tempCtx.font = '72px KozGoPr6N'; // 增大字型
       tempCtx.fillStyle = '#F676A6';
       await new Promise(resolve => {
         const checkImages = () => {
@@ -233,7 +235,7 @@ function setupEventListeners() {
         };
         checkImages();
       });
-      renderGrid(tempCanvas, tempCtx);
+      renderGrid(tempCanvas, tempCtx, true); // isDownload = true 隱藏「選択」
       const link = document.createElement('a');
       link.download = 'penlight_colors_300dpi.png';
       link.href = tempCanvas.toDataURL('image/png');
