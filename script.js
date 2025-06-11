@@ -4,10 +4,18 @@ const canvas = document.getElementById("renderCanvas");
 const ctx = canvas.getContext("2d");
 
 let members = [];
+let preloadedImages = {};
 fetch("members.json")
   .then(res => res.json())
   .then(data => {
     members = data;
+    // 預載圖片
+    members.forEach(m => {
+      const img = new Image();
+      img.src = m.image;
+      img.onload = () => preloadedImages[m.name_ja] = img;
+      img.onerror = () => console.error("Image load failed:", m.image);
+    });
     initialize();
   })
   .catch(error => {
@@ -38,7 +46,7 @@ function renderGrid(targetCanvas = canvas, targetCtx = ctx) {
     targetCtx.fillStyle = '#F676A6';
     targetCtx.font = '24px KozGoPr6N';
     const customKonmei = document.getElementById("customKonmei").value.trim() || '';
-    const konmei = document.getElementById("konmeiSelect").value === 'other' && customKonmei ? customKonmei : document.getElementById("konmeiSelect").value;
+    const konmei = customKonmei || document.getElementById("konmeiSelect").value;
     targetCtx.textAlign = 'left';
     targetCtx.fillText(konmei, 10, 30);
   }
@@ -63,20 +71,14 @@ function renderGrid(targetCanvas = canvas, targetCtx = ctx) {
     }
 
     const member = members.find(m => m.name_ja === grid[i]);
-    let yOffset = 10;
-    if (document.getElementById("showPhoto").checked && member.image) {
-      const img = new Image();
-      img.onload = () => {
-        targetCtx.drawImage(img, x + (cellW - (cellW - 10)) / 2, y + yOffset, cellW - 10, cellH * 0.4);
-        renderGrid(targetCanvas, targetCtx);
-      };
-      img.onerror = () => console.error("Image load failed:", member.image);
-      img.src = member.image;
-      yOffset += cellH * 0.4 + 5;
+    let yOffset = cellH / 2; // 置中
+    if (document.getElementById("showPhoto").checked && member.name_ja in preloadedImages) {
+      targetCtx.drawImage(preloadedImages[member.name_ja], x + (cellW - (cellW - 10)) / 2, y + yOffset - (cellH * 0.2), cellW - 10, cellH * 0.4);
+      yOffset += cellH * 0.2 + 5;
     }
     targetCtx.fillStyle = '#F676A6';
     targetCtx.textAlign = 'center';
-    targetCtx.textBaseline = 'top';
+    targetCtx.textBaseline = 'middle';
     targetCtx.font = '24px KozGoPr6N';
     targetCtx.fillText(member.name_ja, x + cellW / 2, y + yOffset);
     yOffset += 30;
@@ -103,12 +105,13 @@ function renderGrid(targetCanvas = canvas, targetCtx = ctx) {
       } else if (document.getElementById("showColorText").checked) {
         const colorMap = { '#FF0000': '赤', '#00FF00': '緑', '#FFFF00': '黄', '#0000FF': '青', '#FFFFFF': '白', '#FF69B4': 'ピンク', '#00CED1': '水', '#FFA500': 'オレンジ', '#800080': '紫', '#FFB6C1': '薄ピンク', '#FF1493': '深ピンク', '#32CD32': 'ライム' };
         targetCtx.font = '22px KozGoPr6N';
-        let xOffset = x + cellW / 2;
+        let xOffset = x + cellW / 2 - (member.colors.length * 20); // 動態調整起始位置
         member.colors.forEach((color, j) => {
           const colorName = colorMap[color] || color;
           targetCtx.fillStyle = color;
-          targetCtx.fillText(colorName, xOffset, y + yOffset);
-          xOffset += targetCtx.measureText(colorName + (j < member.colors.length - 1 ? ' x ' : '')).width;
+          const textWidth = targetCtx.measureText(colorName + (j < member.colors.length - 1 ? ' x ' : '')).width;
+          targetCtx.fillText(colorName + (j < member.colors.length - 1 ? ' x ' : ''), xOffset, y + yOffset);
+          xOffset += textWidth;
         });
         yOffset += 28;
       }
@@ -155,6 +158,7 @@ function setupEventListeners() {
 
   document.querySelectorAll('#controls input, #controls select').forEach(el => {
     el.addEventListener('change', (e) => {
+      e.preventDefault();
       e.stopPropagation();
       if (el.id === 'showColorBlock' && el.checked) document.getElementById('showColorText').checked = false;
       if (el.id === 'showColorText' && el.checked) document.getElementById('showColorBlock').checked = false;
@@ -203,13 +207,14 @@ function setupEventListeners() {
 
   document.getElementById('downloadButton').addEventListener('click', () => {
     const tempCanvas = document.createElement('canvas');
-    tempCanvas.width = canvas.width * 12; // 增大至 12 倍
-    tempCanvas.height = canvas.height * 12;
+    tempCanvas.width = canvas.width * 2; // 移除過高縮放，直接調整內容
+    tempCanvas.height = canvas.height * 2;
     const tempCtx = tempCanvas.getContext('2d');
-    tempCtx.scale(12, 12);
-    tempCtx.fillStyle = '#fff4f6'; // 粉紅色背景
+    tempCtx.fillStyle = '#fff4f6';
     tempCtx.fillRect(0, 0, tempCanvas.width, tempCanvas.height);
-    renderGrid(tempCanvas, tempCtx);
+    tempCtx.font = '48px KozGoPr6N'; // 增大字型
+    tempCtx.fillStyle = '#F676A6';
+    renderGrid(tempCanvas, tempCtx); // 渲染時使用較大字型
     const link = document.createElement('a');
     link.download = 'penlight_colors_300dpi.png';
     link.href = tempCanvas.toDataURL('image/png');
