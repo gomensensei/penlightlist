@@ -1,81 +1,83 @@
-<!--
-  完整修正版 index.html (2025-06-26)
-  - 保留原始結構與樣式
-  - 為所有 .accordion-toggle 加入箭咀提示
-  - 新增「公演プリセット」下拉選單，若選 "他" (other) 時顯示自訂輸入框
-  - 修正 preview 縮放與圖片置中樣式
--->
 <!DOCTYPE html>
 <html lang="ja">
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title data-i18n="site_title">チケットジェネレーター</title>
-  <link href="https://fonts.googleapis.com/css2?family=Noto+Sans&family=Noto+Sans+KR&family=Noto+Sans+Thai&display=swap" rel="stylesheet" />
-  <style>
-    /* === 你原有所有 CSS 一字不漏搬過來 === */
-    @font-face{font-family:'ITC Avant Garde Gothic Std Extra Light';src:url('fonts/ITC Avant Garde Gothic Std Extra Light.woff2') format('woff2')}@font-face{font-family:'AR ADGothicJP';src:url('fonts/jadhei01m.woff2') format('woff2')}@font-face{font-family:'KozGoPr6N';src:url('fonts/KozGoPr6N-Medium.woff2') format('woff2')}
-    :root{--bg-color:#FFF4F6;--text-color:#F676A6;--divider-color:#F676A6;--button-bg:#F676A6;--button-hover:#E55A8C}
-    body{font-family:"KozGoPr6N","AR ADGothicJP","YuGothic","Meiryo","Noto Sans","Noto Sans KR","Noto Sans Thai",sans-serif;margin:0;padding:20px;background:var(--bg-color);color:var(--text-color);position:relative}
-    body.night-mode{--bg-color:#1E1E1E;--text-color:#F676A6}
-    /* 其餘 RWD 與元件樣式照舊… */
-
-    /* -------- 箭咀提示 -------- */
-    .accordion-toggle{cursor:pointer;padding:10px;background:var(--button-bg);color:#FFF;margin:5px 0;position:relative}
-    .accordion-toggle .acc-arrow{position:absolute;right:15px;top:50%;transform:translateY(-50%) rotate(0deg);transition:.25s ease;font-size:16px}
-    .accordion-toggle.active .acc-arrow{transform:translateY(-50%) rotate(180deg)}
-    .accordion-content{display:none}
-    .accordion-content.active{display:block}
-
-    /* 成員照片置中與尺寸 */
-    #memberPreview img{display:block;margin:0 auto;max-width:80%;height:auto}
-
-  </style>
+  <title>AKB48 ペンライトカラー表</title>
+  <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@400;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="style.css">
 </head>
 <body>
-  <!-- === 廣告 / 語言選單 等原有區域 === -->
-
-  <div id="mainContainer">
-    <div id="canvasContainer">
-      <!-- preview 與 canvas -->
-      <h1 data-i18n="preview">チケットプレビュー</h1>
-      <canvas id="ticketCanvas" aria-label="Ticket preview canvas"></canvas>
-    </div>
-    <div class="divider"></div>
-    <div id="controlsContainer">
-      <h1 data-i18n="custom">オリジナルチケット</h1>
-
-      <!-- ====== 公演 & 生誕祭 區塊 ====== -->
-      <div class="input-group">
-        <h3 class="accordion-toggle" data-i18n="event_birthday">
-          公演と生誕祭<span class="acc-arrow">▼</span>
-        </h3>
-        <div class="accordion-content">
-          <!-- 新增：公演プリセット下拉 + 自訂輸入框 -->
-          <label data-i18n="event_preset" for="eventPreset">公演プリセット:
-            <select id="eventPreset">
-              <option value="default">「ここからだ」 公演</option>
-              <option value="koenB">「僕の太陽」 公演</option>
-              <option value="other">他</option>
-            </select>
-          </label>
-          <label data-i18n="event" id="eventCustomLabel" style="display:none">カスタム公演名:
-            <input type="text" id="eventCustomInput" placeholder="公演名を入力" />
-          </label>
-
-          <!-- 你原來的 text2 / text3X… 等進階欄位保持不變 -->
-          <label for="text2" style="display:none"><!-- 隱藏舊 input，JS 會同步 -->
-            <input type="text" id="text2" />
-          </label>
-          <!-- 其餘生誕祭欄位照舊 -->
-        </div>
+  <div id="container">
+    <h1>AKB48 ペンライトカラー表</h1>
+    <div id="controls">
+      <div class="checkbox-group">
+        <input type="checkbox" id="showKonmei" checked> <label for="showKonmei">公演名</label>
+        <select id="konmeiSelect">
+          <option value="ただいま　恋愛中">ただいま　恋愛中</option>
+          <option value="RESET">RESET</option>
+          <option value="ここからだ">ここからだ</option>
+          <option value="そこに未来はある">そこに未来はある</option>
+          <option value="other">他</option>
+        </select>
+        <input type="text" id="customKonmei" style="display:none;">
       </div>
-
-      <!-- 其餘 input-group (logo / date / 背景 …) 全部搬過來，每個 h3 加箭咀 -->
+      <div class="checkbox-group">
+        <input type="checkbox" id="showNinzu" checked> <label for="showNinzu">人数</label>
+        <select id="ninzuSelect">
+          <option value="2x1">2x1</option>
+          <option value="2x2">2x2</option>
+          <option value="3x2">3x2</option>
+          <option value="3x3">3x3</option>
+          <option value="4x2" selected>4x2</option>
+          <option value="4x4">4x4</option>
+          <option value="8x2">8x2</option>
+          <option value="5x4">5x4</option>
+        </select>
+      </div>
+      <div class="checkbox-group">
+        <input type="checkbox" id="showNickname"> <label for="showNickname">メンバーのネックネーム</label>
+      </div>
+      <div class="checkbox-group">
+        <input type="checkbox" id="showPhoto"> <label for="showPhoto">メンバーの写真</label>
+      </div>
+      <div class="checkbox-group">
+        <input type="checkbox" id="showColorBlock" checked> <label for="showColorBlock">推しカラー</label>
+      </div>
+      <div class="checkbox-group">
+        <input type="checkbox" id="showColorText"> <label for="showColorText">推しカラー(文字)</label>
+      </div>
+      <div class="checkbox-group">
+        <input type="checkbox" id="showKi"> <label for="showKi">期</label>
+      </div>
+      <div class="checkbox-group">
+        <input type="checkbox" id="showKibetsu"> <label for="showKibetsu">期別</label>
+        <select id="kibetsuSelect">
+          <option value="13期">13期</option>
+          <option value="15期">15期</option>
+          <option value="チーム8">チーム8</option>
+          <option value="ドラフト2期">ドラフト2期</option>
+          <option value="16期">16期</option>
+          <option value="ドラフト3期">ドラフト3期</option>
+          <option value="17期">17期</option>
+          <option value="18期">18期</option>
+          <option value="19期">19期</option>
+          <option value="20期">20期</option>
+        </select>
+      </div>
+      <div class="checkbox-group">
+        <input type="checkbox" id="showAll"> <label for="showAll">全員</label>
+      </div>
     </div>
+    <canvas id="renderCanvas" width="1600" height="900"></canvas>
+    <button id="downloadButton">ダウンロード (300 DPI)</button>
+  </div>
+  <div id="popup">
+    <select id="memberSelect"></select><br />
+    <button id="popupSelectBtn">選択</button>
+    <button id="popupCloseBtn">閉じる</button>
   </div>
 
-  <!-- === 底部 === -->
-  <script src="script.js" defer></script>
+  <script src="script.js"></script>
 </body>
 </html>
