@@ -1,4 +1,4 @@
-// === script.js (重構版) ===
+// === script.js (修正版) ===
 class PenlightGenerator {
   constructor() {
     this.canvas = document.getElementById("renderCanvas");
@@ -29,7 +29,7 @@ class PenlightGenerator {
       showPhoto: false,
       showNickname: false,
       showKi: false,
-      showColorBlock: true, // 預設勾選色塊
+      showColorBlock: true,
       showColorText: false,
       customKonmei: "",
     };
@@ -64,6 +64,11 @@ class PenlightGenerator {
   setupUI() {
     this.makeResponsive();
     this.injectSettingsPanel();
+    document.getElementById('ninzuSelect').value = this.state.ninzu;
+    document.getElementById('konmeiSelect').value = this.state.konmei;
+    document.getElementById('kibetsuSelect').value = this.state.kibetsu;
+    document.getElementById('showColorBlock').checked = this.state.showColorBlock;
+    document.getElementById('showColorText').checked = this.state.showColorText;
   }
 
   makeResponsive() {
@@ -78,17 +83,11 @@ class PenlightGenerator {
     if (!panel) {
       panel = document.createElement('div');
       panel.id = '設定パネル';
-      panel.style.position = 'fixed';
-      panel.style.top = '100px';
-      panel.style.left = '50px';
-      panel.style.background = '#fff';
-      panel.style.border = '2px solid #F676A6';
-      panel.style.padding = '8px';
-      panel.style.zIndex = '1000';
-      panel.style.cursor = 'move';
+      panel.style.cssText = 'position: fixed; top: 100px; left: 50px; background: #fff; border: 2px solid #F676A6; padding: 8px; z-index: 1000; cursor: move;';
       panel.innerHTML = `<strong onclick="this.parentElement.classList.toggle('collapsed')">詳細設定</strong><div id="詳細中身"></div>`;
-      document.body.append(panel);
-      this.makeDraggable(panel);
+      document.body.appendChild(panel);
+    } else {
+      panel.innerHTML = `<strong onclick="this.parentElement.classList.toggle('collapsed')">詳細設定</strong><div id="詳細中身"></div>`;
     }
     const body = panel.querySelector('#詳細中身');
     body.innerHTML = '';
@@ -98,7 +97,7 @@ class PenlightGenerator {
       const title = document.createElement('div');
       title.textContent = key;
       title.style.fontWeight = 'bold';
-      group.append(title);
+      group.appendChild(title);
       Object.entries(cfg).forEach(([prop, val]) => {
         const label = document.createElement('label');
         label.style.display = 'block';
@@ -109,28 +108,31 @@ class PenlightGenerator {
         inp.style.width = '60px';
         inp.step = '1';
         inp.addEventListener('input', () => {
-          this.settings[key][prop] = parseFloat(inp.value);
+          this.settings[key][prop] = parseFloat(inp.value) || 0;
           this.updateAndRender();
         });
-        label.append(inp);
-        group.append(label);
+        label.appendChild(inp);
+        group.appendChild(label);
       });
-      body.append(group);
+      body.appendChild(group);
     });
+    this.makeDraggable(panel);
   }
 
   makeDraggable(el) {
-    let ox, oy;
+    let posX, posY;
     el.addEventListener('mousedown', (e) => {
       if (e.target.tagName !== 'INPUT') {
-        ox = e.clientX - el.offsetLeft;
-        oy = e.clientY - el.offsetTop;
-        function move(e) {
-          el.style.left = e.clientX - ox + 'px';
-          el.style.top = e.clientY - oy + 'px';
-        }
-        document.addEventListener('mousemove', move);
-        document.addEventListener('mouseup', () => document.removeEventListener('mousemove', move), { once: true });
+        posX = e.clientX - el.offsetLeft;
+        posY = e.clientY - el.offsetTop;
+        const moveHandler = (moveEvent) => {
+          el.style.left = (moveEvent.clientX - posX) + 'px';
+          el.style.top = (moveEvent.clientY - posY) + 'px';
+        };
+        document.addEventListener('mousemove', moveHandler);
+        document.addEventListener('mouseup', () => {
+          document.removeEventListener('mousemove', moveHandler);
+        }, { once: true });
       }
     });
   }
@@ -145,7 +147,7 @@ class PenlightGenerator {
       this.grid = Array(cols * Math.ceil(filtered.length / cols)).fill(null);
       filtered.forEach((n, i) => this.grid[i] = n);
     } else {
-      this.grid = Array(cols * rows).fill(null).map((_, i) => this.grid[i] || null);
+      this.grid = Array(cols * rows).fill(null);
     }
     this.resizeCanvas(cols, this.grid.length);
   }
@@ -160,7 +162,7 @@ class PenlightGenerator {
     if (this.state.showKi) extraHeight += chBase * 0.1;
     if (this.state.showColorBlock || this.state.showColorText) extraHeight += chBase * 0.15;
     const ch = Math.max(chBase, extraHeight);
-    const hd = this.state.showKonmei ? 40 : 0;
+    const hd = this.state.showKonmei ? this.settings.公演名.フォントサイズ : 0;
     this.canvas.height = rows * ch + hd;
   }
 
