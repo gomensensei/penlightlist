@@ -230,4 +230,12 @@ select {
     width: 90%;
     max-width: 300px;
   }
+
+  #設定パネル.collapsed strong {
+  cursor: pointer;
+}
+#renderCanvas canvas {
+  image-rendering: pixelated; /* 防止模糊 */
+}
+  
 }
