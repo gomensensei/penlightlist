@@ -44,7 +44,7 @@ class PenlightGenerator {
       '黄緑': '#32CD32',
       '水': '#00CED1',
       '紫': '#800080',
-      '濃いピンク': '#FF1493' // Added missing color
+      '濃いピンク': '#FF1493'
     };
   }
 
@@ -72,50 +72,60 @@ class PenlightGenerator {
 
   async preloadImage(name, src) {
     return new Promise((resolve) => {
-      fetch(src.includes('cloudfront.net') ? `https://cors-anywhere.herokuapp.com/${src}` : src, {
-        method: 'GET',
-        headers: {
-          'Referer': 'https://www.akb48.co.jp',
-          'Origin': 'https://www.akb48.co.jp'
-        }
-      })
-      .then(response => {
-        if (!response.ok) throw new Error(`HTTP error: ${response.status} ${response.statusText}`);
-        return response.blob();
-      })
-      .then(blob => {
-        const url = URL.createObjectURL(blob);
-        const img = new Image();
-        img.crossOrigin = "anonymous";
-        img.onload = () => {
-          this.preloadedImages[name] = img;
-          console.log(`Image loaded successfully: ${name}, ${src}`);
-          resolve();
-        };
-        img.onerror = (e) => {
-          console.warn(`Image load failed: ${name}, ${src}, Error: ${e.type}, HTTP Status: ${e.target?.status}`);
-          this.preloadedImages[name] = null;
-          const placeholder = new Image();
-          placeholder.src = 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAACklEQVR4nGMAAQAABQABDQottAAAAABJRU5ErkJggg==';
-          placeholder.onload = () => {
-            this.preloadedImages[name] = placeholder;
-            console.log(`Using placeholder for: ${name}`);
+      const proxyOptions = [
+        'https://cors-anywhere.herokuapp.com/',
+        'https://api.allorigins.win/get?url='
+      ];
+      const tryProxy = async (proxy) => {
+        try {
+          const response = await fetch(`${proxy}${encodeURIComponent(src)}`, {
+            method: 'GET',
+            headers: {
+              'Referer': 'https://www.akb48.co.jp',
+              'Origin': 'https://www.akb48.co.jp'
+            }
+          });
+          if (!response.ok) throw new Error(`Proxy ${proxy} failed: ${response.status} ${response.statusText}`);
+          const blob = await response.blob();
+          const url = URL.createObjectURL(blob);
+          const img = new Image();
+          img.crossOrigin = "anonymous";
+          img.onload = () => {
+            this.preloadedImages[name] = img;
+            console.log(`Image loaded successfully via ${proxy}: ${name}, ${src}`);
             resolve();
           };
-        };
-        img.src = url;
-      })
-      .catch(error => {
-        console.error(`Image load error: ${name}, ${src}, Error: ${error.message}`);
-        this.preloadedImages[name] = null;
-        const placeholder = new Image();
-        placeholder.src = 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAACklEQVR4nGMAAQAABQABDQottAAAAABJRU5ErkJggg==';
-        placeholder.onload = () => {
-          this.preloadedImages[name] = placeholder;
-          console.log(`Using placeholder for: ${name}`);
-          resolve();
-        };
-      });
+          img.onerror = (e) => {
+            console.warn(`Image load failed via ${proxy}: ${name}, ${src}, Error: ${e.type}, HTTP Status: ${e.target?.status}`);
+            throw new Error('Proxy failed');
+          };
+          img.src = url;
+        } catch (error) {
+          console.error(`Proxy error: ${error.message}`);
+          throw error;
+        }
+      };
+
+      (async () => {
+        for (const proxy of proxyOptions) {
+          try {
+            await tryProxy(proxy);
+            return;
+          } catch (error) {
+            if (proxy === proxyOptions[proxyOptions.length - 1]) {
+              console.error(`All proxies failed for ${name}, ${src}`);
+              this.preloadedImages[name] = null;
+              const placeholder = new Image();
+              placeholder.src = 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAACklEQVR4nGMAAQAABQABDQottAAAAABJRU5ErkJggg==';
+              placeholder.onload = () => {
+                this.preloadedImages[name] = placeholder;
+                console.log(`Using placeholder for: ${name}`);
+                resolve();
+              };
+            }
+          }
+        }
+      })();
     });
   }
 
@@ -297,7 +307,10 @@ class PenlightGenerator {
         }
 
         const mem = this.members.find(m => m.name_ja === name);
-        if (!mem) return;
+        if (!mem) {
+          console.warn(`Member not found for name: ${name}`);
+          return;
+        }
         let y0 = y + 10 * scale;
         let usedHeight = 0;
 
@@ -317,27 +330,27 @@ class PenlightGenerator {
 
         const availHeight = ch - usedHeight;
         const L = name.length;
-        let fs = this.settings.全名.フォントサイズ || Math.max(16, Math.min(availHeight * 0.3, (cw - 20) / (L * 0.5), 20)); // Ensure minimum 16px
+        let fs = this.settings.全名.フォントサイズ || Math.max(16, Math.min(availHeight * 0.3, (cw - 20) / (L * 0.5), 20));
         tcx.fillStyle = '#F676A6';
         tcx.textAlign = 'center';
         tcx.textBaseline = 'top';
-        tcx.shadowBlur = 0; // Remove shadow for member name
+        tcx.shadowBlur = 0;
         tcx.font = `${fs * scale}px KozGoPr6N`;
         tcx.fillText(name, x + cw / 2 + this.settings.全名.X * scale, y0 + this.settings.全名.Y * scale);
         y0 += fs + 10 * scale;
 
         if (this.state.showNickname) {
-          let s = this.settings.ネックネーム.フォントサイズ || Math.max(16, Math.min(availHeight * 0.15, 16)); // Ensure minimum 16px
+          let s = this.settings.ネックネーム.フォントサイズ || Math.max(16, Math.min(availHeight * 0.15, 16));
           tcx.font = `${s * scale}px KozGoPr6N`;
-          tcx.shadowBlur = 0; // Remove shadow for nickname
+          tcx.shadowBlur = 0;
           tcx.fillText(mem.nickname, x + cw / 2 + this.settings.ネックネーム.X * scale, y0 + this.settings.ネックネーム.Y * scale);
           y0 += s + 5 * scale;
         }
 
         if (this.state.showKi) {
-          let s = this.settings.期別.フォントサイズ || Math.max(16, Math.min(availHeight * 0.15, 16)); // Ensure minimum 16px
+          let s = this.settings.期別.フォントサイズ || Math.max(16, Math.min(availHeight * 0.15, 16));
           tcx.font = `${s * scale}px KozGoPr6N`;
-          tcx.shadowBlur = 0; // Remove shadow for period
+          tcx.shadowBlur = 0;
           tcx.fillText(mem.ki, x + cw / 2 + this.settings.期別.X * scale, y0 + this.settings.期別.Y * scale);
           y0 += s + 5 * scale;
         }
@@ -349,9 +362,13 @@ class PenlightGenerator {
           colors.forEach((c, i) => {
             const text = c;
             tcx.font = `${this.settings['色文字' + (i + 1)].フォントサイズ * scale}px KozGoPr6N`;
-            totWidth += tcx.measureText(text).width + (i < colors.length - 1 ? tcx.measureText(' x ').width + 30 : 0); // Increased spacing to 30
+            totWidth += tcx.measureText(text).width + (i < colors.length - 1 ? tcx.measureText(' x ').width + 40 : 0);
           });
           let xx = x + (cw - totWidth) / 2 + this.settings.色文字1.X * scale;
+          if (xx + totWidth > x + cw) {
+            console.warn(`Text overflow for ${name}, adjusting position`);
+            xx = x + cw - totWidth; // Adjust to fit within cell
+          }
           colors.forEach((c, i) => {
             const text = c;
             tcx.fillStyle = colorMap[c] || '#000000';
@@ -368,11 +385,12 @@ class PenlightGenerator {
               tcx.fillStyle = '#F676A6';
               tcx.shadowBlur = 0;
               tcx.fillText(' x ', xx, y + ch * 0.85);
-              xx += tcx.measureText(' x ').width + 30;
+              xx += tcx.measureText(' x ').width + 40;
             }
           });
         } else if (this.state.showColorBlock) {
           const colors = mem.colors.split(' x ') || [];
+          console.log(`Rendering color blocks for ${name}:`, colors);
           const bw = cw * (0.75 / Math.max(colors.length, 1));
           const tw = bw * colors.length;
           const xOffset = (cw - tw) / 2;
@@ -496,10 +514,9 @@ class PenlightGenerator {
           const cw = this.canvas.width / cols;
           const ch = cw * this.baseAspect * (this.state.showPhoto ? 1.5 : 1);
           const hd = this.state.showKonmei ? this.settings.公演名.フォントサイズ + 20 : 0;
-          tmp.width = this.canvas.width * 2;
-          tmp.height = (rows * ch + hd) * 2; // Ensure height includes all rows
+          tmp.width = this.canvas.width;
+          tmp.height = rows * ch + hd; // Adjusted height without extra scaling
           const p = tmp.getContext('2d');
-          p.scale(2, 2);
           this.renderGrid(tmp, p);
           const a = document.createElement('a');
           a.download = 'penlight_colors_300dpi.png';
