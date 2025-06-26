@@ -43,6 +43,8 @@ h1 {
   margin: 0 auto;
   border: 2px solid #F676A6;
   background-color: #fff;
+  max-width: 100%; /* 確保響應式 */
+  height: auto; /* 由 JavaScript 控制 */
 }
 
 #downloadButton {
@@ -74,6 +76,8 @@ h1 {
   z-index: 1000;
   max-height: 80vh;
   overflow-y: auto;
+  width: 80%; /* 增加響應式寬度 */
+  max-width: 600px; /* 限制最大寬度 */
 }
 
 #popup #accordion {
@@ -160,11 +164,40 @@ select {
   color: #F676A6;
 }
 
+#customKonmei {
+  display: none;
+  margin-top: 5px;
+  padding: 4px;
+  font-size: 0.95em;
+  color: #F676A6;
+  width: 200px; /* 增加輸入框寬度 */
+}
+
+#設定パネル {
+  position: fixed;
+  top: 100px;
+  left: 50px;
+  background: #fff;
+  border: 2px solid #F676A6;
+  padding: 8px;
+  z-index: 1000;
+  cursor: move;
+}
+
+#設定パネル #詳細中身 {
+  margin-top: 5px;
+}
+
+#設定パネル label {
+  display: block;
+  margin: 4px 0;
+}
+
 @media (max-width: 768px) {
   #renderCanvas {
     width: 100%;
     height: auto;
-    aspect-ratio: 16 / 9;
+    aspect-ratio: 1; /* 改進為正方形比例，根據內容調整 */
   }
   #controls {
     flex-direction: column;
@@ -187,11 +220,10 @@ select {
   #renderCanvas canvas {
     font-size: 24px !important;
   }
-  #renderCanvas {
-  display: block;
-  margin: 0 auto;
-  width: 100%;
-  height: auto;
-}
-
+  #設定パネル {
+    top: 20px;
+    left: 10px;
+    width: 90%;
+    max-width: 300px;
+  }
 }
