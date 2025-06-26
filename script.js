@@ -70,8 +70,16 @@ class PenlightGenerator {
       const img = new Image();
       img.crossOrigin = "anonymous";
       img.src = src;
-      img.onload = () => { this.preloadedImages[name] = img; resolve(); };
-      img.onerror = () => { this.preloadedImages[name] = null; console.warn(`画像ロード失敗: ${name}, ${src}`); resolve(); };
+      img.onload = () => {
+        this.preloadedImages[name] = img;
+        console.log(`画像ロード成功: ${name}, ${src}`);
+        resolve();
+      };
+      img.onerror = () => {
+        this.preloadedImages[name] = null;
+        console.warn(`画像ロード失敗: ${name}, ${src}`);
+        resolve();
+      };
     });
   }
 
@@ -164,11 +172,15 @@ class PenlightGenerator {
     }
     if (this.state.showAll) {
       this.grid = Array(cols * Math.ceil(this.members.length / cols)).fill(null);
-      this.members.forEach((m, i) => this.grid[i] = m.name_ja);
+      this.members.forEach((m, i) => {
+        if (i < this.grid.length) this.grid[i] = m.name_ja;
+      });
     } else if (this.state.showKibetsu) {
       const filtered = this.members.filter(m => m.ki === this.state.kibetsu).map(m => m.name_ja);
       this.grid = Array(cols * Math.ceil(filtered.length / cols)).fill(null);
-      filtered.forEach((n, i) => this.grid[i] = n);
+      filtered.forEach((n, i) => {
+        if (i < this.grid.length) this.grid[i] = n;
+      });
     }
     this.resizeCanvas(cols, this.grid.length);
   }
@@ -181,9 +193,9 @@ class PenlightGenerator {
     if (this.state.showPhoto) extraHeight += chBase * 0.6;
     if (this.state.showNickname) extraHeight += chBase * 0.15;
     if (this.state.showKi) extraHeight += chBase * 0.15;
-    if (this.state.showColorBlock || this.state.showColorText) extraHeight += chBase * 0.2;
+    if (this.state.showColorBlock || this.state.showColorText) extraHeight += chBase * 0.25;
     const ch = Math.max(chBase, extraHeight) * (this.state.showPhoto ? 1.5 : 1);
-    const hd = this.state.showKonmei ? this.settings.公演名.フォントサイズ + 10 : 0;
+    const hd = this.state.showKonmei ? this.settings.公演名.フォントサイズ + 20 : 0;
     this.canvas.height = rows * ch + hd;
   }
 
@@ -209,7 +221,7 @@ class PenlightGenerator {
 
     this.grid.forEach((name, i) => {
       const r = Math.floor(i / cols), c = i % cols;
-      const x = c * cw, y = r * ch + (this.state.showKonmei ? (this.settings.公演名.フォントサイズ + 10) * scale : 0);
+      const x = c * cw, y = r * ch + (this.state.showKonmei ? (this.settings.公演名.フォントサイズ + 20) * scale : 0);
       tcx.fillStyle = '#fff4f6';
       tcx.fillRect(x, y, cw, ch);
       tcx.strokeStyle = '#F676A6';
@@ -221,7 +233,7 @@ class PenlightGenerator {
           tcx.font = `${24 * scale}px KozGoPr6N`;
           tcx.textAlign = 'center';
           tcx.textBaseline = 'middle';
-          tcx.fillText('+', x + cw / 2, y + ch / 2 - 10); // 調整觸發區域
+          tcx.fillText('+', x + cw / 2, y + ch / 2);
         }
         return;
       }
@@ -239,7 +251,9 @@ class PenlightGenerator {
         if (w > cw * 0.7) { w = cw * 0.7; h = w / asp; }
         const xOffset = (cw - w) / 2;
         tcx.drawImage(img, x + xOffset, y0, w, h);
-        y0 += h + 10 * scale;
+        y0 +=
+
+ h + 10 * scale;
         usedHeight += h + 10 * scale;
       }
 
@@ -274,19 +288,19 @@ class PenlightGenerator {
         colors.forEach((c, i) => {
           const text = c;
           tcx.font = `${this.settings['色文字' + (i + 1)].フォントサイズ * scale}px KozGoPr6N`;
-          totWidth += tcx.measureText(text).width + (i < colors.length - 1 ? tcx.measureText(' x ').width + 10 : 0);
+          totWidth += tcx.measureText(text).width + (i < colors.length - 1 ? tcx.measureText(' x ').width + 15 : 0);
         });
         let xx = x + (cw - totWidth) / 2 + this.settings.色文字1.X * scale;
         colors.forEach((c, i) => {
           const text = c;
           tcx.fillStyle = colorMap[c] || '#000000';
           tcx.font = `${this.settings['色文字' + (i + 1)].フォントサイズ * scale}px KozGoPr6N`;
-          tcx.fillText(text, xx, y + ch * 0.9 + this.settings['色文字' + (i + 1)].Y * scale);
+          tcx.fillText(text, xx, y + ch * 0.85 + this.settings['色文字' + (i + 1)].Y * scale);
           xx += tcx.measureText(text).width;
           if (i < colors.length - 1) {
             tcx.fillStyle = '#F676A6';
-            tcx.fillText(' x ', xx, y + ch * 0.9);
-            xx += tcx.measureText(' x ').width + 10;
+            tcx.fillText(' x ', xx, y + ch * 0.85);
+            xx += tcx.measureText(' x ').width + 15;
           }
         });
       } else if (this.state.showColorBlock) {
@@ -296,22 +310,18 @@ class PenlightGenerator {
         const xOffset = (cw - tw) / 2;
         colors.forEach((c, j) => {
           tcx.fillStyle = colorMap[c] || '#000000';
-          tcx.fillRect(x + xOffset + j * bw, y + ch * 0.8 + this.settings.色塊.Y * scale, bw, bw * 0.8);
+          tcx.fillRect(x + xOffset + j * bw, y + ch * 0.75, bw, bw * 0.8);
         });
       }
 
       if (!isDL) {
-        tcx.fillStyle = '#FF69B4'; // 粉紅按鈕
-        tcx.fillRect(x + cw - 30, y + 5, 20, 20); // 按鈕區域
-        tcx.fillStyle = '#FFFFFF'; // 白色交叉符號
+        tcx.fillStyle = '#FF69B4';
+        tcx.fillRect(x + cw - 30, y + 5, 20, 20);
+        tcx.fillStyle = '#FFFFFF';
         tcx.font = `12px KozGoPr6N`;
         tcx.textAlign = 'center';
         tcx.textBaseline = 'middle';
-        tcx.fillText('X', x + cw - 20, y + 15); // 交叉符號
-        if (tcx.isPointInPath(x + cw - 30, y + 5, 20, 20) && e.type === 'click') {
-          this.grid[i] = null;
-          this.updateAndRender();
-        }
+        tcx.fillText('X', x + cw - 20, y + 15);
       }
     });
   }
@@ -345,7 +355,10 @@ class PenlightGenerator {
   bindEvents() {
     const inputs = document.querySelectorAll('#controls input:not(#customKonmei), #controls select');
     inputs.forEach(el => el.addEventListener('change', () => this.updateAndRender()));
-
+    document.getElementById('customKonmei').addEventListener('input', () => {
+      this.state.customKonmei = document.getElementById("customKonmei").value;
+      this.updateAndRender();
+    });
     document.getElementById('showColorBlock').addEventListener('change', (e) => {
       if (e.target.checked) document.getElementById('showColorText').checked = false;
       this.updateAndRender();
@@ -358,7 +371,6 @@ class PenlightGenerator {
       document.getElementById('showAll').checked = false;
       this.updateAndRender();
     });
-
     document.getElementById('settingsButton').addEventListener('click', () => {
       const panel = document.getElementById('設定パネル');
       panel.style.display = panel.style.display === 'none' ? 'block' : 'none';
@@ -366,11 +378,10 @@ class PenlightGenerator {
         panel.classList.remove('collapsed');
       }
     });
-
     this.canvas.addEventListener('click', (e) => {
       const r = this.canvas.getBoundingClientRect();
       const mx = e.clientX - r.left;
-      const my = e.clientY - r.top - (this.state.showKonmei ? (this.settings.公演名.フォントサイズ + 10) * (this.canvas.width / this.baseCanvasWidth) : 0);
+      const my = e.clientY - r.top - (this.state.showKonmei ? (this.settings.公演名.フォントサイズ + 20) * (this.canvas.width / this.baseCanvasWidth) : 0);
       const cols = +this.state.ninzu.split("x")[0];
       const cw = this.canvas.width / cols;
       const ch = cw * this.baseAspect * (this.state.showPhoto ? 1.5 : 1);
@@ -387,12 +398,16 @@ class PenlightGenerator {
         }
       }
     });
-
     document.getElementById('downloadButton').addEventListener('click', async () => {
       await this.loadData();
       const tmp = document.createElement('canvas');
+      const cols = +this.state.ninzu.split("x")[0];
+      const rows = Math.ceil(this.grid.length / cols);
+      const cw = this.canvas.width / cols;
+      const ch = cw * this.baseAspect * (this.state.showPhoto ? 1.5 : 1);
+      const hd = this.state.showKonmei ? this.settings.公演名.フォントサイズ + 20 : 0;
       tmp.width = this.canvas.width * 2;
-      tmp.height = this.canvas.height * 2;
+      tmp.height = (rows * ch + hd) * 2;
       const p = tmp.getContext('2d');
       p.scale(2, 2);
       this.renderGrid(tmp, p);
@@ -416,21 +431,4 @@ class PenlightGenerator {
     html += `<div class="popup-footer"><button id="popupSelectBtn">選択</button><button id="popupCloseBtn">閉じる</button></div>`;
     popup.innerHTML = html;
     popup.style.display = 'block';
-    popup.querySelectorAll('.member-item').forEach(it => it.onclick = () => {
-      popup.querySelectorAll('.member-item').forEach(i => i.classList.remove('selected'));
-      it.classList.add('selected');
-    });
-    document.getElementById('popupSelectBtn').onclick = () => {
-      const s = popup.querySelector('.member-item.selected span');
-      if (s) {
-        this.grid[this.currentIndex] = s.textContent;
-        popup.style.display = 'none';
-        this.updateAndRender();
-      }
-    };
-    document.getElementById('popupCloseBtn').onclick = () => popup.style.display = 'none';
-  }
-}
-
-const generator = new PenlightGenerator();
-generator.init();
+    popup.querySelectorAll('.member-item').
