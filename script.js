@@ -1,4 +1,4 @@
-// === script.js (修正版) ===
+// === script.js (更新版) ===
 class PenlightGenerator {
   constructor() {
     this.canvas = document.getElementById("renderCanvas");
