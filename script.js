@@ -32,6 +32,11 @@ class PenlightGenerator {
       showColorText: false,
       customKonmei: "",
     };
+    this.colorMap = {
+      '#FF0000': '赤', '#FFA500': 'オレンジ', '#FFFF00': '黄', '#0000FF': '青', '#00FF00': '緑',
+      '#FFFFFF': '白', '#FF69B4': '濃いピンク', '#FFB6C1': '薄ピンク', '#32CD32': '黄緑',
+      '#00FFFF': '水', '#800080': '紫', '#FF1493': '深紅', '#FFD700': '金', '#C0C0C0': '銀'
+    };
   }
 
   async init() {
@@ -190,11 +195,7 @@ class PenlightGenerator {
     const cols = +this.state.ninzu.split("x")[0];
     const cw = tc.width / cols;
     const ch = cw * this.baseAspect * (this.state.showPhoto ? 1.5 : 1);
-    const colorMap = {
-      '#FF0000': '赤', '#FFA500': 'オレンジ', '#FFFF00': '黄', '#0000FF': '青', '#00FF00': '緑',
-      '#FFFFFF': '白', '#FF69B4': '濃いピンク', '#FFB6C1': '薄ピンク', '#32CD32': '黄緑',
-      '#00FFFF': '水', '#800080': '紫'
-    };
+    const colorMap = this.colorMap;
 
     this.grid.forEach((name, i) => {
       const r = Math.floor(i / cols), c = i % cols;
@@ -258,7 +259,7 @@ class PenlightGenerator {
 
       if (this.state.showColorText) {
         tcx.textBaseline = 'middle';
-        const colors = mem.colors || [];
+        const colors = (typeof mem.colors === 'string' ? mem.colors.split(' x ') : mem.colors) || [];
         let totWidth = 0;
         colors.forEach((c, i) => {
           const text = colorMap[c] || c;
@@ -268,7 +269,7 @@ class PenlightGenerator {
         let xx = x + (cw - totWidth) / 2 + this.settings.色文字1.X * scale;
         colors.forEach((c, i) => {
           const text = colorMap[c] || c;
-          tcx.fillStyle = c === '#FFFFFF' ? '#f5f2f2' : c;
+          tcx.fillStyle = c === '#FFFFFF' ? '#f5f2f2' : (colorMap[c] ? Object.keys(colorMap).find(key => colorMap[key] === c) : '#000000');
           tcx.font = `${this.settings['色文字' + (i + 1)].フォントサイズ * scale}px KozGoPr6N`;
           tcx.fillText(text, xx, y + ch * 0.9 + this.settings['色文字' + (i + 1)].Y * scale);
           xx += tcx.measureText(text).width;
@@ -279,12 +280,12 @@ class PenlightGenerator {
           }
         });
       } else if (this.state.showColorBlock) {
-        const colors = mem.colors || [];
+        const colors = (typeof mem.colors === 'string' ? mem.colors.split(' x ') : mem.colors) || [];
         const bw = cw * (0.8 / Math.max(colors.length, 1));
         const tw = bw * colors.length;
         const xOffset = (cw - tw) / 2;
         colors.forEach((c, j) => {
-          tcx.fillStyle = c || '#f0f0f0';
+          tcx.fillStyle = colorMap[c] ? Object.keys(colorMap).find(key => colorMap[key] === c) || '#f0f0f0' : '#000000';
           tcx.fillRect(x + xOffset + j * bw, y + ch * 0.8 + this.settings.色塊.Y * scale, bw, bw * 0.8);
         });
       }
