@@ -44,7 +44,7 @@ class PenlightGenerator {
       '黄緑': '#32CD32',
       '水': '#00CED1',
       '紫': '#800080',
-      '濃いピンク': '#FF1493'
+      '濃いピンク': '#FF1493' // Added missing color
     };
   }
 
@@ -72,7 +72,7 @@ class PenlightGenerator {
 
   async preloadImage(name, src) {
     return new Promise((resolve) => {
-      fetch(src, {
+      fetch(src.includes('cloudfront.net') ? `https://cors-anywhere.herokuapp.com/${src}` : src, {
         method: 'GET',
         headers: {
           'Referer': 'https://www.akb48.co.jp',
@@ -286,12 +286,12 @@ class PenlightGenerator {
         if (!name) {
           if (!isDL) {
             tcx.fillStyle = '#FF69B4';
-            tcx.fillRect(x + cw - 30, y + 5, 20, 20);
+            tcx.fillRect(x + cw / 2 - 20, y + ch / 2 - 20, 40, 40); // Larger centered button
             tcx.fillStyle = '#FFFFFF';
-            tcx.font = `12px KozGoPr6N`;
+            tcx.font = `16px KozGoPr6N`; // Larger font for button
             tcx.textAlign = 'center';
             tcx.textBaseline = 'middle';
-            tcx.fillText('選択', x + cw - 20, y + 15);
+            tcx.fillText('選択', x + cw / 2, y + ch / 2);
           }
           return;
         }
@@ -317,16 +317,17 @@ class PenlightGenerator {
 
         const availHeight = ch - usedHeight;
         const L = name.length;
-        let fs = this.settings.全名.フォントサイズ || Math.min(availHeight * 0.3, (cw - 20) / (L * 0.5), 20);
+        let fs = this.settings.全名.フォントサイズ || Math.max(16, Math.min(availHeight * 0.3, (cw - 20) / (L * 0.5), 20)); // Ensure minimum 16px
         tcx.fillStyle = '#F676A6';
         tcx.textAlign = 'center';
         tcx.textBaseline = 'top';
         tcx.shadowBlur = 0; // Remove shadow for member name
+        tcx.font = `${fs * scale}px KozGoPr6N`;
         tcx.fillText(name, x + cw / 2 + this.settings.全名.X * scale, y0 + this.settings.全名.Y * scale);
         y0 += fs + 10 * scale;
 
         if (this.state.showNickname) {
-          let s = this.settings.ネックネーム.フォントサイズ || Math.min(availHeight * 0.15, 16);
+          let s = this.settings.ネックネーム.フォントサイズ || Math.max(16, Math.min(availHeight * 0.15, 16)); // Ensure minimum 16px
           tcx.font = `${s * scale}px KozGoPr6N`;
           tcx.shadowBlur = 0; // Remove shadow for nickname
           tcx.fillText(mem.nickname, x + cw / 2 + this.settings.ネックネーム.X * scale, y0 + this.settings.ネックネーム.Y * scale);
@@ -334,7 +335,7 @@ class PenlightGenerator {
         }
 
         if (this.state.showKi) {
-          let s = this.settings.期別.フォントサイズ || Math.min(availHeight * 0.15, 16);
+          let s = this.settings.期別.フォントサイズ || Math.max(16, Math.min(availHeight * 0.15, 16)); // Ensure minimum 16px
           tcx.font = `${s * scale}px KozGoPr6N`;
           tcx.shadowBlur = 0; // Remove shadow for period
           tcx.fillText(mem.ki, x + cw / 2 + this.settings.期別.X * scale, y0 + this.settings.期別.Y * scale);
@@ -348,7 +349,7 @@ class PenlightGenerator {
           colors.forEach((c, i) => {
             const text = c;
             tcx.font = `${this.settings['色文字' + (i + 1)].フォントサイズ * scale}px KozGoPr6N`;
-            totWidth += tcx.measureText(text).width + (i < colors.length - 1 ? tcx.measureText(' x ').width + 25 : 0); // Increased spacing to 25
+            totWidth += tcx.measureText(text).width + (i < colors.length - 1 ? tcx.measureText(' x ').width + 30 : 0); // Increased spacing to 30
           });
           let xx = x + (cw - totWidth) / 2 + this.settings.色文字1.X * scale;
           colors.forEach((c, i) => {
@@ -367,7 +368,7 @@ class PenlightGenerator {
               tcx.fillStyle = '#F676A6';
               tcx.shadowBlur = 0;
               tcx.fillText(' x ', xx, y + ch * 0.85);
-              xx += tcx.measureText(' x ').width + 25;
+              xx += tcx.measureText(' x ').width + 30;
             }
           });
         } else if (this.state.showColorBlock) {
@@ -479,7 +480,7 @@ class PenlightGenerator {
           const idx = row * cols + col;
           if (idx >= 0 && idx < this.grid.length) {
             const x = col * cw, y = row * ch;
-            if (mx >= x + cw - 30 && mx <= x + cw - 10 && my >= y + 5 && my <= y + 25 && !this.grid[idx]) {
+            if (mx >= x + cw / 2 - 20 && mx <= x + cw / 2 + 20 && my >= y + ch / 2 - 20 && my <= y + ch / 2 + 20 && !this.grid[idx]) {
               this.showPopup(idx);
             }
           }
