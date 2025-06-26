@@ -1,254 +1,168 @@
 // ------------------------------------------------------------
-//  AKB48 ペンライトカラー表 – 完整版 script.js
-//  主要修正：
-//  1. 自訂公演名輸入框顯示／同步
-//  2. 公演名必定呈現於預覽與匯出
-//  3. 切換選項不再縮放格子
-//  4. 成員照片放大並置中
-//  5. 推しカラー文字大小／定位自動調整
-//  6. 預覽與匯出 1:1 一致（同一 drawTicket()）
-//  7. 色塊大小統一且不出界
-//  8. 「＋」熱區點擊準確（以絕對座標計算）
+//  AKB48 ペンライトカラー表 – script.js (with Gen filter & label)
 // ------------------------------------------------------------
-(() => {
-  "use strict";
+import members from "./members.json" assert { type: "json" };
 
-  /* --------------------  DOM  -------------------- */
-  const canvas = document.getElementById("previewCanvas");
-  const ctx = canvas.getContext("2d");
+// ---------- DOM ----------
+const canvas = document.getElementById("ticketCanvas");
+const ctx = canvas.getContext("2d");
 
-  const konmeiSelect = document.getElementById("konmeiSelect");
-  const customKonmei = document.getElementById("customKonmei");
-  const ninzuSelect = document.getElementById("ninzuSelect");
+const konmeiSelect = document.getElementById("stageSelect");
+const customKonmeiInput = document.getElementById("customStageInput");
+const ninzuSelect = document.getElementById("ninzuSelect");
+const showTextChk = document.getElementById("showOshiText");
+const showColorChk = document.getElementById("showOshiColor");
+const showGenChk = document.getElementById("showGenCheckbox");
+const genSelect = document.getElementById("genSelect");
+const pngBtn = document.getElementById("pngDownload");
+const pdfBtn = document.getElementById("pdfDownload");
 
-  const optImage = document.getElementById("optionImage");
-  const optOshiBlock = document.getElementById("optionOshiBlock");
-  const optOshiText = document.getElementById("optionOshiText");
+// ---------- State ----------
+const state = {
+  stageName: konmeiSelect.value,
+  customStage: "",
+  rows: 4,
+  cols: 2,
+  showText: showTextChk.checked,
+  showColor: showColorChk.checked,
+  showGen: showGenChk.checked,
+  genFilter: "all",
+  selected: [], // array of member ids
+};
 
-  const downloadBtn = document.getElementById("downloadPng");
-
-  /* --------------------  Data  -------------------- */
-  let members = [];
-  const imgCache = new Map();
-
-  // 顏色 → 日本語名稱對照表（不完整可自行擴充）
-  const COLOR_NAME_MAP = {
-    "#ff0000": "赤",
-    "#00ff00": "緑",
-    "#0000ff": "青",
-    "#ffff00": "黄",
-    "#ff66aa": "ピンク",
-    "#00ffff": "シアン",
-    "#ffa500": "オレンジ",
-    "#800080": "パープル",
-    "#ffffff": "白"
-  };
-
-  /* --------------------  State  -------------------- */
-  const state = {
-    rows: 2,
-    cols: 4,
-    konmei: "",
-    showImage: true,
-    showOshiBlock: false,
-    showOshiText: false,
-    cellSize: 200, // 基準 cell 大小
-    scalePreview: 0.4 // 預覽縮放
-  };
-
-  const CELL_GAP = 8;
-  const HEADER_H = 120;
-
-  /* --------------------  Init  -------------------- */
-  fetch("./members.json")
-    .then((res) => res.json())
-    .then((json) => {
-      members = json.map((m) => ({
-        ...m,
-        colorName: COLOR_NAME_MAP[m.color?.toLowerCase()] || m.color
-      }));
-      initUI();
-      drawPreview();
-    });
-
-  function initUI() {
-    // 人數 Grid
-    ninzuSelect.addEventListener("change", () => {
-      const [c, r] = ninzuSelect.value.split("x").map(Number);
-      state.cols = c;
-      state.rows = r;
-      drawPreview();
-    });
-
-    // 公演名
-    konmeiSelect.addEventListener("change", () => {
-      if (konmeiSelect.value === "other") {
-        customKonmei.style.display = "inline-block";
-        state.konmei = "";
-      } else {
-        customKonmei.style.display = "none";
-        state.konmei = konmeiSelect.value;
-      }
-      drawPreview();
-    });
-
-    customKonmei.addEventListener("input", () => {
-      state.konmei = customKonmei.value;
-      drawPreview();
-    });
-
-    // 選項
-    optImage.addEventListener("change", () => {
-      state.showImage = optImage.checked;
-      drawPreview();
-    });
-    optOshiBlock.addEventListener("change", () => {
-      state.showOshiBlock = optOshiBlock.checked;
-      if (state.showOshiBlock) state.showOshiText = false;
-      optOshiText.checked = state.showOshiText;
-      drawPreview();
-    });
-    optOshiText.addEventListener("change", () => {
-      state.showOshiText = optOshiText.checked;
-      if (state.showOshiText) state.showOshiBlock = false;
-      optOshiBlock.checked = state.showOshiBlock;
-      drawPreview();
-    });
-
-    // 下載
-    downloadBtn.addEventListener("click", () => {
-      const exportCanvas = document.createElement("canvas");
-      drawTicket(exportCanvas, 3); // 3× 比例 ≈ 300DPI
-      const link = document.createElement("a");
-      link.download = `akb_penlight_${Date.now()}.png`;
-      link.href = exportCanvas.toDataURL("image/png");
-      link.click();
-    });
-
-    // ＋ 熱區點擊（準確）
-    canvas.addEventListener("click", (e) => {
-      const rect = canvas.getBoundingClientRect();
-      const x = (e.clientX - rect.left) / state.scalePreview;
-      const y = (e.clientY - rect.top) / state.scalePreview;
-      const { cellSize } = state;
-      if (y < HEADER_H) return; // header 範圍非熱區
-      const colIdx = Math.floor(x / (cellSize + CELL_GAP));
-      const rowIdx = Math.floor((y - HEADER_H) / (cellSize + CELL_GAP));
-      if (
-        colIdx < 0 ||
-        colIdx >= state.cols ||
-        rowIdx < 0 ||
-        rowIdx >= state.rows
-      )
-        return;
-      alert(`你點擊了第 ${rowIdx + 1} 行 / 第 ${colIdx + 1} 列 (功能預留)`);
-    });
+// ---------- Helpers ----------
+function getDisplayMembers() {
+  if (state.genFilter !== "all") {
+    return members.filter((m) => m.gen == state.genFilter);
   }
+  // fall back to selected; if none selected, show all for now
+  if (state.selected.length === 0) return members;
+  return members.filter((m) => state.selected.includes(m.id));
+}
 
-  /* --------------------  Draw Helpers -------------------- */
-  function drawPreview() {
-    drawTicket(canvas, state.scalePreview);
-  }
+function autoResizeCanvas(count) {
+  const { rows, cols } = state;
+  const g = canvas.getContext("2d");
+  const cellSize = 120;
+  canvas.width = cols * cellSize + (cols + 1) * 8;
+  canvas.height = rows * cellSize + (rows + 1) * 8 + 80; // header
+}
 
-  function drawTicket(targetCanvas, scale) {
-    const { rows, cols, cellSize } = state;
-    const W = cols * cellSize + (cols - 1) * CELL_GAP;
-    const H = HEADER_H + rows * cellSize + (rows - 1) * CELL_GAP;
+function drawTicket() {
+  const list = getDisplayMembers();
+  autoResizeCanvas(list.length);
 
-    targetCanvas.width = W * scale;
-    targetCanvas.height = H * scale;
-    const ctx = targetCanvas.getContext("2d");
-    ctx.resetTransform();
-    ctx.scale(scale, scale);
+  ctx.fillStyle = "#ffeef5";
+  ctx.fillRect(0, 0, canvas.width, canvas.height);
 
-    // 背景
-    const bgColor = getComputedStyle(document.documentElement).getPropertyValue(
-      "--bg-light"
-    );
-    ctx.fillStyle = bgColor || "#ffffff";
-    ctx.fillRect(0, 0, W, H);
+  // Header (stage name)
+  ctx.fillStyle = "#ff66aa";
+  ctx.font = "24px Noto Sans JP";
+  ctx.textAlign = "left";
+  const stageText = state.stageName === "other" ? state.customStage : state.stageName;
+  ctx.fillText(stageText, 16, 40);
 
-    // Header
-    ctx.fillStyle = "#000";
-    ctx.font = "700 42px 'Noto Sans JP', sans-serif";
-    ctx.textAlign = "center";
-    ctx.textBaseline = "middle";
-    ctx.fillText(state.konmei || "公演名", W / 2, HEADER_H / 2);
+  // Draw cells
+  const cellGap = 8;
+  const cellSize = 120;
+  list.slice(0, state.rows * state.cols).forEach((mem, idx) => {
+    const r = Math.floor(idx / state.cols);
+    const c = idx % state.cols;
+    const x = cellGap + c * (cellSize + cellGap);
+    const y = 80 + cellGap + r * (cellSize + cellGap);
 
-    // Grid
-    for (let r = 0; r < rows; r++) {
-      for (let c = 0; c < cols; c++) {
-        const idx = r * cols + c;
-        const member = members[idx]; // Demo 用：依序排，後續可自訂選擇
-        const x = c * (cellSize + CELL_GAP);
-        const y = HEADER_H + r * (cellSize + CELL_GAP);
-        drawCell(ctx, member, x, y, cellSize);
-      }
-    }
-  }
+    // Cell bg
+    ctx.fillStyle = "#fff";
+    ctx.fillRect(x, y, cellSize, cellSize);
+    ctx.strokeStyle = "#ff66aa";
+    ctx.strokeRect(x, y, cellSize, cellSize);
 
-  function drawCell(ctx, member, x, y, size) {
-    // 背框
-    ctx.fillStyle = "#f7f7f7";
-    ctx.fillRect(x, y, size, size);
-    ctx.strokeStyle = "#ccc";
-    ctx.strokeRect(x + 0.5, y + 0.5, size - 1, size - 1);
-
-    // 圖片
-    if (state.showImage && member?.image) {
-      const img = getImage(member.image);
-      if (img.complete) {
-        const imgW = size * 0.8;
-        const imgH = size * 0.8;
-        ctx.drawImage(
-          img,
-          x + (size - imgW) / 2,
-          y + (size - imgH) / 2,
-          imgW,
-          imgH
-        );
-      } else {
-        img.onload = drawPreview;
-      }
-    }
-
-    // 推し色塊
-    if (state.showOshiBlock && member?.color) {
-      const blockH = size * 0.12;
-      ctx.fillStyle = member.color;
-      const blockW = size * 0.5;
-      ctx.fillRect(x + (size - blockW) / 2, y + size - blockH - 8, blockW, blockH);
-    }
-
-    // 推し色文字
-    if (state.showOshiText && member?.colorName) {
-      const fs = Math.max(12, size * 0.16);
-      ctx.fillStyle = member.color;
-      ctx.font = `700 ${fs}px 'Noto Sans JP', sans-serif`;
-      ctx.textAlign = "center";
-      ctx.textBaseline = "alphabetic";
-      ctx.fillText(member.colorName, x + size / 2, y + size - 12);
-    }
-
-    // 成員姓名
-    if (member) {
-      const fs = Math.max(12, size * 0.18);
-      ctx.fillStyle = "#000";
-      ctx.font = `700 ${fs}px 'Noto Sans JP', sans-serif`;
-      ctx.textAlign = "center";
-      ctx.textBaseline = "top";
-      const name = member.jpName || member.enName;
-      ctx.fillText(name, x + size / 2, y + 8, size * 0.9);
-    }
-  }
-
-  /* --------------------  Utils -------------------- */
-  function getImage(url) {
-    if (imgCache.has(url)) return imgCache.get(url);
+    // Photo
     const img = new Image();
-    img.crossOrigin = "anonymous";
-    img.src = url;
-    imgCache.set(url, img);
-    return img;
+    img.onload = () => {
+      const w = cellSize * 0.8;
+      const h = cellSize * 0.8;
+      ctx.drawImage(img, x + (cellSize - w) / 2, y + (cellSize - h) / 2 - 10, w, h);
+    };
+    img.src = mem.image;
+
+    // Oshi color text or block
+    if (state.showText) {
+      ctx.fillStyle = mem.color || "#333";
+      ctx.font = "14px Noto Sans JP";
+      ctx.textAlign = "center";
+      ctx.fillText(mem.oshilabel || mem.colorName || "", x + cellSize / 2, y + cellSize - 10);
+    }
+    if (state.showColor) {
+      ctx.fillStyle = mem.color || "#333";
+      ctx.fillRect(x + cellSize - 20, y + cellSize - 20, 16, 16);
+    }
+
+    // Generation label
+    if (state.showGen) {
+      ctx.fillStyle = "#555";
+      ctx.font = "12px Noto Sans JP";
+      ctx.textAlign = "center";
+      ctx.fillText(`${mem.gen}期`, x + cellSize / 2, y + cellSize + 12);
+    }
+  });
+}
+
+// ---------- Event Bindings ----------
+konmeiSelect.addEventListener("change", (e) => {
+  state.stageName = e.target.value;
+  drawTicket();
+  if (state.stageName === "other") {
+    customKonmeiInput.style.display = "inline-block";
+    customKonmeiInput.focus();
+  } else {
+    customKonmeiInput.style.display = "none";
   }
-})();
+});
+customKonmeiInput.addEventListener("input", (e) => {
+  state.customStage = e.target.value;
+  drawTicket();
+});
+
+ninzuSelect.addEventListener("change", (e) => {
+  const [c, r] = e.target.value.split("x");
+  state.cols = parseInt(c);
+  state.rows = parseInt(r);
+  drawTicket();
+});
+
+showTextChk.addEventListener("change", (e) => {
+  state.showText = e.target.checked;
+  drawTicket();
+});
+showColorChk.addEventListener("change", (e) => {
+  state.showColor = e.target.checked;
+  drawTicket();
+});
+showGenChk.addEventListener("change", (e) => {
+  state.showGen = e.target.checked;
+  drawTicket();
+});
+
+genSelect.addEventListener("change", (e) => {
+  state.genFilter = e.target.value;
+  drawTicket();
+});
+
+pngBtn.addEventListener("click", () => {
+  drawTicket();
+  const link = document.createElement("a");
+  link.download = "akb_penlight.png";
+  link.href = canvas.toDataURL("image/png");
+  link.click();
+});
+
+// PDF download placeholder (future impl.)
+pdfBtn.addEventListener("click", () => {
+  alert("PDF 出力は次期実装予定です。\nPNG をご利用ください。");
+});
+
+// ---------- Init ----------
+window.addEventListener("load", () => {
+  drawTicket();
+});
