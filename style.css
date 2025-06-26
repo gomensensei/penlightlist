@@ -47,7 +47,7 @@ h1 {
   height: auto;
 }
 
-#downloadButton {
+.button {
   font-size: 1em;
   padding: 10px 20px;
   background-color: #F676A6;
@@ -58,7 +58,7 @@ h1 {
   transition: background-color 0.3s;
 }
 
-#downloadButton:hover {
+.button:hover {
   background-color: #E55A8C;
 }
 
@@ -213,7 +213,7 @@ select {
     flex-direction: column;
     align-items: center;
   }
-  #downloadButton {
+  .button {
     width: 100%;
     max-width: 200px;
   }
