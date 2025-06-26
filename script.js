@@ -38,7 +38,9 @@ preloadAll().then(() => {
   injectSettingsPanel();
   makeResponsive();
   setupListeners();
-  document.getElementById('konmeiSelect').value = 'ただいま　恋愛中'; // 設定預設公演名
+  document.getElementById('konmeiSelect').value = 'ただいま　恋愛中';
+  document.getElementById('showColorBlock').checked = true; // 預設勾選 "推しカラー(色塊)"
+  document.getElementById('showColorText').checked = false;
   updateAndRender();
 });
 
@@ -64,7 +66,7 @@ function injectSettingsPanel() {
     panel.style.padding = '8px';
     panel.style.zIndex = '1000';
     panel.style.cursor = 'move';
-    panel.innerHTML = `<strong>詳細設定</strong><div id="詳細中身"></div>`;
+    panel.innerHTML = `<strong onclick="this.parentElement.classList.toggle('collapsed')">詳細設定</strong><div id="詳細中身"></div>`;
     document.body.append(panel);
     makeDraggable(panel);
   }
@@ -100,14 +102,16 @@ function injectSettingsPanel() {
 function makeDraggable(el) {
   let ox, oy;
   el.addEventListener('mousedown', e => {
-    ox = e.clientX - el.offsetLeft;
-    oy = e.clientY - el.offsetTop;
-    function move(e) {
-      el.style.left = e.clientX - ox + 'px';
-      el.style.top = e.clientY - oy + 'px';
+    if (e.target.tagName !== 'INPUT') {
+      ox = e.clientX - el.offsetLeft;
+      oy = e.clientY - el.offsetTop;
+      function move(e) {
+        el.style.left = e.clientX - ox + 'px';
+        el.style.top = e.clientY - oy + 'px';
+      }
+      document.addEventListener('mousemove', move);
+      document.addEventListener('mouseup', () => document.removeEventListener('mousemove', move), { once: true });
     }
-    document.addEventListener('mousemove', move);
-    document.addEventListener('mouseup', () => document.removeEventListener('mousemove', move), { once: true });
   });
 }
 
@@ -143,6 +147,7 @@ function resizeCanvas(cols, total) {
   let extraHeight = 0;
   if (document.getElementById("showPhoto").checked) extraHeight += chBase * 0.3;
   if (document.getElementById("showNickname").checked) extraHeight += chBase * 0.1;
+  if (document.getElementById("showKi").checked) extraHeight += chBase * 0.1;
   if (document.getElementById("showColorBlock").checked || document.getElementById("showColorText").checked) extraHeight += chBase * 0.15;
   const ch = Math.max(chBase, extraHeight);
   const hd = document.getElementById("showKonmei").checked ? 40 : 0;
@@ -165,7 +170,7 @@ async function renderGrid(tc = canvas, tcx = ctx) {
     tcx.textBaseline = 'top';
     const v = document.getElementById("konmeiSelect").value;
     const t = v === 'other' ? document.getElementById("customKonmei").value.trim() : v;
-    tcx.fillText(t, 設定.公演名.X * scale, offY + 設定.公演名.Y * scale);
+    tcx.fillText(t, 設定.公演名.X * scale, offY);
   }
 
   const cols = +document.getElementById("ninzuSelect").value.split("x")[0];
@@ -176,7 +181,7 @@ async function renderGrid(tc = canvas, tcx = ctx) {
   const showKiTxt = document.getElementById("showKi").checked;
   let showBlk = document.getElementById("showColorBlock").checked;
   let showTxt = document.getElementById("showColorText").checked;
-  if (showBlk === showTxt) { showTxt = true; showBlk = false; document.getElementById("showColorText").checked = true; document.getElementById("showColorBlock").checked = false; }
+  if (showBlk === showTxt) { showTxt = false; showBlk = true; document.getElementById("showColorText").checked = false; document.getElementById("showColorBlock").checked = true; }
 
   for (let i = 0; i < grid.length; i++) {
     const name = grid[i];
@@ -197,42 +202,42 @@ async function renderGrid(tc = canvas, tcx = ctx) {
       continue;
     }
     const mem = members.find(m => m.name_ja === name);
-    let y0 = y + 設定.写真.Y * scale;
+    let y0 = y + 10 * scale; // 初始偏移
     if (showPhoto && preloadedImages[name]) {
       const img = preloadedImages[name];
       const asp = img.naturalWidth / img.naturalHeight;
-      let h = ch * 0.8;
+      let h = ch * 0.6;
       let w = h * asp;
       if (w > cw * 0.8) { w = cw * 0.8; h = w / asp; }
       const xOffset = (cw - w) / 2;
-      const yOffset = (ch - h) / 2;
-      tcx.drawImage(img, x + xOffset, y + yOffset, w, h);
+      tcx.drawImage(img, x + xOffset, y0, w, h);
       y0 += h + 5 * scale;
     }
     let used = 0;
-    if (showPhoto) used += ch * 0.3;
+    if (showPhoto) used += ch * 0.6 + 5 * scale;
     if (showNick) used += ch * 0.1;
+    if (showKiTxt) used += ch * 0.1;
     if (showBlk || showTxt) used += ch * 0.15;
-    const avail = ch - used - (showPhoto ? 5 * scale : 0);
+    const avail = ch - used;
     const L = name.length;
-    let fs = 設定.全名.フォントサイズ || Math.min(avail * 0.4, (cw - 20) / (L * 0.6));
+    let fs = 設定.全名.フォントサイズ || Math.min(avail * 0.3, (cw - 20) / (L * 0.5), 24); // 限制最大字體
     tcx.fillStyle = '#F676A6';
     tcx.textAlign = 'center';
     tcx.textBaseline = 'top';
-    tcx.font = `${fs}px KozGoPr6N`;
+    tcx.font = `${fs * scale}px KozGoPr6N`;
     tcx.fillText(name, x + cw / 2 + 設定.全名.X * scale, y0 + 設定.全名.Y * scale);
-    y0 += fs + 3;
+    y0 += fs + 5 * scale;
     if (showNick) {
-      let s = 設定.ネックネーム.フォントサイズ || Math.min(20, avail * 0.15);
-      tcx.font = `${s}px KozGoPr6N`;
+      let s = 設定.ネックネーム.フォントサイズ || Math.min(avail * 0.15, 20);
+      tcx.font = `${s * scale}px KozGoPr6N`;
       tcx.fillText(mem.nickname, x + cw / 2 + 設定.ネックネーム.X * scale, y0 + 設定.ネックネーム.Y * scale);
-      y0 += s + 3;
+      y0 += s + 3 * scale;
     }
     if (showKiTxt) {
-      let s = 設定.期別.フォントサイズ || Math.min(20, avail * 0.15);
-      tcx.font = `${s}px KozGoPr6N`;
+      let s = 設定.期別.フォントサイズ || Math.min(avail * 0.15, 20);
+      tcx.font = `${s * scale}px KozGoPr6N`;
       tcx.fillText(mem.ki, x + cw / 2 + 設定.期別.X * scale, y0 + 設定.期別.Y * scale);
-      y0 += s + 3;
+      y0 += s + 3 * scale;
     }
     if (showTxt) {
       const map = {'#FF0000':'赤','#FFA500':'オレンジ','#FFFF00':'黄','#0000FF':'青','#00FF00':'緑','#FFFFFF':'白','#FF69B4':'濃いピンク','#FFB6C1':'薄ピンク','#32CD32':'黄緑'};
@@ -241,7 +246,7 @@ async function renderGrid(tc = canvas, tcx = ctx) {
       let totWidth = 0;
       arr.forEach((c, i) => {
         const t = map[c] || '';
-        totWidth += tcx.measureText(t).width + (i < arr.length - 1 ? tcx.measureText(' x ').width : 0);
+        totWidth += tcx.measureText(t).width + (i < arr.length - 1 ? tcx.measureText(' x ').width + 5 : 0); // 增加間距
       });
       let xx = x + (cw - totWidth) / 2 + 設定.色文字1.X * scale;
       arr.forEach((c, i) => {
@@ -249,12 +254,12 @@ async function renderGrid(tc = canvas, tcx = ctx) {
         tcx.fillStyle = (c === '#FFFFFF') ? '#f5f2f2' : c;
         let fontSize = Math.min(18, (ch * 0.15) / arr.length);
         tcx.font = `${fontSize * scale}px KozGoPr6N`;
-        tcx.fillText(t, xx, y + ch / 2 + 設定['色文字' + (i + 1)].Y * scale);
+        tcx.fillText(t, xx, y + ch * 0.85 + 設定['色文字' + (i + 1)].Y * scale); // 固定底部位置
         xx += tcx.measureText(t).width;
         if (i < arr.length - 1) {
           tcx.fillStyle = '#F676A6';
-          tcx.fillText(' x ', xx, y + ch / 2);
-          xx += tcx.measureText(' x ').width;
+          tcx.fillText(' x ', xx, y + ch * 0.85);
+          xx += tcx.measureText(' x ').width + 5;
         }
       });
     } else if (showBlk) {
@@ -264,7 +269,7 @@ async function renderGrid(tc = canvas, tcx = ctx) {
       const xOffset = (cw - tw) / 2;
       arr.forEach((c, j) => {
         tcx.fillStyle = c || '#f0f0f0';
-        tcx.fillRect(x + xOffset + j * bw, y + ch * 0.8 + 設定.色塊.Y * scale, bw, bw);
+        tcx.fillRect(x + xOffset + j * bw, y + ch * 0.8 + 設定.色塊.Y * scale, bw, bw * 0.8); // 減少高度
       });
     }
     if (!isDL) {
@@ -319,7 +324,14 @@ function setupListeners() {
     const col = Math.floor(mx / cw);
     const row = Math.floor(my / ch);
     const idx = row * cols + col;
-    if (idx >= 0 && idx < grid.length && !grid[idx]) showPopup(idx);
+    if (idx >= 0 && idx < grid.length) {
+      if (!grid[idx]) {
+        showPopup(idx);
+      } else if (mx > x + cw - 30 && my < y + 30) { // 右上角 "選択" 區域
+        grid[idx] = null;
+        updateAndRender();
+      }
+    }
   });
   document.getElementById('downloadButton').addEventListener('click', async () => {
     await preloadAll();
