@@ -1,85 +1,624 @@
 <!DOCTYPE html>
 <html lang="ja">
-  <head>
-    <meta charset="UTF-8" />
-    <meta http-equiv="X-UA-Compatible" content="IE=edge" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>AKB48 ペンライトカラー表</title>
-    <link rel="preconnect" href="https://fonts.googleapis.com" />
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-    <link
-      href="https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@400;700&display=swap"
-      rel="stylesheet"
-    />
-    <link rel="stylesheet" href="style.css" />
-  </head>
-  <body>
-    <header class="site-header">
-      <h1 class="title">AKB48&nbsp;メンバー ペンライトカラー表</h1>
-    </header>
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>AKB48 ペンライトカラー表</title>
+  <style>
+    @font-face { font-family: 'KozGoPr6N'; src: url('fonts/KozGoPr6N-Medium.woff2') format('woff2'); }
+    @font-face { font-family: 'AR ADGothicJP'; src: url('fonts/jadhei01m.woff2') format('woff2'); }
 
-    <main class="layout">
-      <aside class="controls" id="controls">
-        <!-- 公演名選択 -->
-        <div class="form-group">
-          <label for="konmeiSelect">公演名</label>
-          <select id="konmeiSelect">
-            <option value="RESET">RESET</option>
-            <option value="Renai Kinshi Jourei">恋愛禁止条例</option>
-            <option value="Seishun Girls">青春ガールズ</option>
-            <option value="other">他</option>
-          </select>
-          <input
-            id="customKonmei"
-            type="text"
-            placeholder="公演名を入力"
-            class="hidden"
-          />
-        </div>
+    body {
+      font-family: 'KozGoPr6N', 'AR ADGothicJP', 'Noto Sans JP', sans-serif;
+      background-color: #fff4f6;
+      color: #333;
+      margin: 0;
+      padding: 0;
+    }
 
-        <!-- 人数／レイアウト選択 -->
-        <div class="form-group">
-          <label for="ninzuSelect">表示人数</label>
-          <select id="ninzuSelect">
-            <option value="16x3">16 × 3</option>
-            <option value="8x4">8 × 4</option>
-            <option value="4x2">4 × 2</option>
-            <option value="all">全員</option>
-          </select>
-        </div>
+    #container {
+      max-width: 1000px;
+      margin: 0 auto;
+      padding: 20px;
+      text-align: center;
+    }
 
-        <!-- オプション -->
-        <fieldset class="form-group">
-          <legend>表示オプション</legend>
-          <label>
-            <input type="checkbox" id="toggleOshiText" checked />推しカラー（文字）
-          </label>
-          <label>
-            <input type="checkbox" id="toggleOshiBlock" />推しカラー（色塊）
-          </label>
-        </fieldset>
+    h1 {
+      font-size: 2.5em;
+      color: #F676A6;
+      margin-bottom: 15px;
+    }
 
-        <!-- メンバー期別フィルタ -->
-        <div class="form-group">
-          <label for="generationSelect">期別</label>
-          <select id="generationSelect">
-            <option value="all">全期</option>
-            <option value="3">3期</option>
-            <option value="…"> … </option>
-          </select>
-        </div>
+    #controls {
+      display: flex;
+      flex-wrap: wrap;
+      justify-content: center;
+      gap: 10px;
+      margin-bottom: 20px;
+    }
 
-        <button id="downloadPngBtn" class="primary-btn">PNG ダウンロード</button>
-        <button id="downloadPdfBtn" class="secondary-btn">PDF ダウンロード</button>
-      </aside>
+    #controls label {
+      font-size: 0.9em;
+      display: flex;
+      align-items: center;
+      gap: 4px;
+      color: #F676A6;
+    }
 
-      <!-- プレビュー -->
-      <section class="preview-wrapper">
-        <canvas id="ticketCanvas" width="1280" height="720"></canvas>
-      </section>
-    </main>
+    #renderCanvas {
+      display: block;
+      margin: 0 auto;
+      border: 2px solid #F676A6;
+      background-color: #fff;
+    }
 
-    <script src="script.js" type="module"></script>
-    <noscript>JavaScript を有効にしてください。</noscript>
-  </body>
+    #downloadButton {
+      font-size: 1em;
+      padding: 10px 20px;
+      background-color: #F676A6;
+      color: white;
+      border: none;
+      border-radius: 4px;
+      cursor: pointer;
+      transition: background-color 0.3s;
+    }
+
+    #downloadButton:hover {
+      background-color: #E55A8C;
+    }
+
+    #popup {
+      display: none;
+      position: fixed;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      background-color: white;
+      padding: 20px;
+      border: 2px solid #F676A6;
+      border-radius: 6px;
+      box-shadow: 0 0 10px rgba(0,0,0,0.2);
+      z-index: 1000;
+      max-height: 80vh;
+      overflow-y: auto;
+    }
+
+    #popup #accordion {
+      margin-bottom: 10px;
+    }
+
+    #popup summary {
+      font-size: 1.1em;
+      padding: 5px;
+      cursor: pointer;
+      background-color: #F676A6;
+      color: #fff;
+    }
+
+    #popup .member-list {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px;
+      padding: 10px;
+    }
+
+    #popup .member-item {
+      display: flex;
+      align-items: center;
+      cursor: pointer;
+      padding: 5px;
+    }
+
+    #popup .member-item:hover {
+      background-color: #f9f9f9;
+    }
+
+    #popup .member-item.selected {
+      background-color: #e0e0e0;
+    }
+
+    #popup select {
+      font-size: 1em;
+      margin-bottom: 10px;
+      width: 100%;
+      padding: 5px;
+    }
+
+    #popup button {
+      margin: 5px;
+      padding: 6px 12px;
+      font-size: 0.9em;
+      border: none;
+      border-radius: 4px;
+      cursor: pointer;
+    }
+
+    #popupSelectBtn {
+      background-color: #F676A6;
+      color: white;
+    }
+
+    #popupCloseBtn {
+      background-color: #E55A8C;
+      color: white;
+    }
+
+    .checkbox-group {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px;
+      justify-content: center;
+      margin-top: 10px;
+    }
+
+    input[type="checkbox"] {
+      transform: scale(1.2);
+      margin-right: 5px;
+    }
+
+    input[type="radio"] {
+      transform: scale(1.1);
+      margin-right: 4px;
+    }
+
+    select {
+      font-size: 0.95em;
+      padding: 4px;
+      color: #F676A6;
+    }
+
+    #customKonmei {
+      display: none;
+      margin-top: 5px;
+      padding: 4px;
+      font-size: 0.95em;
+      color: #F676A6;
+    }
+
+    @media (max-width: 768px) {
+      #renderCanvas {
+        width: 100%;
+        height: auto;
+        aspect-ratio: 16 / 9;
+      }
+      #controls {
+        flex-direction: column;
+        align-items: center;
+      }
+      #downloadButton {
+        width: 100%;
+        max-width: 200px;
+      }
+      #popup {
+        width: 90%;
+        max-height: 70vh;
+      }
+      #popup .member-item img {
+        width: 40px;
+      }
+      #popup .member-item span {
+        font-size: 14px;
+      }
+      #renderCanvas canvas {
+        font-size: 24px !important;
+      }
+    }
+  </style>
+</head>
+<body>
+  <div id="container">
+    <h1>AKB48 ペンライトカラー表</h1>
+    <div id="controls">
+      <label>人数:
+        <select id="ninzuSelect">
+          <option value="2x1">2x1</option>
+          <option value="2x2">2x2</option>
+          <option value="3x2">3x2</option>
+          <option value="3x3">3x3</option>
+          <option value="4x2">4x2</option>
+          <option value="4x4">4x4</option>
+          <option value="8x2">8x2</option>
+          <option value="5x4">5x4</option>
+        </select>
+      </label>
+      <label>公演名:
+        <select id="konmeiSelect">
+          <option value="ただいま　恋愛中">ただいま　恋愛中</option>
+          <option value="RESET">RESET</option>
+          <option value="ここからだ">ここからだ</option>
+          <option value="そこに未来はある">そこに未来はある</option>
+          <option value="other">他</option>
+        </select>
+      </label>
+      <input type="text" id="customKonmei" placeholder="カスタム公演名を入力">
+      <label>期別:
+        <select id="kibetsuSelect">
+          <option value="13期">13期</option>
+          <option value="15期">15期</option>
+          <option value="チーム8">チーム8</option>
+          <option value="ドラフト2期">ドラフト2期</option>
+          <option value="16期">16期</option>
+          <option value="ドラフト3期">ドラフト3期</option>
+          <option value="17期">17期</option>
+          <option value="18期">18期</option>
+          <option value="19期">19期</option>
+          <option value="20期">20期</option>
+        </select>
+      </label>
+      <div class="checkbox-group">
+        <label><input type="checkbox" id="showAll">全員</label>
+        <label><input type="checkbox" id="showKibetsu">期別</label>
+        <label><input type="checkbox" id="showKonmei">公演名</label>
+        <label><input type="checkbox" id="showPhoto">写真</label>
+        <label><input type="checkbox" id="showNickname">ネックネーム</label>
+        <label><input type="checkbox" id="showKi">期</label>
+        <label><input type="checkbox" id="showColorBlock" name="colorOption">推しカラー(色塊)</label>
+        <label><input type="checkbox" id="showColorText" name="colorOption" checked>推しカラー(文字)</label>
+      </div>
+      <button id="downloadButton">ダウンロード (300 DPI)</button>
+    </div>
+    <canvas id="renderCanvas" width="800" height="600"></canvas>
+    <div id="popup">
+      <div id="accordion"></div>
+    </div>
+  </div>
+
+  <script>
+    let members = [];
+    let preloadedImages = {};
+    let grid = [];
+    let currentIndex = null;
+
+    const canvas = document.getElementById("renderCanvas");
+    const ctx = canvas.getContext("2d");
+    const baseCanvasWidth = canvas.width;
+    let baseAspect;
+
+    const 設定 = {
+      公演名: { フォントサイズ: 24, 文字間隔: 0, X: 10, Y: 30 },
+      全名: { フォントサイズ: null, 文字間隔: 0, X: 0, Y: 0 },
+      ネックネーム: { フォントサイズ: 20, 文字間隔: 0, X: 0, Y: 0 },
+      期別: { フォントサイズ: 20, 文字間隔: 0, X: 0, Y: 0 },
+      写真: { X: 0, Y: 0, 幅: null, 高さ: null },
+      色塊: { X: 0, Y: 0, 幅: null },
+      色文字1: { フォントサイズ: 18, X: 0, Y: 0 },
+      色文字2: { フォントサイズ: 18, X: 0, Y: 0 },
+    };
+
+    async function preloadAll() {
+      const res = await fetch("members.json");
+      members = await res.json();
+      baseAspect = canvas.height / canvas.width;
+      await Promise.all(members.map(m => new Promise(r => {
+        const img = new Image(); img.src = m.image;
+        img.onload = () => { preloadedImages[m.name_ja] = img; r(); };
+        img.onerror = () => { preloadedImages[m.name_ja] = null; r(); };
+      })));
+    }
+
+    preloadAll().then(() => {
+      injectSettingsPanel();
+      makeResponsive();
+      setupListeners();
+      document.getElementById('konmeiSelect').value = 'ただいま　恋愛中';
+      updateAndRender();
+    });
+
+    function makeResponsive() {
+      canvas.style.display = 'block';
+      canvas.style.margin = '0 auto';
+      canvas.style.width = '100%';
+      canvas.style.height = 'auto';
+    }
+
+    function injectSettingsPanel() {
+      let panel = document.getElementById('設定パネル');
+      if (!panel) {
+        panel = document.createElement('div');
+        panel.id = '設定パネル';
+        panel.style.position = 'fixed';
+        panel.style.top = '100px';
+        panel.style.left = '50px';
+        panel.style.background = '#fff';
+        panel.style.border = '2px solid #F676A6';
+        panel.style.padding = '8px';
+        panel.style.zIndex = '1000';
+        panel.style.cursor = 'move';
+        panel.innerHTML = `<strong>詳細設定</strong><div id="詳細中身"></div>`;
+        document.body.append(panel);
+        makeDraggable(panel);
+      }
+      const body = panel.querySelector('#詳細中身');
+      body.innerHTML = '';
+      Object.entries(設定).forEach(([key, cfg]) => {
+        const group = document.createElement('div');
+        group.style.margin = '6px 0';
+        const title = document.createElement('div');
+        title.textContent = key;
+        title.style.fontWeight = 'bold';
+        group.append(title);
+        Object.entries(cfg).forEach(([prop, val]) => {
+          const label = document.createElement('label');
+          label.style.display = 'block';
+          label.textContent = `${prop}：`;
+          const inp = document.createElement('input');
+          inp.type = 'number';
+          inp.value = val || 0;
+          inp.style.width = '60px';
+          inp.step = '1';
+          inp.addEventListener('input', () => {
+            設定[key][prop] = parseFloat(inp.value);
+            updateAndRender();
+          });
+          label.append(inp);
+          group.append(label);
+        });
+        body.append(group);
+      });
+    }
+
+    function makeDraggable(el) {
+      let ox, oy;
+      el.addEventListener('mousedown', e => {
+        ox = e.clientX - el.offsetLeft;
+        oy = e.clientY - el.offsetTop;
+        function move(e) {
+          el.style.left = e.clientX - ox + 'px';
+          el.style.top = e.clientY - oy + 'px';
+        }
+        document.addEventListener('mousemove', move);
+        document.addEventListener('mouseup', () => document.removeEventListener('mousemove', move), { once: true });
+      });
+    }
+
+    function updateAndRender() {
+      updateGrid();
+      renderGrid();
+    }
+
+    function updateGrid() {
+      const [cols, rows] = document.getElementById("ninzuSelect").value.split("x").map(Number);
+      const 全員 = document.getElementById("showAll").checked;
+      const 期別 = document.getElementById("showKibetsu").checked;
+      const val = document.getElementById("kibetsuSelect").value;
+      if (全員) {
+        grid = Array(cols * Math.ceil(members.length / cols)).fill(null);
+        members.forEach((m, i) => grid[i] = m.name_ja);
+      } else if (期別) {
+        const f = members.filter(m => m.ki === val).map(m => m.name_ja);
+        grid = Array(cols * Math.ceil(f.length / cols)).fill(null);
+        f.forEach((n, i) => grid[i] = n);
+      } else {
+        grid = Array(cols * rows).fill(null).map((_, i) => grid[i] || null);
+      }
+      resizeCanvas(cols, grid.length);
+    }
+
+    function resizeCanvas(cols, total) {
+      const rows = Math.ceil(total / cols);
+      const cw = canvas.width / cols;
+      let chBase = cw * baseAspect;
+      let extraHeight = 0;
+      if (document.getElementById("showPhoto").checked) extraHeight += chBase * 0.3;
+      if (document.getElementById("showNickname").checked) extraHeight += chBase * 0.1;
+      if (document.getElementById("showColorBlock").checked || document.getElementById("showColorText").checked) extraHeight += chBase * 0.15;
+      const ch = Math.max(chBase, extraHeight);
+      const hd = document.getElementById("showKonmei").checked ? 40 : 0;
+      canvas.height = rows * ch + hd;
+    }
+
+    async function renderGrid(tc = canvas, tcx = ctx) {
+      const isDL = tc !== canvas;
+      const scale = tc.width / baseCanvasWidth;
+      tcx.fillStyle = '#fff4f6';
+      tcx.fillRect(0, 0, tc.width, tc.height);
+
+      const showKon = document.getElementById("showKonmei").checked;
+      const offY = showKon ? 設定.公演名.Y * scale : 0;
+      if (showKon) {
+        tcx.fillStyle = '#F676A6';
+        tcx.font = `${設定.公演名.フォントサイズ * scale}px KozGoPr6N`;
+        tcx.textAlign = 'left';
+        tcx.textBaseline = 'top';
+        const v = document.getElementById("konmeiSelect").value;
+        const t = v === 'other' ? document.getElementById("customKonmei").value.trim() : v;
+        tcx.fillText(t, 設定.公演名.X * scale, offY + 設定.公演名.Y * scale);
+      }
+
+      const cols = +document.getElementById("ninzuSelect").value.split("x")[0];
+      const cw = tc.width / cols;
+      const ch = cw * baseAspect;
+      const showPhoto = document.getElementById("showPhoto").checked;
+      const showNick = document.getElementById("showNickname").checked;
+      const showKiTxt = document.getElementById("showKi").checked;
+      let showBlk = document.getElementById("showColorBlock").checked;
+      let showTxt = document.getElementById("showColorText").checked;
+      if (showBlk === showTxt) { showTxt = true; showBlk = false; document.getElementById("showColorText").checked = true; document.getElementById("showColorBlock").checked = false; }
+
+      for (let i = 0; i < grid.length; i++) {
+        const name = grid[i];
+        const r = Math.floor(i / cols), c = i % cols;
+        const x = c * cw, y = r * ch + offY;
+        tcx.fillStyle = '#fff4f6';
+        tcx.fillRect(x, y, cw, ch);
+        tcx.strokeStyle = '#F676A6';
+        tcx.strokeRect(x, y, cw, ch);
+        if (!name) {
+          if (!isDL) {
+            tcx.fillStyle = '#F676A6';
+            tcx.font = `${24 * scale}px KozGoPr6N`;
+            tcx.textAlign = 'center';
+            tcx.textBaseline = 'middle';
+            tcx.fillText('+', x + cw / 2, y + ch / 2);
+          }
+          continue;
+        }
+        const mem = members.find(m => m.name_ja === name);
+        let y0 = y + 設定.写真.Y * scale;
+        if (showPhoto && preloadedImages[name]) {
+          const img = preloadedImages[name];
+          const asp = img.naturalWidth / img.naturalHeight;
+          let h = ch * 0.8;
+          let w = h * asp;
+          if (w > cw * 0.8) { w = cw * 0.8; h = w / asp; }
+          const xOffset = (cw - w) / 2;
+          const yOffset = (ch - h) / 2;
+          tcx.drawImage(img, x + xOffset, y + yOffset, w, h);
+          y0 += h + 5 * scale;
+        }
+        let used = 0;
+        if (showPhoto) used += ch * 0.3;
+        if (showNick) used += ch * 0.1;
+        if (showBlk || showTxt) used += ch * 0.15;
+        const avail = ch - used - (showPhoto ? 5 * scale : 0);
+        const L = name.length;
+        let fs = 設定.全名.フォントサイズ || Math.min(avail * 0.4, (cw - 20) / (L * 0.6));
+        tcx.fillStyle = '#F676A6';
+        tcx.textAlign = 'center';
+        tcx.textBaseline = 'top';
+        tcx.font = `${fs}px KozGoPr6N`;
+        tcx.fillText(name, x + cw / 2 + 設定.全名.X * scale, y0 + 設定.全名.Y * scale);
+        y0 += fs + 3;
+        if (showNick) {
+          let s = 設定.ネックネーム.フォントサイズ || Math.min(20, avail * 0.15);
+          tcx.font = `${s}px KozGoPr6N`;
+          tcx.fillText(mem.nickname, x + cw / 2 + 設定.ネックネーム.X * scale, y0 + 設定.ネックネーム.Y * scale);
+          y0 += s + 3;
+        }
+        if (showKiTxt) {
+          let s = 設定.期別.フォントサイズ || Math.min(20, avail * 0.15);
+          tcx.font = `${s}px KozGoPr6N`;
+          tcx.fillText(mem.ki, x + cw / 2 + 設定.期別.X * scale, y0 + 設定.期別.Y * scale);
+          y0 += s + 3;
+        }
+        if (showTxt) {
+          const map = {'#FF0000':'赤','#FFA500':'オレンジ','#FFFF00':'黄','#0000FF':'青','#00FF00':'緑','#FFFFFF':'白','#FF69B4':'濃いピンク','#FFB6C1':'薄ピンク','#32CD32':'黄緑'};
+          tcx.textBaseline = 'middle';
+          const arr = mem.colors;
+          let totWidth = 0;
+          arr.forEach((c, i) => {
+            const t = map[c] || '';
+            totWidth += tcx.measureText(t).width + (i < arr.length - 1 ? tcx.measureText(' x ').width : 0);
+          });
+          let xx = x + (cw - totWidth) / 2 + 設定.色文字1.X * scale;
+          arr.forEach((c, i) => {
+            const t = map[c] || '';
+            tcx.fillStyle = (c === '#FFFFFF') ? '#f5f2f2' : c;
+            let fontSize = Math.min(18, (ch * 0.15) / arr.length);
+            tcx.font = `${fontSize * scale}px KozGoPr6N`;
+            tcx.fillText(t, xx, y + ch / 2 + 設定['色文字' + (i + 1)].Y * scale);
+            xx += tcx.measureText(t).width;
+            if (i < arr.length - 1) {
+              tcx.fillStyle = '#F676A6';
+              tcx.fillText(' x ', xx, y + ch / 2);
+              xx += tcx.measureText(' x ').width;
+            }
+          });
+        } else if (showBlk) {
+          const arr = mem.colors;
+          const bw = cw * (0.8 / arr.length);
+          const tw = bw * arr.length;
+          const xOffset = (cw - tw) / 2;
+          arr.forEach((c, j) => {
+            tcx.fillStyle = c || '#f0f0f0';
+            tcx.fillRect(x + xOffset + j * bw, y + ch * 0.8 + 設定.色塊.Y * scale, bw, bw);
+          });
+        }
+        if (!isDL) {
+          tcx.fillStyle = '#F676A6';
+          tcx.font = `12px KozGoPr6N`;
+          tcx.textAlign = 'right';
+          tcx.textBaseline = 'top';
+          tcx.fillText('選択', x + cw - 10, y + 10);
+        }
+      }
+    }
+
+    function setupListeners() {
+      const cBlk = document.getElementById('showColorBlock');
+      const cTxt = document.getElementById('showColorText');
+      cBlk.addEventListener('change', e => {
+        if (e.target.checked) { cTxt.checked = false; } else { e.target.checked = true; }
+        updateAndRender();
+      });
+      cTxt.addEventListener('change', e => {
+        if (e.target.checked) { cBlk.checked = false; } else { e.target.checked = true; }
+        updateAndRender();
+      });
+      document.getElementById('showKibetsu').addEventListener('change', () => {
+        document.getElementById('showAll').checked = false;
+        updateAndRender();
+      });
+      document.getElementById('kibetsuSelect').addEventListener('change', () => {
+        if (document.getElementById('showKibetsu').checked) updateAndRender();
+      });
+      document.getElementById('konmeiSelect').addEventListener('change', () => {
+        const customInput = document.getElementById('customKonmei');
+        if (document.getElementById('konmeiSelect').value === 'other') {
+          customInput.style.display = 'block';
+        } else {
+          customInput.style.display = 'none';
+          customInput.value = '';
+        }
+        updateAndRender();
+      });
+      document.querySelectorAll('#controls input:not(#showColorBlock):not(#showColorText):not(#showKibetsu):not(#customKonmei), #controls select:not(#kibetsuSelect):not(#konmeiSelect)')
+        .forEach(el => el.addEventListener('change', updateAndRender));
+      canvas.addEventListener('click', e => {
+        const r = canvas.getBoundingClientRect();
+        const offY = document.getElementById("showKonmei").checked ? 40 : 0;
+        const mx = e.clientX - r.left;
+        const my = e.clientY - r.top - offY;
+        const cols = +document.getElementById("ninzuSelect").value.split("x")[0];
+        const cw = canvas.width / cols;
+        const ch = cw * baseAspect;
+        const col = Math.floor(mx / cw);
+        const row = Math.floor(my / ch);
+        const idx = row * cols + col;
+        if (idx >= 0 && idx < grid.length && !grid[idx]) showPopup(idx);
+      });
+      document.getElementById('downloadButton').addEventListener('click', async () => {
+        await preloadAll();
+        const tmp = document.createElement('canvas');
+        tmp.width = canvas.width * 2;
+        tmp.height = canvas.height * 2;
+        const p = tmp.getContext('2d');
+        p.scale(2, 2);
+        await renderGrid(tmp, p);
+        const a = document.createElement('a');
+        a.download = 'penlight_colors_300dpi.png';
+        a.href = tmp.toDataURL('image/png');
+        a.click();
+      });
+    }
+
+    function showPopup(idx) {
+      currentIndex = idx;
+      const popup = document.getElementById('popup');
+      const per = [...new Set(members.map(m => m.ki))];
+      let html = '';
+      per.forEach(p => {
+        html += `<details><summary>${p}</summary><div class="member-list">`;
+        members.filter(m => m.ki === p).forEach(m => html += `<div class="member-item"><img src="${m.image}" width="50"><span>${m.name_ja}</span></div>`);
+        html += '</div></details>';
+      });
+      html += `<div class="popup-footer"><button id="popupSelectBtn">選択</button><button id="popupCloseBtn">閉じる</button></div>`;
+      popup.innerHTML = html;
+      popup.style.display = 'block';
+      popup.querySelectorAll('.member-item').forEach(it => it.onclick = () => {
+        popup.querySelectorAll('.member-item').forEach(i => i.classList.remove('selected'));
+        it.classList.add('selected');
+      });
+      document.getElementById('popupSelectBtn').onclick = () => {
+        const s = popup.querySelector('.member-item.selected span');
+        if (s) {
+          grid[currentIndex] = s.textContent;
+          popup.style.display = 'none';
+          updateAndRender();
+        }
+      };
+      document.getElementById('popupCloseBtn').onclick = () => popup.style.display = 'none';
+    }
+  </script>
+</body>
 </html>
