@@ -81,8 +81,8 @@ class PenlightGenerator {
         resolve();
       };
       img.onerror = () => {
-        this.preloadedImages[name] = null;
-        console.warn(`画像ロード失敗: ${name}, ${src}`);
+        this.preloadedImages[name] = null; // 備用佔位符
+        console.warn(`画像ロード失敗: ${name}, ${src}, 使用佔位符`);
         resolve();
       };
     });
@@ -270,14 +270,16 @@ class PenlightGenerator {
 
         if (this.state.showPhoto && this.preloadedImages[name]) {
           const img = this.preloadedImages[name];
-          const asp = img.naturalWidth / img.naturalHeight;
-          let h = ch * 0.5;
-          let w = h * asp;
-          if (w > cw * 0.7) { w = cw * 0.7; h = w / asp; }
-          const xOffset = (cw - w) / 2;
-          tcx.drawImage(img, x + xOffset, y0, w, h);
-          y0 += h + 10 * scale;
-          usedHeight += h + 10 * scale;
+          if (img) {
+            const asp = img.naturalWidth / img.naturalHeight;
+            let h = ch * 0.5;
+            let w = h * asp;
+            if (w > cw * 0.7) { w = cw * 0.7; h = w / asp; }
+            const xOffset = (cw - w) / 2;
+            tcx.drawImage(img, x + xOffset, y0, w, h);
+            y0 += h + 10 * scale;
+            usedHeight += h + 10 * scale;
+          }
         }
 
         const availHeight = ch - usedHeight;
@@ -311,19 +313,26 @@ class PenlightGenerator {
           colors.forEach((c, i) => {
             const text = c;
             tcx.font = `${this.settings['色文字' + (i + 1)].フォントサイズ * scale}px KozGoPr6N`;
-            totWidth += tcx.measureText(text).width + (i < colors.length - 1 ? tcx.measureText(' x ').width + 15 : 0);
+            totWidth += tcx.measureText(text).width + (i < colors.length - 1 ? tcx.measureText(' x ').width + 20 : 0);
           });
           let xx = x + (cw - totWidth) / 2 + this.settings.色文字1.X * scale;
           colors.forEach((c, i) => {
             const text = c;
             tcx.fillStyle = colorMap[c] || '#000000';
             tcx.font = `${this.settings['色文字' + (i + 1)].フォントサイズ * scale}px KozGoPr6N`;
+            if (text === '白' || text === '黄') {
+              tcx.shadowColor = '#000000';
+              tcx.shadowBlur = 2;
+            } else {
+              tcx.shadowBlur = 0;
+            }
             tcx.fillText(text, xx, y + ch * 0.85 + this.settings['色文字' + (i + 1)].Y * scale);
             xx += tcx.measureText(text).width;
             if (i < colors.length - 1) {
               tcx.fillStyle = '#F676A6';
+              tcx.shadowBlur = 0;
               tcx.fillText(' x ', xx, y + ch * 0.85);
-              xx += tcx.measureText(' x ').width + 15;
+              xx += tcx.measureText(' x ').width + 20;
             }
           });
         } else if (this.state.showColorBlock) {
@@ -344,7 +353,7 @@ class PenlightGenerator {
           tcx.font = `12px KozGoPr6N`;
           tcx.textAlign = 'center';
           tcx.textBaseline = 'middle';
-          tcx.fillText('X', x + cw - 20, y + 15);
+          tcx.fillText('選択', x + cw - 20, y + 15);
         }
       });
     } catch (error) {
@@ -471,7 +480,7 @@ class PenlightGenerator {
           this.renderGrid(tmp, p);
           const a = document.createElement('a');
           a.download = 'penlight_colors_300dpi.png';
-          a.href = tmp.toDataURL('image/png');
+          a.href = tmp.toDataURL('image/png', 1.0); // 確保最高品質
           a.click();
         });
       }
