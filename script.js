@@ -1,378 +1,395 @@
-// === script.js (最終統合版) ===
-let members = [];
-let preloadedImages = {};
-let grid = [];
-let currentIndex = null;
+// === script.js (重構版) ===
+class PenlightGenerator {
+  constructor() {
+    this.canvas = document.getElementById("renderCanvas");
+    this.ctx = this.canvas.getContext("2d");
+    this.baseCanvasWidth = this.canvas.width;
+    this.baseAspect = this.canvas.height / this.canvas.width;
+    this.members = [];
+    this.preloadedImages = {};
+    this.grid = [];
+    this.currentIndex = null;
+    this.settings = {
+      公演名: { フォントサイズ: 24, 文字間隔: 0, X: 10, Y: 30 },
+      全名: { フォントサイズ: null, 文字間隔: 0, X: 0, Y: 0 },
+      ネックネーム: { フォントサイズ: 20, 文字間隔: 0, X: 0, Y: 0 },
+      期別: { フォントサイズ: 20, 文字間隔: 0, X: 0, Y: 0 },
+      写真: { X: 0, Y: 0, 幅: null, 高さ: null },
+      色塊: { X: 0, Y: 0, 幅: null },
+      色文字1: { フォントサイズ: 18, X: 0, Y: 0 },
+      色文字2: { フォントサイズ: 18, X: 0, Y: 0 },
+    };
+    this.state = {
+      ninzu: "2x1",
+      konmei: "ただいま　恋愛中",
+      kibetsu: "13期",
+      showAll: false,
+      showKibetsu: false,
+      showKonmei: false,
+      showPhoto: false,
+      showNickname: false,
+      showKi: false,
+      showColorBlock: true, // 預設勾選色塊
+      showColorText: false,
+      customKonmei: "",
+    };
+  }
 
-const canvas = document.getElementById("renderCanvas");
-const ctx = canvas.getContext("2d");
-const baseCanvasWidth = canvas.width;
-let baseAspect;
+  async init() {
+    await this.loadData();
+    this.setupUI();
+    this.bindEvents();
+    this.updateAndRender();
+  }
 
-// 詳細設定オブジェクト (日本語キー)
-const 設定 = {
-  公演名: { フォントサイズ: 24, 文字間隔: 0, X: 10, Y: 30 },
-  全名: { フォントサイズ: null, 文字間隔: 0, X: 0, Y: 0 },
-  ネックネーム: { フォントサイズ: 20, 文字間隔: 0, X: 0, Y: 0 },
-  期別: { フォントサイズ: 20, 文字間隔: 0, X: 0, Y: 0 },
-  写真: { X: 0, Y: 0, 幅: null, 高さ: null },
-  色塊: { X: 0, Y: 0, 幅: null },
-  色文字1: { フォントサイズ: 18, X: 0, Y: 0 },
-  色文字2: { フォントサイズ: 18, X: 0, Y: 0 },
-};
+  async loadData() {
+    try {
+      const res = await fetch("members.json");
+      this.members = await res.json();
+      await Promise.all(this.members.map(m => this.preloadImage(m.name_ja, m.image)));
+    } catch (error) {
+      console.error("データロードエラー:", error);
+    }
+  }
 
-// 画像プリロード
-async function preloadAll() {
-  const res = await fetch("members.json");
-  members = await res.json();
-  baseAspect = canvas.height / canvas.width;
-  await Promise.all(members.map(m => new Promise(r => {
-    const img = new Image(); img.src = m.image;
-    img.onload = () => { preloadedImages[m.name_ja] = img; r(); };
-    img.onerror = () => { preloadedImages[m.name_ja] = null; r(); };
-  })));
+  preloadImage(name, src) {
+    return new Promise((resolve) => {
+      const img = new Image();
+      img.src = src;
+      img.onload = () => { this.preloadedImages[name] = img; resolve(); };
+      img.onerror = () => { this.preloadedImages[name] = null; resolve(); };
+    });
+  }
+
+  setupUI() {
+    this.makeResponsive();
+    this.injectSettingsPanel();
+  }
+
+  makeResponsive() {
+    this.canvas.style.display = 'block';
+    this.canvas.style.margin = '0 auto';
+    this.canvas.style.width = '100%';
+    this.canvas.style.height = 'auto';
+  }
+
+  injectSettingsPanel() {
+    let panel = document.getElementById('設定パネル');
+    if (!panel) {
+      panel = document.createElement('div');
+      panel.id = '設定パネル';
+      panel.style.position = 'fixed';
+      panel.style.top = '100px';
+      panel.style.left = '50px';
+      panel.style.background = '#fff';
+      panel.style.border = '2px solid #F676A6';
+      panel.style.padding = '8px';
+      panel.style.zIndex = '1000';
+      panel.style.cursor = 'move';
+      panel.innerHTML = `<strong onclick="this.parentElement.classList.toggle('collapsed')">詳細設定</strong><div id="詳細中身"></div>`;
+      document.body.append(panel);
+      this.makeDraggable(panel);
+    }
+    const body = panel.querySelector('#詳細中身');
+    body.innerHTML = '';
+    Object.entries(this.settings).forEach(([key, cfg]) => {
+      const group = document.createElement('div');
+      group.style.margin = '6px 0';
+      const title = document.createElement('div');
+      title.textContent = key;
+      title.style.fontWeight = 'bold';
+      group.append(title);
+      Object.entries(cfg).forEach(([prop, val]) => {
+        const label = document.createElement('label');
+        label.style.display = 'block';
+        label.textContent = `${prop}：`;
+        const inp = document.createElement('input');
+        inp.type = 'number';
+        inp.value = val || 0;
+        inp.style.width = '60px';
+        inp.step = '1';
+        inp.addEventListener('input', () => {
+          this.settings[key][prop] = parseFloat(inp.value);
+          this.updateAndRender();
+        });
+        label.append(inp);
+        group.append(label);
+      });
+      body.append(group);
+    });
+  }
+
+  makeDraggable(el) {
+    let ox, oy;
+    el.addEventListener('mousedown', (e) => {
+      if (e.target.tagName !== 'INPUT') {
+        ox = e.clientX - el.offsetLeft;
+        oy = e.clientY - el.offsetTop;
+        function move(e) {
+          el.style.left = e.clientX - ox + 'px';
+          el.style.top = e.clientY - oy + 'px';
+        }
+        document.addEventListener('mousemove', move);
+        document.addEventListener('mouseup', () => document.removeEventListener('mousemove', move), { once: true });
+      }
+    });
+  }
+
+  updateGrid() {
+    const [cols, rows] = this.state.ninzu.split("x").map(Number);
+    if (this.state.showAll) {
+      this.grid = Array(cols * Math.ceil(this.members.length / cols)).fill(null);
+      this.members.forEach((m, i) => this.grid[i] = m.name_ja);
+    } else if (this.state.showKibetsu) {
+      const filtered = this.members.filter(m => m.ki === this.state.kibetsu).map(m => m.name_ja);
+      this.grid = Array(cols * Math.ceil(filtered.length / cols)).fill(null);
+      filtered.forEach((n, i) => this.grid[i] = n);
+    } else {
+      this.grid = Array(cols * rows).fill(null).map((_, i) => this.grid[i] || null);
+    }
+    this.resizeCanvas(cols, this.grid.length);
+  }
+
+  resizeCanvas(cols, total) {
+    const rows = Math.ceil(total / cols);
+    const cw = this.canvas.width / cols;
+    let chBase = cw * this.baseAspect;
+    let extraHeight = 0;
+    if (this.state.showPhoto) extraHeight += chBase * 0.6;
+    if (this.state.showNickname) extraHeight += chBase * 0.1;
+    if (this.state.showKi) extraHeight += chBase * 0.1;
+    if (this.state.showColorBlock || this.state.showColorText) extraHeight += chBase * 0.15;
+    const ch = Math.max(chBase, extraHeight);
+    const hd = this.state.showKonmei ? 40 : 0;
+    this.canvas.height = rows * ch + hd;
+  }
+
+  renderGrid(tc = this.canvas, tcx = this.ctx) {
+    const isDL = tc !== this.canvas;
+    const scale = tc.width / this.baseCanvasWidth;
+    tcx.fillStyle = '#fff4f6';
+    tcx.fillRect(0, 0, tc.width, tc.height);
+
+    if (this.state.showKonmei) {
+      tcx.fillStyle = '#F676A6';
+      tcx.font = `${this.settings.公演名.フォントサイズ * scale}px KozGoPr6N`;
+      tcx.textAlign = 'left';
+      tcx.textBaseline = 'top';
+      const t = this.state.konmei === 'other' ? this.state.customKonmei.trim() : this.state.konmei;
+      tcx.fillText(t, this.settings.公演名.X * scale, this.settings.公演名.Y * scale);
+    }
+
+    const cols = +this.state.ninzu.split("x")[0];
+    const cw = tc.width / cols;
+    const ch = cw * this.baseAspect;
+
+    this.grid.forEach((name, i) => {
+      const r = Math.floor(i / cols), c = i % cols;
+      const x = c * cw, y = r * ch + (this.state.showKonmei ? this.settings.公演名.フォントサイズ * scale : 0);
+      tcx.fillStyle = '#fff4f6';
+      tcx.fillRect(x, y, cw, ch);
+      tcx.strokeStyle = '#F676A6';
+      tcx.strokeRect(x, y, cw, ch);
+
+      if (!name) {
+        if (!isDL) {
+          tcx.fillStyle = '#F676A6';
+          tcx.font = `${24 * scale}px KozGoPr6N`;
+          tcx.textAlign = 'center';
+          tcx.textBaseline = 'middle';
+          tcx.fillText('+', x + cw / 2, y + ch / 2);
+        }
+        return;
+      }
+
+      const mem = this.members.find(m => m.name_ja === name);
+      let y0 = y + 10 * scale;
+      let usedHeight = 0;
+
+      if (this.state.showPhoto && this.preloadedImages[name]) {
+        const img = this.preloadedImages[name];
+        const asp = img.naturalWidth / img.naturalHeight;
+        let h = ch * 0.6;
+        let w = h * asp;
+        if (w > cw * 0.8) { w = cw * 0.8; h = w / asp; }
+        const xOffset = (cw - w) / 2;
+        tcx.drawImage(img, x + xOffset, y0, w, h);
+        y0 += h + 5 * scale;
+        usedHeight += h + 5 * scale;
+      }
+
+      const availHeight = ch - usedHeight;
+      const L = name.length;
+      let fs = this.settings.全名.フォントサイズ || Math.min(availHeight * 0.3, (cw - 20) / (L * 0.5), 24);
+      tcx.fillStyle = '#F676A6';
+      tcx.textAlign = 'center';
+      tcx.textBaseline = 'top';
+      tcx.font = `${fs * scale}px KozGoPr6N`;
+      tcx.fillText(name, x + cw / 2 + this.settings.全名.X * scale, y0 + this.settings.全名.Y * scale);
+      y0 += fs + 5 * scale;
+
+      if (this.state.showNickname) {
+        let s = this.settings.ネックネーム.フォントサイズ || Math.min(availHeight * 0.15, 20);
+        tcx.font = `${s * scale}px KozGoPr6N`;
+        tcx.fillText(mem.nickname, x + cw / 2 + this.settings.ネックネーム.X * scale, y0 + this.settings.ネックネーム.Y * scale);
+        y0 += s + 3 * scale;
+      }
+
+      if (this.state.showKi) {
+        let s = this.settings.期別.フォントサイズ || Math.min(availHeight * 0.15, 20);
+        tcx.font = `${s * scale}px KozGoPr6N`;
+        tcx.fillText(mem.ki, x + cw / 2 + this.settings.期別.X * scale, y0 + this.settings.期別.Y * scale);
+        y0 += s + 3 * scale;
+      }
+
+      if (this.state.showColorText) {
+        const colorMap = {'#FF0000':'赤','#FFA500':'オレンジ','#FFFF00':'黄','#0000FF':'青','#00FF00':'緑','#FFFFFF':'白','#FF69B4':'濃いピンク','#FFB6C1':'薄ピンク','#32CD32':'黄緑'};
+        tcx.textBaseline = 'middle';
+        const colors = mem.colors;
+        let totWidth = colors.reduce((sum, c, i) => sum + tcx.measureText(colorMap[c] || '').width + (i < colors.length - 1 ? tcx.measureText(' x ').width + 5 : 0), 0);
+        let xx = x + (cw - totWidth) / 2 + this.settings.色文字1.X * scale;
+        colors.forEach((c, i) => {
+          const text = colorMap[c] || '';
+          tcx.fillStyle = (c === '#FFFFFF') ? '#f5f2f2' : c;
+          let fontSize = Math.min(18, (ch * 0.15) / colors.length);
+          tcx.font = `${fontSize * scale}px KozGoPr6N`;
+          tcx.fillText(text, xx, y + ch * 0.85 + this.settings['色文字' + (i + 1)].Y * scale);
+          xx += tcx.measureText(text).width;
+          if (i < colors.length - 1) {
+            tcx.fillStyle = '#F676A6';
+            tcx.fillText(' x ', xx, y + ch * 0.85);
+            xx += tcx.measureText(' x ').width + 5;
+          }
+        });
+      } else if (this.state.showColorBlock) {
+        const colors = mem.colors;
+        const bw = cw * (0.8 / colors.length);
+        const tw = bw * colors.length;
+        const xOffset = (cw - tw) / 2;
+        colors.forEach((c, j) => {
+          tcx.fillStyle = c || '#f0f0f0';
+          tcx.fillRect(x + xOffset + j * bw, y + ch * 0.8 + this.settings.色塊.Y * scale, bw, bw * 0.8);
+        });
+      }
+
+      if (!isDL) {
+        tcx.fillStyle = '#F676A6';
+        tcx.font = `12px KozGoPr6N`;
+        tcx.textAlign = 'right';
+        tcx.textBaseline = 'top';
+        tcx.fillText('選択', x + cw - 10, y + 10);
+      }
+    });
+  }
+
+  updateAndRender() {
+    this.updateState();
+    this.updateGrid();
+    this.renderGrid();
+  }
+
+  updateState() {
+    this.state.ninzu = document.getElementById("ninzuSelect").value;
+    this.state.konmei = document.getElementById("konmeiSelect").value;
+    this.state.kibetsu = document.getElementById("kibetsuSelect").value;
+    this.state.showAll = document.getElementById("showAll").checked;
+    this.state.showKibetsu = document.getElementById("showKibetsu").checked;
+    this.state.showKonmei = document.getElementById("showKonmei").checked;
+    this.state.showPhoto = document.getElementById("showPhoto").checked;
+    this.state.showNickname = document.getElementById("showNickname").checked;
+    this.state.showKi = document.getElementById("showKi").checked;
+    this.state.showColorBlock = document.getElementById("showColorBlock").checked;
+    this.state.showColorText = document.getElementById("showColorText").checked;
+    this.state.customKonmei = document.getElementById("customKonmei").value;
+    if (this.state.konmei === 'other') {
+      document.getElementById('customKonmei').style.display = 'block';
+    } else {
+      document.getElementById('customKonmei').style.display = 'none';
+    }
+  }
+
+  bindEvents() {
+    const inputs = document.querySelectorAll('#controls input:not(#customKonmei), #controls select');
+    inputs.forEach(el => el.addEventListener('change', () => this.updateAndRender()));
+
+    document.getElementById('showColorBlock').addEventListener('change', (e) => {
+      if (e.target.checked) document.getElementById('showColorText').checked = false;
+      this.updateAndRender();
+    });
+    document.getElementById('showColorText').addEventListener('change', (e) => {
+      if (e.target.checked) document.getElementById('showColorBlock').checked = false;
+      this.updateAndRender();
+    });
+    document.getElementById('showKibetsu').addEventListener('change', () => {
+      document.getElementById('showAll').checked = false;
+      this.updateAndRender();
+    });
+
+    this.canvas.addEventListener('click', (e) => {
+      const r = this.canvas.getBoundingClientRect();
+      const mx = e.clientX - r.left;
+      const my = e.clientY - r.top - (this.state.showKonmei ? this.settings.公演名.フォントサイズ : 0);
+      const cols = +this.state.ninzu.split("x")[0];
+      const cw = this.canvas.width / cols;
+      const ch = cw * this.baseAspect;
+      const col = Math.floor(mx / cw);
+      const row = Math.floor(my / ch);
+      const idx = row * cols + col;
+      if (idx >= 0 && idx < this.grid.length) {
+        const x = col * cw, y = row * ch;
+        if (!this.grid[idx]) {
+          this.showPopup(idx);
+        } else if (mx > x + cw - 30 && my < y + 30) {
+          this.grid[idx] = null;
+          this.updateAndRender();
+        }
+      }
+    });
+
+    document.getElementById('downloadButton').addEventListener('click', async () => {
+      await this.loadData();
+      const tmp = document.createElement('canvas');
+      tmp.width = this.canvas.width * 2;
+      tmp.height = this.canvas.height * 2;
+      const p = tmp.getContext('2d');
+      p.scale(2, 2);
+      this.renderGrid(tmp, p);
+      const a = document.createElement('a');
+      a.download = 'penlight_colors_300dpi.png';
+      a.href = tmp.toDataURL('image/png');
+      a.click();
+    });
+  }
+
+  showPopup(idx) {
+    this.currentIndex = idx;
+    const popup = document.getElementById('popup');
+    const periods = [...new Set(this.members.map(m => m.ki))];
+    let html = '';
+    periods.forEach(p => {
+      html += `<details><summary>${p}</summary><div class="member-list">`;
+      this.members.filter(m => m.ki === p).forEach(m => html += `<div class="member-item"><img src="${m.image}" width="50"><span>${m.name_ja}</span></div>`);
+      html += '</div></details>';
+    });
+    html += `<div class="popup-footer"><button id="popupSelectBtn">選択</button><button id="popupCloseBtn">閉じる</button></div>`;
+    popup.innerHTML = html;
+    popup.style.display = 'block';
+    popup.querySelectorAll('.member-item').forEach(it => it.onclick = () => {
+      popup.querySelectorAll('.member-item').forEach(i => i.classList.remove('selected'));
+      it.classList.add('selected');
+    });
+    document.getElementById('popupSelectBtn').onclick = () => {
+      const s = popup.querySelector('.member-item.selected span');
+      if (s) {
+        this.grid[this.currentIndex] = s.textContent;
+        popup.style.display = 'none';
+        this.updateAndRender();
+      }
+    };
+    document.getElementById('popupCloseBtn').onclick = () => popup.style.display = 'none';
+  }
 }
 
 // 初期化
-preloadAll().then(() => {
-  injectSettingsPanel();
-  makeResponsive();
-  setupListeners();
-  document.getElementById('konmeiSelect').value = 'ただいま　恋愛中';
-  document.getElementById('showColorBlock').checked = true; // 預設勾選 "推しカラー(色塊)"
-  document.getElementById('showColorText').checked = false;
-  updateAndRender();
-});
-
-// レスポンシブ化 & 中央寄せ
-function makeResponsive() {
-  canvas.style.display = 'block';
-  canvas.style.margin = '0 auto';
-  canvas.style.width = '100%';
-  canvas.style.height = 'auto';
-}
-
-// 詳細設定パネル注入 (ドラッガブル)
-function injectSettingsPanel() {
-  let panel = document.getElementById('設定パネル');
-  if (!panel) {
-    panel = document.createElement('div');
-    panel.id = '設定パネル';
-    panel.style.position = 'fixed';
-    panel.style.top = '100px';
-    panel.style.left = '50px';
-    panel.style.background = '#fff';
-    panel.style.border = '2px solid #F676A6';
-    panel.style.padding = '8px';
-    panel.style.zIndex = '1000';
-    panel.style.cursor = 'move';
-    panel.innerHTML = `<strong onclick="this.parentElement.classList.toggle('collapsed')">詳細設定</strong><div id="詳細中身"></div>`;
-    document.body.append(panel);
-    makeDraggable(panel);
-  }
-  const body = panel.querySelector('#詳細中身');
-  body.innerHTML = '';
-  Object.entries(設定).forEach(([key, cfg]) => {
-    const group = document.createElement('div');
-    group.style.margin = '6px 0';
-    const title = document.createElement('div');
-    title.textContent = key;
-    title.style.fontWeight = 'bold';
-    group.append(title);
-    Object.entries(cfg).forEach(([prop, val]) => {
-      const label = document.createElement('label');
-      label.style.display = 'block';
-      label.textContent = `${prop}：`;
-      const inp = document.createElement('input');
-      inp.type = 'number';
-      inp.value = val || 0;
-      inp.style.width = '60px';
-      inp.step = '1';
-      inp.addEventListener('input', () => {
-        設定[key][prop] = parseFloat(inp.value);
-        updateAndRender();
-      });
-      label.append(inp);
-      group.append(label);
-    });
-    body.append(group);
-  });
-}
-
-function makeDraggable(el) {
-  let ox, oy;
-  el.addEventListener('mousedown', e => {
-    if (e.target.tagName !== 'INPUT') {
-      ox = e.clientX - el.offsetLeft;
-      oy = e.clientY - el.offsetTop;
-      function move(e) {
-        el.style.left = e.clientX - ox + 'px';
-        el.style.top = e.clientY - oy + 'px';
-      }
-      document.addEventListener('mousemove', move);
-      document.addEventListener('mouseup', () => document.removeEventListener('mousemove', move), { once: true });
-    }
-  });
-}
-
-// 更新→描画
-function updateAndRender() {
-  updateGrid();
-  renderGrid();
-}
-
-// グリッド更新
-function updateGrid() {
-  const [cols, rows] = document.getElementById("ninzuSelect").value.split("x").map(Number);
-  const 全員 = document.getElementById("showAll").checked;
-  const 期別 = document.getElementById("showKibetsu").checked;
-  const val = document.getElementById("kibetsuSelect").value;
-  if (全員) {
-    grid = Array(cols * Math.ceil(members.length / cols)).fill(null);
-    members.forEach((m, i) => grid[i] = m.name_ja);
-  } else if (期別) {
-    const f = members.filter(m => m.ki === val).map(m => m.name_ja);
-    grid = Array(cols * Math.ceil(f.length / cols)).fill(null);
-    f.forEach((n, i) => grid[i] = n);
-  } else {
-    grid = Array(cols * rows).fill(null).map((_, i) => grid[i] || null);
-  }
-  resizeCanvas(cols, grid.length);
-}
-
-function resizeCanvas(cols, total) {
-  const rows = Math.ceil(total / cols);
-  const cw = canvas.width / cols;
-  let chBase = cw * baseAspect;
-  let extraHeight = 0;
-  if (document.getElementById("showPhoto").checked) extraHeight += chBase * 0.3;
-  if (document.getElementById("showNickname").checked) extraHeight += chBase * 0.1;
-  if (document.getElementById("showKi").checked) extraHeight += chBase * 0.1;
-  if (document.getElementById("showColorBlock").checked || document.getElementById("showColorText").checked) extraHeight += chBase * 0.15;
-  const ch = Math.max(chBase, extraHeight);
-  const hd = document.getElementById("showKonmei").checked ? 40 : 0;
-  canvas.height = rows * ch + hd;
-}
-
-// 描画
-async function renderGrid(tc = canvas, tcx = ctx) {
-  const isDL = tc !== canvas;
-  const scale = tc.width / baseCanvasWidth;
-  tcx.fillStyle = '#fff4f6';
-  tcx.fillRect(0, 0, tc.width, tc.height);
-
-  const showKon = document.getElementById("showKonmei").checked;
-  const offY = showKon ? 設定.公演名.Y * scale : 0;
-  if (showKon) {
-    tcx.fillStyle = '#F676A6';
-    tcx.font = `${設定.公演名.フォントサイズ * scale}px KozGoPr6N`;
-    tcx.textAlign = 'left';
-    tcx.textBaseline = 'top';
-    const v = document.getElementById("konmeiSelect").value;
-    const t = v === 'other' ? document.getElementById("customKonmei").value.trim() : v;
-    tcx.fillText(t, 設定.公演名.X * scale, offY);
-  }
-
-  const cols = +document.getElementById("ninzuSelect").value.split("x")[0];
-  const cw = tc.width / cols;
-  const ch = cw * baseAspect;
-  const showPhoto = document.getElementById("showPhoto").checked;
-  const showNick = document.getElementById("showNickname").checked;
-  const showKiTxt = document.getElementById("showKi").checked;
-  let showBlk = document.getElementById("showColorBlock").checked;
-  let showTxt = document.getElementById("showColorText").checked;
-  if (showBlk === showTxt) { showTxt = false; showBlk = true; document.getElementById("showColorText").checked = false; document.getElementById("showColorBlock").checked = true; }
-
-  for (let i = 0; i < grid.length; i++) {
-    const name = grid[i];
-    const r = Math.floor(i / cols), c = i % cols;
-    const x = c * cw, y = r * ch + offY;
-    tcx.fillStyle = '#fff4f6';
-    tcx.fillRect(x, y, cw, ch);
-    tcx.strokeStyle = '#F676A6';
-    tcx.strokeRect(x, y, cw, ch);
-    if (!name) {
-      if (!isDL) {
-        tcx.fillStyle = '#F676A6';
-        tcx.font = `${24 * scale}px KozGoPr6N`;
-        tcx.textAlign = 'center';
-        tcx.textBaseline = 'middle';
-        tcx.fillText('+', x + cw / 2, y + ch / 2);
-      }
-      continue;
-    }
-    const mem = members.find(m => m.name_ja === name);
-    let y0 = y + 10 * scale; // 初始偏移
-    if (showPhoto && preloadedImages[name]) {
-      const img = preloadedImages[name];
-      const asp = img.naturalWidth / img.naturalHeight;
-      let h = ch * 0.6;
-      let w = h * asp;
-      if (w > cw * 0.8) { w = cw * 0.8; h = w / asp; }
-      const xOffset = (cw - w) / 2;
-      tcx.drawImage(img, x + xOffset, y0, w, h);
-      y0 += h + 5 * scale;
-    }
-    let used = 0;
-    if (showPhoto) used += ch * 0.6 + 5 * scale;
-    if (showNick) used += ch * 0.1;
-    if (showKiTxt) used += ch * 0.1;
-    if (showBlk || showTxt) used += ch * 0.15;
-    const avail = ch - used;
-    const L = name.length;
-    let fs = 設定.全名.フォントサイズ || Math.min(avail * 0.3, (cw - 20) / (L * 0.5), 24); // 限制最大字體
-    tcx.fillStyle = '#F676A6';
-    tcx.textAlign = 'center';
-    tcx.textBaseline = 'top';
-    tcx.font = `${fs * scale}px KozGoPr6N`;
-    tcx.fillText(name, x + cw / 2 + 設定.全名.X * scale, y0 + 設定.全名.Y * scale);
-    y0 += fs + 5 * scale;
-    if (showNick) {
-      let s = 設定.ネックネーム.フォントサイズ || Math.min(avail * 0.15, 20);
-      tcx.font = `${s * scale}px KozGoPr6N`;
-      tcx.fillText(mem.nickname, x + cw / 2 + 設定.ネックネーム.X * scale, y0 + 設定.ネックネーム.Y * scale);
-      y0 += s + 3 * scale;
-    }
-    if (showKiTxt) {
-      let s = 設定.期別.フォントサイズ || Math.min(avail * 0.15, 20);
-      tcx.font = `${s * scale}px KozGoPr6N`;
-      tcx.fillText(mem.ki, x + cw / 2 + 設定.期別.X * scale, y0 + 設定.期別.Y * scale);
-      y0 += s + 3 * scale;
-    }
-    if (showTxt) {
-      const map = {'#FF0000':'赤','#FFA500':'オレンジ','#FFFF00':'黄','#0000FF':'青','#00FF00':'緑','#FFFFFF':'白','#FF69B4':'濃いピンク','#FFB6C1':'薄ピンク','#32CD32':'黄緑'};
-      tcx.textBaseline = 'middle';
-      const arr = mem.colors;
-      let totWidth = 0;
-      arr.forEach((c, i) => {
-        const t = map[c] || '';
-        totWidth += tcx.measureText(t).width + (i < arr.length - 1 ? tcx.measureText(' x ').width + 5 : 0); // 增加間距
-      });
-      let xx = x + (cw - totWidth) / 2 + 設定.色文字1.X * scale;
-      arr.forEach((c, i) => {
-        const t = map[c] || '';
-        tcx.fillStyle = (c === '#FFFFFF') ? '#f5f2f2' : c;
-        let fontSize = Math.min(18, (ch * 0.15) / arr.length);
-        tcx.font = `${fontSize * scale}px KozGoPr6N`;
-        tcx.fillText(t, xx, y + ch * 0.85 + 設定['色文字' + (i + 1)].Y * scale); // 固定底部位置
-        xx += tcx.measureText(t).width;
-        if (i < arr.length - 1) {
-          tcx.fillStyle = '#F676A6';
-          tcx.fillText(' x ', xx, y + ch * 0.85);
-          xx += tcx.measureText(' x ').width + 5;
-        }
-      });
-    } else if (showBlk) {
-      const arr = mem.colors;
-      const bw = cw * (0.8 / arr.length);
-      const tw = bw * arr.length;
-      const xOffset = (cw - tw) / 2;
-      arr.forEach((c, j) => {
-        tcx.fillStyle = c || '#f0f0f0';
-        tcx.fillRect(x + xOffset + j * bw, y + ch * 0.8 + 設定.色塊.Y * scale, bw, bw * 0.8); // 減少高度
-      });
-    }
-    if (!isDL) {
-      tcx.fillStyle = '#F676A6';
-      tcx.font = `12px KozGoPr6N`;
-      tcx.textAlign = 'right';
-      tcx.textBaseline = 'top';
-      tcx.fillText('選択', x + cw - 10, y + 10);
-    }
-  }
-}
-
-// イベントバインド
-function setupListeners() {
-  const cBlk = document.getElementById('showColorBlock');
-  const cTxt = document.getElementById('showColorText');
-  cBlk.addEventListener('change', e => {
-    if (e.target.checked) { cTxt.checked = false; } else { e.target.checked = true; }
-    updateAndRender();
-  });
-  cTxt.addEventListener('change', e => {
-    if (e.target.checked) { cBlk.checked = false; } else { e.target.checked = true; }
-    updateAndRender();
-  });
-  document.getElementById('showKibetsu').addEventListener('change', () => {
-    document.getElementById('showAll').checked = false;
-    updateAndRender();
-  });
-  document.getElementById('kibetsuSelect').addEventListener('change', () => {
-    if (document.getElementById('showKibetsu').checked) updateAndRender();
-  });
-  document.getElementById('konmeiSelect').addEventListener('change', () => {
-    const customInput = document.getElementById('customKonmei');
-    if (document.getElementById('konmeiSelect').value === 'other') {
-      customInput.style.display = 'block';
-    } else {
-      customInput.style.display = 'none';
-      customInput.value = '';
-    }
-    updateAndRender();
-  });
-  document.querySelectorAll('#controls input:not(#showColorBlock):not(#showColorText):not(#showKibetsu):not(#customKonmei), #controls select:not(#kibetsuSelect):not(#konmeiSelect)')
-    .forEach(el => el.addEventListener('change', updateAndRender));
-  canvas.addEventListener('click', e => {
-    const r = canvas.getBoundingClientRect();
-    const offY = document.getElementById("showKonmei").checked ? 40 : 0;
-    const mx = e.clientX - r.left;
-    const my = e.clientY - r.top - offY;
-    const cols = +document.getElementById("ninzuSelect").value.split("x")[0];
-    const cw = canvas.width / cols;
-    const ch = cw * baseAspect;
-    const col = Math.floor(mx / cw);
-    const row = Math.floor(my / ch);
-    const idx = row * cols + col;
-    if (idx >= 0 && idx < grid.length) {
-      if (!grid[idx]) {
-        showPopup(idx);
-      } else if (mx > x + cw - 30 && my < y + 30) { // 右上角 "選択" 區域
-        grid[idx] = null;
-        updateAndRender();
-      }
-    }
-  });
-  document.getElementById('downloadButton').addEventListener('click', async () => {
-    await preloadAll();
-    const tmp = document.createElement('canvas');
-    tmp.width = canvas.width * 2;
-    tmp.height = canvas.height * 2;
-    const p = tmp.getContext('2d');
-    p.scale(2, 2);
-    await renderGrid(tmp, p);
-    const a = document.createElement('a');
-    a.download = 'penlight_colors_300dpi.png';
-    a.href = tmp.toDataURL('image/png');
-    a.click();
-  });
-}
-
-// ポップアップ
-function showPopup(idx) {
-  currentIndex = idx;
-  const popup = document.getElementById('popup');
-  const per = [...new Set(members.map(m => m.ki))];
-  let html = '';
-  per.forEach(p => {
-    html += `<details><summary>${p}</summary><div class="member-list">`;
-    members.filter(m => m.ki === p).forEach(m => html += `<div class="member-item"><img src="${m.image}" width="50"><span>${m.name_ja}</span></div>`);
-    html += '</div></details>';
-  });
-  html += `<div class="popup-footer"><button id="popupSelectBtn">選択</button><button id="popupCloseBtn">閉じる</button></div>`;
-  popup.innerHTML = html;
-  popup.style.display = 'block';
-  popup.querySelectorAll('.member-item').forEach(it => it.onclick = () => {
-    popup.querySelectorAll('.member-item').forEach(i => i.classList.remove('selected'));
-    it.classList.add('selected');
-  });
-  document.getElementById('popupSelectBtn').onclick = () => {
-    const s = popup.querySelector('.member-item.selected span');
-    if (s) {
-      grid[currentIndex] = s.textContent;
-      popup.style.display = 'none';
-      updateAndRender();
-    }
-  };
-  document.getElementById('popupCloseBtn').onclick = () => popup.style.display = 'none';
-}
+const generator = new PenlightGenerator();
+generator.init();
