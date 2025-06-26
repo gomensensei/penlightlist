@@ -62,7 +62,7 @@ class PenlightGenerator {
   async loadData() {
     try {
       const res = await fetch("members.json");
-      if (!res.ok) throw new Error("メンバーデータの取得に失敗しました");
+      if (!res.ok) throw new Error(`メンバーデータの取得に失敗しました: ${res.status} ${res.statusText}`);
       this.members = await res.json();
       await Promise.all(this.members.map(m => this.preloadImage(m.name_ja, m.image)));
     } catch (error) {
@@ -80,10 +80,16 @@ class PenlightGenerator {
         console.log(`画像ロード成功: ${name}, ${src}`);
         resolve();
       };
-      img.onerror = () => {
-        this.preloadedImages[name] = null; // 備用佔位符
-        console.warn(`画像ロード失敗: ${name}, ${src}, 使用佔位符`);
-        resolve();
+      img.onerror = (e) => {
+        this.preloadedImages[name] = null;
+        console.warn(`画像ロード失敗: ${name}, ${src}, 错误: ${e.type}, 使用佔位符`);
+        // 備用佔位符（灰色方塊）
+        const placeholder = new Image();
+        placeholder.src = 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAACklEQVR4nGMAAQAABQABDQottAAAAABJRU5ErkJggg==';
+        placeholder.onload = () => {
+          this.preloadedImages[name] = placeholder;
+          resolve();
+        };
       };
     });
   }
@@ -480,7 +486,7 @@ class PenlightGenerator {
           this.renderGrid(tmp, p);
           const a = document.createElement('a');
           a.download = 'penlight_colors_300dpi.png';
-          a.href = tmp.toDataURL('image/png', 1.0); // 確保最高品質
+          a.href = tmp.toDataURL('image/png', 1.0);
           a.click();
         });
       }
