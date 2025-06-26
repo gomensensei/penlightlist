@@ -1,197 +1,253 @@
-@font-face { font-family: 'KozGoPr6N'; src: url('fonts/KozGoPr6N-Medium.woff2') format('woff2'); }
-@font-face { font-family: 'AR ADGothicJP'; src: url('fonts/jadhei01m.woff2') format('woff2'); }
+/* ------------------------------------------------------
+   Font Faces (keep existing custom fonts here)
+   ------------------------------------------------------ */
+@font-face {
+  font-family: "AKBTicket"; /* 票面專用字體，可替換為你的自訂字體名稱 */
+  src: url("./fonts/akb-ticket.woff2") format("woff2"),
+       url("./fonts/akb-ticket.woff") format("woff");
+  font-weight: normal;
+  font-style: normal;
+  font-display: swap;
+}
 
+/* 如果你想自行託管 Noto Sans JP，可啟用以下 @font-face
+   如已透過 <link> 載入 Google Fonts，保留亦無妨，瀏覽器會優先本地快取 */
+@font-face {
+  font-family: "Noto Sans JP";
+  src: url("./fonts/NotoSansJP-Regular.woff2") format("woff2"),
+       url("./fonts/NotoSansJP-Regular.woff") format("woff");
+  font-weight: 400;
+  font-style: normal;
+  font-display: swap;
+}
+@font-face {
+  font-family: "Noto Sans JP";
+  src: url("./fonts/NotoSansJP-Bold.woff2") format("woff2"),
+       url("./fonts/NotoSansJP-Bold.woff") format("woff");
+  font-weight: 700;
+  font-style: normal;
+  font-display: swap;
+}
+
+/* ------------------------------------------------------
+   Global Theme Variables
+   ------------------------------------------------------ */
+:root {
+  --bg-light: #ffffff;
+  --bg-dark: #121212;
+  --text-light: #222222;
+  --text-dark: #eeeeee;
+  --accent: #ff66aa;
+  --cell-gap: 8px;
+  --cell-size: 120px; /* 預設格寬，可由 JS 覆寫 */
+  --header-height: 48px;
+  --image-scale: 0.35; /* 成員頭像佔格高比例 */
+  --oshicolor-height: 0.12; /* 推しカラー色塊高度 (格高比例) */
+}
+
+/* ------------------------------------------------------
+   Reset / Base
+   ------------------------------------------------------ */
+*, *::before, *::after {
+  box-sizing: border-box;
+}
+html,
 body {
-  font-family: 'KozGoPr6N', 'AR ADGothicJP', 'Noto Sans JP', sans-serif;
-  background-color: #fff4f6;
-  color: #333;
   margin: 0;
   padding: 0;
+  font-family: "Noto Sans JP", system-ui, sans-serif;
+  background: var(--bg-light);
+  color: var(--text-light);
+  -webkit-font-smoothing: antialiased;
 }
 
-#container {
-  max-width: 1000px;
-  margin: 0 auto;
-  padding: 20px;
-  text-align: center;
+body.dark {
+  background: var(--bg-dark);
+  color: var(--text-dark);
 }
 
-h1 {
-  font-size: 2.5em;
-  color: #F676A6;
-  margin-bottom: 15px;
+/* ------------------------------------------------------
+   Layout Wrappers
+   ------------------------------------------------------ */
+.container {
+  display: grid;
+  grid-template-columns: 320px 1fr;
+  min-height: 100vh;
+}
+@media (max-width: 768px) {
+  .container {
+    grid-template-columns: 1fr;
+    grid-template-rows: auto 1fr;
+  }
 }
 
-#controls {
-  display: flex;
-  flex-wrap: wrap;
-  justify-content: center;
-  gap: 10px;
-  margin-bottom: 20px;
-}
-
-#controls label {
-  font-size: 0.9em;
-  display: flex;
-  align-items: center;
-  gap: 4px;
-  color: #F676A6;
-}
-
-#renderCanvas {
-  display: block;
-  margin: 0 auto;
-  border: 2px solid #F676A6;
-  background-color: #fff;
-}
-
-#downloadButton {
-  font-size: 1em;
-  padding: 10px 20px;
-  background-color: #F676A6;
-  color: white;
-  border: none;
-  border-radius: 4px;
-  cursor: pointer;
-  transition: background-color 0.3s;
-}
-
-#downloadButton:hover {
-  background-color: #E55A8C;
-}
-
-#popup {
-  display: none;
-  position: fixed;
-  top: 50%;
-  left: 50%;
-  transform: translate(-50%, -50%);
-  background-color: white;
-  padding: 20px;
-  border: 2px solid #F676A6;
-  border-radius: 6px;
-  box-shadow: 0 0 10px rgba(0,0,0,0.2);
-  z-index: 1000;
-  max-height: 80vh;
+aside {
+  padding: 1rem;
+  background: #f8f8f8;
   overflow-y: auto;
 }
-
-#popup #accordion {
-  margin-bottom: 10px;
+body.dark aside {
+  background: #1e1e1e;
 }
 
-#popup summary {
-  font-size: 1.1em;
-  padding: 5px;
-  cursor: pointer;
-  background-color: #F676A6;
-  color: #fff;
-}
-
-#popup .member-list {
+main {
   display: flex;
-  flex-wrap: wrap;
-  gap: 10px;
-  padding: 10px;
-}
-
-#popup .member-item {
-  display: flex;
+  flex-direction: column;
   align-items: center;
-  cursor: pointer;
-  padding: 5px;
+  padding: 1rem;
+  gap: 1rem;
 }
 
-#popup .member-item:hover {
-  background-color: #f9f9f9;
-}
-
-#popup .member-item.selected {
-  background-color: #e0e0e0;
-}
-
-#popup select {
-  font-size: 1em;
-  margin-bottom: 10px;
+/* ------------------------------------------------------
+   Canvas & Preview
+   ------------------------------------------------------ */
+#previewWrapper {
+  position: relative;
   width: 100%;
-  padding: 5px;
+  overflow: auto;
+}
+canvas#ticketCanvas {
+  display: block;
+  max-width: 100%;
+  height: auto;
+  border: 1px solid #ddd;
+  background: #fff;
+}
+body.dark canvas#ticketCanvas {
+  border-color: #333;
+  background: #222;
 }
 
-#popup button {
-  margin: 5px;
-  padding: 6px 12px;
-  font-size: 0.9em;
+/* ------------------------------------------------------
+   Form Elements
+   ------------------------------------------------------ */
+label, select, input[type="text"], input[type="number"], button {
+  font-family: inherit;
+  font-size: 0.9rem;
+}
+label {
+  display: block;
+  margin-top: 1rem;
+  margin-bottom: 0.25rem;
+}
+select, input[type="text"], input[type="number"] {
+  width: 100%;
+  padding: 0.4rem 0.6rem;
+  border: 1px solid #ccc;
+  border-radius: 4px;
+  background: #fff;
+  color: inherit;
+}
+body.dark select,
+body.dark input[type="text"],
+body.dark input[type="number"] {
+  background: #2a2a2a;
+  border-color: #555;
+}
+
+button {
+  cursor: pointer;
+  padding: 0.6rem 1.2rem;
   border: none;
   border-radius: 4px;
-  cursor: pointer;
+  background: var(--accent);
+  color: #fff;
+  font-weight: 700;
+  margin-top: 1rem;
+}
+button:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
 }
 
-#popupSelectBtn {
-  background-color: #F676A6;
-  color: white;
-}
-
-#popupCloseBtn {
-  background-color: #E55A8C;
-  color: white;
-}
-
-.checkbox-group {
+/* Toggle Dark Mode */
+.toggle {
   display: flex;
-  flex-wrap: wrap;
-  gap: 10px;
-  justify-content: center;
-  margin-top: 10px;
+  align-items: center;
+  gap: 0.5rem;
+  margin-top: 1rem;
 }
 
-input[type="checkbox"] {
-  transform: scale(1.2);
-  margin-right: 5px;
-}
-
-input[type="radio"] {
-  transform: scale(1.1);
-  margin-right: 4px;
-}
-
-select {
-  font-size: 0.95em;
-  padding: 4px;
-  color: #F676A6;
-}
-
-@media (max-width: 768px) {
-  #renderCanvas {
-    width: 100%;
-    height: auto;
-    aspect-ratio: 16 / 9;
-  }
-  #controls {
-    flex-direction: column;
-    align-items: center;
-  }
-  #downloadButton {
-    width: 100%;
-    max-width: 200px;
-  }
-  #popup {
-    width: 90%;
-    max-height: 70vh;
-  }
-  #popup .member-item img {
-    width: 40px;
-  }
-  #popup .member-item span {
-    font-size: 14px;
-  }
-  #renderCanvas canvas {
-    font-size: 24px !important;
-  }
-  #renderCanvas {
-  display: block;
-  margin: 0 auto;
+/* ------------------------------------------------------
+   Grid Cells (Member Slots)
+   ------------------------------------------------------ */
+.grid {
+  display: grid;
+  grid-gap: var(--cell-gap);
+  justify-content: start;
+  align-content: start;
   width: 100%;
-  height: auto;
 }
 
+.cell {
+  position: relative;
+  width: var(--cell-size);
+  height: var(--cell-size);
+  border: 1px solid #ccc;
+  border-radius: 4px;
+  overflow: hidden;
+  background: #fafafa;
+}
+body.dark .cell {
+  background: #2b2b2b;
+  border-color: #555;
+}
+
+/* Member Image */
+.member-img {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: calc(var(--image-scale) * 100%);
+  height: calc(var(--image-scale) * 100%);
+  transform: translate(-50%, -50%);
+  object-fit: cover;
+  border-radius: 50%;
+}
+
+/* Member Name */
+.member-name {
+  position: absolute;
+  bottom: 4px;
+  left: 4px;
+  right: 4px;
+  text-align: center;
+  font-size: 0.75rem;
+  font-weight: 700;
+  line-height: 1.1;
+}
+
+/* 推しカラー色塊 */
+.oshicolor {
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  width: 100%;
+  height: calc(var(--oshicolor-height) * 100%);
+}
+
+/* ------------------------------------------------------
+   Utility Classes
+   ------------------------------------------------------ */
+.hidden {
+  display: none !important;
+}
+
+.flex {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+/* ------------------------------------------------------
+   Animation / Transition (可選)
+   ------------------------------------------------------ */
+.fade-enter {
+  opacity: 0;
+  transform: scale(0.9);
+}
+.fade-enter-active {
+  transition: all 200ms ease-out;
+  opacity: 1;
+  transform: scale(1);
 }
