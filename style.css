@@ -43,8 +43,8 @@ h1 {
   margin: 0 auto;
   border: 2px solid #F676A6;
   background-color: #fff;
-  max-width: 100%; /* 確保響應式 */
-  height: auto; /* 由 JavaScript 控制 */
+  max-width: 100%;
+  height: auto;
 }
 
 #downloadButton {
@@ -76,8 +76,8 @@ h1 {
   z-index: 1000;
   max-height: 80vh;
   overflow-y: auto;
-  width: 80%; /* 增加響應式寬度 */
-  max-width: 600px; /* 限制最大寬度 */
+  width: 80%;
+  max-width: 600px;
 }
 
 #popup #accordion {
@@ -170,7 +170,7 @@ select {
   padding: 4px;
   font-size: 0.95em;
   color: #F676A6;
-  width: 200px; /* 增加輸入框寬度 */
+  width: 200px;
 }
 
 #設定パネル {
@@ -193,11 +193,15 @@ select {
   margin: 4px 0;
 }
 
+#設定パネル.collapsed #詳細中身 {
+  display: none;
+}
+
 @media (max-width: 768px) {
   #renderCanvas {
     width: 100%;
     height: auto;
-    aspect-ratio: 1; /* 改進為正方形比例，根據內容調整 */
+    aspect-ratio: 1;
   }
   #controls {
     flex-direction: column;
