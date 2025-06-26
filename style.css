@@ -182,6 +182,8 @@ select {
   padding: 8px;
   z-index: 1000;
   cursor: move;
+  min-width: 200px;
+  transition: all 0.3s ease;
 }
 
 #設定パネル #詳細中身 {
@@ -195,6 +197,10 @@ select {
 
 #設定パネル.collapsed #詳細中身 {
   display: none;
+}
+
+#設定パネル.collapsed {
+  padding: 8px;
 }
 
 @media (max-width: 768px) {
@@ -230,12 +236,4 @@ select {
     width: 90%;
     max-width: 300px;
   }
-
-  #設定パネル.collapsed strong {
-  cursor: pointer;
-}
-#renderCanvas canvas {
-  image-rendering: pixelated; /* 防止模糊 */
-}
-  
 }
