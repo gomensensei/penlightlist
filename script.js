@@ -155,7 +155,7 @@ class PenlightGenerator {
       panel.style.display = 'none';
     }
     const body = panel.querySelector('#詳細中身');
- if (body) {
+    if (body) {
       body.innerHTML = '';
       Object.entries(this.settings).forEach(([key, cfg]) => {
         const group = document.createElement('div');
@@ -321,7 +321,6 @@ class PenlightGenerator {
         tcx.fillStyle = '#F676A6';
         tcx.textAlign = 'center';
         tcx.textBaseline = 'top';
-        tcx.font = `${fs * scale}px KozGoPr6N`;
         tcx.shadowBlur = 0; // Remove shadow for member name
         tcx.fillText(name, x + cw / 2 + this.settings.全名.X * scale, y0 + this.settings.全名.Y * scale);
         y0 += fs + 10 * scale;
@@ -349,7 +348,7 @@ class PenlightGenerator {
           colors.forEach((c, i) => {
             const text = c;
             tcx.font = `${this.settings['色文字' + (i + 1)].フォントサイズ * scale}px KozGoPr6N`;
-            totWidth += tcx.measureText(text).width + (i < colors.length - 1 ? tcx.measureText(' x ').width + 20 : 0);
+            totWidth += tcx.measureText(text).width + (i < colors.length - 1 ? tcx.measureText(' x ').width + 25 : 0); // Increased spacing to 25
           });
           let xx = x + (cw - totWidth) / 2 + this.settings.色文字1.X * scale;
           colors.forEach((c, i) => {
@@ -368,7 +367,7 @@ class PenlightGenerator {
               tcx.fillStyle = '#F676A6';
               tcx.shadowBlur = 0;
               tcx.fillText(' x ', xx, y + ch * 0.85);
-              xx += tcx.measureText(' x ').width + 20;
+              xx += tcx.measureText(' x ').width + 25;
             }
           });
         } else if (this.state.showColorBlock) {
@@ -497,4 +496,55 @@ class PenlightGenerator {
           const ch = cw * this.baseAspect * (this.state.showPhoto ? 1.5 : 1);
           const hd = this.state.showKonmei ? this.settings.公演名.フォントサイズ + 20 : 0;
           tmp.width = this.canvas.width * 2;
-          tmp.height = (
+          tmp.height = (rows * ch + hd) * 2; // Ensure height includes all rows
+          const p = tmp.getContext('2d');
+          p.scale(2, 2);
+          this.renderGrid(tmp, p);
+          const a = document.createElement('a');
+          a.download = 'penlight_colors_300dpi.png';
+          a.href = tmp.toDataURL('image/png', 1.0);
+          a.click();
+        });
+      }
+    } catch (error) {
+      console.error("Event binding error:", error);
+    }
+  }
+
+  showPopup(idx) {
+    try {
+      this.currentIndex = idx;
+      const popup = document.getElementById('popup');
+      if (popup) {
+        const periods = [...new Set(this.members.map(m => m.ki))];
+        let html = '';
+        periods.forEach(p => {
+          html += `<details><summary>${p}</summary><div class="member-list">`;
+          this.members.filter(m => m.ki === p).forEach(m => html += `<div class="member-item"><img src="${m.image}" width="50"><span>${m.name_ja}</span></div>`);
+          html += '</div></details>';
+        });
+        html += `<div class="popup-footer"><button id="popupSelectBtn">選択</button><button id="popupCloseBtn">閉じる</button></div>`;
+        popup.innerHTML = html;
+        popup.style.display = 'block';
+        popup.querySelectorAll('.member-item').forEach(it => it.onclick = () => {
+          popup.querySelectorAll('.member-item').forEach(i => i.classList.remove('selected'));
+          it.classList.add('selected');
+        });
+        document.getElementById('popupSelectBtn').onclick = () => {
+          const s = popup.querySelector('.member-item.selected span');
+          if (s) {
+            this.grid[this.currentIndex] = s.textContent;
+            popup.style.display = 'none';
+            this.updateAndRender();
+          }
+        };
+        document.getElementById('popupCloseBtn').onclick = () => popup.style.display = 'none';
+      }
+    } catch (error) {
+      console.error("Popup error:", error);
+    }
+  }
+}
+
+const generator = new PenlightGenerator();
+generator.init();
