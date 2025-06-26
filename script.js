@@ -1,4 +1,3 @@
-// === script.js (更新版) ===
 class PenlightGenerator {
   constructor() {
     this.canvas = document.getElementById("renderCanvas");
@@ -10,14 +9,14 @@ class PenlightGenerator {
     this.grid = [];
     this.currentIndex = null;
     this.settings = {
-      公演名: { フォントサイズ: 24, 文字間隔: 0, X: 10, Y: 30 },
+      公演名: { フォントサイズ: 24, 文字間隔: 0, X: 10, Y: 10 },
       全名: { フォントサイズ: null, 文字間隔: 0, X: 0, Y: 0 },
-      ネックネーム: { フォントサイズ: 20, 文字間隔: 0, X: 0, Y: 0 },
-      期別: { フォントサイズ: 20, 文字間隔: 0, X: 0, Y: 0 },
+      ネックネーム: { フォントサイズ: 16, 文字間隔: 0, X: 0, Y: 0 },
+      期別: { フォントサイズ: 16, 文字間隔: 0, X: 0, Y: 0 },
       写真: { X: 0, Y: 0, 幅: null, 高さ: null },
       色塊: { X: 0, Y: 0, 幅: null },
-      色文字1: { フォントサイズ: 18, X: 0, Y: 0 },
-      色文字2: { フォントサイズ: 18, X: 0, Y: 0 },
+      色文字1: { フォントサイズ: 14, X: 0, Y: 0 },
+      色文字2: { フォントサイズ: 14, X: 0, Y: 0 },
     };
     this.state = {
       ninzu: "2x1",
@@ -83,11 +82,12 @@ class PenlightGenerator {
     if (!panel) {
       panel = document.createElement('div');
       panel.id = '設定パネル';
-      panel.style.cssText = 'position: fixed; top: 100px; left: 50px; background: #fff; border: 2px solid #F676A6; padding: 8px; z-index: 1000; cursor: move;';
-      panel.innerHTML = `<strong onclick="this.parentElement.classList.toggle('collapsed')">詳細設定</strong><div id="詳細中身"></div>`;
+      panel.style.cssText = 'position: fixed; top: 100px; left: 50px; background: #fff; border: 2px solid #F676A6; padding: 8px; z-index: 1000; cursor: move; display: none;';
+      panel.innerHTML = `<strong>詳細設定</strong><div id="詳細中身"></div>`;
       document.body.appendChild(panel);
     } else {
-      panel.innerHTML = `<strong onclick="this.parentElement.classList.toggle('collapsed')">詳細設定</strong><div id="詳細中身"></div>`;
+      panel.innerHTML = `<strong>詳細設定</strong><div id="詳細中身"></div>`;
+      panel.style.display = 'none';
     }
     const body = panel.querySelector('#詳細中身');
     body.innerHTML = '';
@@ -139,6 +139,14 @@ class PenlightGenerator {
 
   updateGrid() {
     const [cols, rows] = this.state.ninzu.split("x").map(Number);
+    const totalCells = cols * rows;
+    if (this.grid.length !== totalCells) {
+      const newGrid = Array(totalCells).fill(null);
+      this.grid.forEach((val, i) => {
+        if (i < totalCells) newGrid[i] = val;
+      });
+      this.grid = newGrid;
+    }
     if (this.state.showAll) {
       this.grid = Array(cols * Math.ceil(this.members.length / cols)).fill(null);
       this.members.forEach((m, i) => this.grid[i] = m.name_ja);
@@ -146,8 +154,6 @@ class PenlightGenerator {
       const filtered = this.members.filter(m => m.ki === this.state.kibetsu).map(m => m.name_ja);
       this.grid = Array(cols * Math.ceil(filtered.length / cols)).fill(null);
       filtered.forEach((n, i) => this.grid[i] = n);
-    } else {
-      this.grid = Array(cols * rows).fill(null);
     }
     this.resizeCanvas(cols, this.grid.length);
   }
@@ -158,11 +164,11 @@ class PenlightGenerator {
     let chBase = cw * this.baseAspect;
     let extraHeight = 0;
     if (this.state.showPhoto) extraHeight += chBase * 0.6;
-    if (this.state.showNickname) extraHeight += chBase * 0.1;
-    if (this.state.showKi) extraHeight += chBase * 0.1;
-    if (this.state.showColorBlock || this.state.showColorText) extraHeight += chBase * 0.15;
-    const ch = Math.max(chBase, extraHeight);
-    const hd = this.state.showKonmei ? this.settings.公演名.フォントサイズ : 0;
+    if (this.state.showNickname) extraHeight += chBase * 0.15;
+    if (this.state.showKi) extraHeight += chBase * 0.15;
+    if (this.state.showColorBlock || this.state.showColorText) extraHeight += chBase * 0.2;
+    const ch = Math.max(chBase, extraHeight) * (this.state.showPhoto ? 1.5 : 1);
+    const hd = this.state.showKonmei ? this.settings.公演名.フォントサイズ + 10 : 0;
     this.canvas.height = rows * ch + hd;
   }
 
@@ -183,11 +189,16 @@ class PenlightGenerator {
 
     const cols = +this.state.ninzu.split("x")[0];
     const cw = tc.width / cols;
-    const ch = cw * this.baseAspect;
+    const ch = cw * this.baseAspect * (this.state.showPhoto ? 1.5 : 1);
+    const colorMap = {
+      '#FF0000': '赤', '#FFA500': 'オレンジ', '#FFFF00': '黄', '#0000FF': '青', '#00FF00': '緑',
+      '#FFFFFF': '白', '#FF69B4': '濃いピンク', '#FFB6C1': '薄ピンク', '#32CD32': '黄緑',
+      '#00FFFF': '水', '#800080': '紫'
+    };
 
     this.grid.forEach((name, i) => {
       const r = Math.floor(i / cols), c = i % cols;
-      const x = c * cw, y = r * ch + (this.state.showKonmei ? this.settings.公演名.フォントサイズ * scale : 0);
+      const x = c * cw, y = r * ch + (this.state.showKonmei ? (this.settings.公演名.フォントサイズ + 10) * scale : 0);
       tcx.fillStyle = '#fff4f6';
       tcx.fillRect(x, y, cw, ch);
       tcx.strokeStyle = '#F676A6';
@@ -205,67 +216,71 @@ class PenlightGenerator {
       }
 
       const mem = this.members.find(m => m.name_ja === name);
+      if (!mem) return;
       let y0 = y + 10 * scale;
       let usedHeight = 0;
 
       if (this.state.showPhoto && this.preloadedImages[name]) {
         const img = this.preloadedImages[name];
         const asp = img.naturalWidth / img.naturalHeight;
-        let h = ch * 0.6;
+        let h = ch * 0.5;
         let w = h * asp;
-        if (w > cw * 0.8) { w = cw * 0.8; h = w / asp; }
+        if (w > cw * 0.7) { w = cw * 0.7; h = w / asp; }
         const xOffset = (cw - w) / 2;
         tcx.drawImage(img, x + xOffset, y0, w, h);
-        y0 += h + 5 * scale;
-        usedHeight += h + 5 * scale;
+        y0 += h + 10 * scale;
+        usedHeight += h + 10 * scale;
       }
 
       const availHeight = ch - usedHeight;
       const L = name.length;
-      let fs = this.settings.全名.フォントサイズ || Math.min(availHeight * 0.3, (cw - 20) / (L * 0.5), 24);
+      let fs = this.settings.全名.フォントサイズ || Math.min(availHeight * 0.3, (cw - 20) / (L * 0.5), 20);
       tcx.fillStyle = '#F676A6';
       tcx.textAlign = 'center';
       tcx.textBaseline = 'top';
       tcx.font = `${fs * scale}px KozGoPr6N`;
       tcx.fillText(name, x + cw / 2 + this.settings.全名.X * scale, y0 + this.settings.全名.Y * scale);
-      y0 += fs + 5 * scale;
+      y0 += fs + 10 * scale;
 
       if (this.state.showNickname) {
-        let s = this.settings.ネックネーム.フォントサイズ || Math.min(availHeight * 0.15, 20);
+        let s = this.settings.ネックネーム.フォントサイズ || Math.min(availHeight * 0.15, 16);
         tcx.font = `${s * scale}px KozGoPr6N`;
         tcx.fillText(mem.nickname, x + cw / 2 + this.settings.ネックネーム.X * scale, y0 + this.settings.ネックネーム.Y * scale);
-        y0 += s + 3 * scale;
+        y0 += s + 5 * scale;
       }
 
       if (this.state.showKi) {
-        let s = this.settings.期別.フォントサイズ || Math.min(availHeight * 0.15, 20);
+        let s = this.settings.期別.フォントサイズ || Math.min(availHeight * 0.15, 16);
         tcx.font = `${s * scale}px KozGoPr6N`;
         tcx.fillText(mem.ki, x + cw / 2 + this.settings.期別.X * scale, y0 + this.settings.期別.Y * scale);
-        y0 += s + 3 * scale;
+        y0 += s + 5 * scale;
       }
 
       if (this.state.showColorText) {
-        const colorMap = {'#FF0000':'赤','#FFA500':'オレンジ','#FFFF00':'黄','#0000FF':'青','#00FF00':'緑','#FFFFFF':'白','#FF69B4':'濃いピンク','#FFB6C1':'薄ピンク','#32CD32':'黄緑'};
         tcx.textBaseline = 'middle';
-        const colors = mem.colors;
-        let totWidth = colors.reduce((sum, c, i) => sum + tcx.measureText(colorMap[c] || '').width + (i < colors.length - 1 ? tcx.measureText(' x ').width + 5 : 0), 0);
+        const colors = mem.colors || [];
+        let totWidth = 0;
+        colors.forEach((c, i) => {
+          const text = colorMap[c] || c;
+          tcx.font = `${this.settings['色文字' + (i + 1)].フォントサイズ * scale}px KozGoPr6N`;
+          totWidth += tcx.measureText(text).width + (i < colors.length - 1 ? tcx.measureText(' x ').width + 10 : 0);
+        });
         let xx = x + (cw - totWidth) / 2 + this.settings.色文字1.X * scale;
         colors.forEach((c, i) => {
-          const text = colorMap[c] || '';
-          tcx.fillStyle = (c === '#FFFFFF') ? '#f5f2f2' : c;
-          let fontSize = Math.min(18, (ch * 0.15) / colors.length);
-          tcx.font = `${fontSize * scale}px KozGoPr6N`;
-          tcx.fillText(text, xx, y + ch * 0.85 + this.settings['色文字' + (i + 1)].Y * scale);
+          const text = colorMap[c] || c;
+          tcx.fillStyle = c === '#FFFFFF' ? '#f5f2f2' : c;
+          tcx.font = `${this.settings['色文字' + (i + 1)].フォントサイズ * scale}px KozGoPr6N`;
+          tcx.fillText(text, xx, y + ch * 0.9 + this.settings['色文字' + (i + 1)].Y * scale);
           xx += tcx.measureText(text).width;
           if (i < colors.length - 1) {
             tcx.fillStyle = '#F676A6';
-            tcx.fillText(' x ', xx, y + ch * 0.85);
-            xx += tcx.measureText(' x ').width + 5;
+            tcx.fillText(' x ', xx, y + ch * 0.9);
+            xx += tcx.measureText(' x ').width + 10;
           }
         });
       } else if (this.state.showColorBlock) {
-        const colors = mem.colors;
-        const bw = cw * (0.8 / colors.length);
+        const colors = mem.colors || [];
+        const bw = cw * (0.8 / Math.max(colors.length, 1));
         const tw = bw * colors.length;
         const xOffset = (cw - tw) / 2;
         colors.forEach((c, j) => {
@@ -327,13 +342,21 @@ class PenlightGenerator {
       this.updateAndRender();
     });
 
+    document.getElementById('settingsButton').addEventListener('click', () => {
+      const panel = document.getElementById('設定パネル');
+      panel.style.display = panel.style.display === 'none' ? 'block' : 'none';
+      if (panel.style.display === 'block') {
+        panel.classList.remove('collapsed');
+      }
+    });
+
     this.canvas.addEventListener('click', (e) => {
       const r = this.canvas.getBoundingClientRect();
       const mx = e.clientX - r.left;
-      const my = e.clientY - r.top - (this.state.showKonmei ? this.settings.公演名.フォントサイズ : 0);
+      const my = e.clientY - r.top - (this.state.showKonmei ? (this.settings.公演名.フォントサイズ + 10) * (this.canvas.width / this.baseCanvasWidth) : 0);
       const cols = +this.state.ninzu.split("x")[0];
       const cw = this.canvas.width / cols;
-      const ch = cw * this.baseAspect;
+      const ch = cw * this.baseAspect * (this.state.showPhoto ? 1.5 : 1);
       const col = Math.floor(mx / cw);
       const row = Math.floor(my / ch);
       const idx = row * cols + col;
@@ -392,6 +415,5 @@ class PenlightGenerator {
   }
 }
 
-// 初期化
 const generator = new PenlightGenerator();
 generator.init();
