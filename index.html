@@ -1,83 +1,85 @@
 <!DOCTYPE html>
 <html lang="ja">
-<head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>AKB48 ペンライトカラー表</title>
-  <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@400;700&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="style.css">
-</head>
-<body>
-  <div id="container">
-    <h1>AKB48 ペンライトカラー表</h1>
-    <div id="controls">
-      <div class="checkbox-group">
-        <input type="checkbox" id="showKonmei" checked> <label for="showKonmei">公演名</label>
-        <select id="konmeiSelect">
-          <option value="ただいま　恋愛中">ただいま　恋愛中</option>
-          <option value="RESET">RESET</option>
-          <option value="ここからだ">ここからだ</option>
-          <option value="そこに未来はある">そこに未来はある</option>
-          <option value="other">他</option>
-        </select>
-        <input type="text" id="customKonmei" style="display:none;">
-      </div>
-      <div class="checkbox-group">
-        <input type="checkbox" id="showNinzu" checked> <label for="showNinzu">人数</label>
-        <select id="ninzuSelect">
-          <option value="2x1">2x1</option>
-          <option value="2x2">2x2</option>
-          <option value="3x2">3x2</option>
-          <option value="3x3">3x3</option>
-          <option value="4x2" selected>4x2</option>
-          <option value="4x4">4x4</option>
-          <option value="8x2">8x2</option>
-          <option value="5x4">5x4</option>
-        </select>
-      </div>
-      <div class="checkbox-group">
-        <input type="checkbox" id="showNickname"> <label for="showNickname">メンバーのネックネーム</label>
-      </div>
-      <div class="checkbox-group">
-        <input type="checkbox" id="showPhoto"> <label for="showPhoto">メンバーの写真</label>
-      </div>
-      <div class="checkbox-group">
-        <input type="checkbox" id="showColorBlock" checked> <label for="showColorBlock">推しカラー</label>
-      </div>
-      <div class="checkbox-group">
-        <input type="checkbox" id="showColorText"> <label for="showColorText">推しカラー(文字)</label>
-      </div>
-      <div class="checkbox-group">
-        <input type="checkbox" id="showKi"> <label for="showKi">期</label>
-      </div>
-      <div class="checkbox-group">
-        <input type="checkbox" id="showKibetsu"> <label for="showKibetsu">期別</label>
-        <select id="kibetsuSelect">
-          <option value="13期">13期</option>
-          <option value="15期">15期</option>
-          <option value="チーム8">チーム8</option>
-          <option value="ドラフト2期">ドラフト2期</option>
-          <option value="16期">16期</option>
-          <option value="ドラフト3期">ドラフト3期</option>
-          <option value="17期">17期</option>
-          <option value="18期">18期</option>
-          <option value="19期">19期</option>
-          <option value="20期">20期</option>
-        </select>
-      </div>
-      <div class="checkbox-group">
-        <input type="checkbox" id="showAll"> <label for="showAll">全員</label>
-      </div>
-    </div>
-    <canvas id="renderCanvas" width="1600" height="900"></canvas>
-    <button id="downloadButton">ダウンロード (300 DPI)</button>
-  </div>
-  <div id="popup">
-    <select id="memberSelect"></select><br />
-    <button id="popupSelectBtn">選択</button>
-    <button id="popupCloseBtn">閉じる</button>
-  </div>
+  <head>
+    <meta charset="UTF-8" />
+    <meta http-equiv="X-UA-Compatible" content="IE=edge" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>AKB48 ペンライトカラー表</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@400;700&display=swap"
+      rel="stylesheet"
+    />
+    <link rel="stylesheet" href="style.css" />
+  </head>
+  <body>
+    <header class="site-header">
+      <h1 class="title">AKB48&nbsp;メンバー ペンライトカラー表</h1>
+    </header>
 
-  <script src="script.js"></script>
-</body>
+    <main class="layout">
+      <aside class="controls" id="controls">
+        <!-- 公演名選択 -->
+        <div class="form-group">
+          <label for="konmeiSelect">公演名</label>
+          <select id="konmeiSelect">
+            <option value="RESET">RESET</option>
+            <option value="Renai Kinshi Jourei">恋愛禁止条例</option>
+            <option value="Seishun Girls">青春ガールズ</option>
+            <option value="other">他</option>
+          </select>
+          <input
+            id="customKonmei"
+            type="text"
+            placeholder="公演名を入力"
+            class="hidden"
+          />
+        </div>
+
+        <!-- 人数／レイアウト選択 -->
+        <div class="form-group">
+          <label for="ninzuSelect">表示人数</label>
+          <select id="ninzuSelect">
+            <option value="16x3">16 × 3</option>
+            <option value="8x4">8 × 4</option>
+            <option value="4x2">4 × 2</option>
+            <option value="all">全員</option>
+          </select>
+        </div>
+
+        <!-- オプション -->
+        <fieldset class="form-group">
+          <legend>表示オプション</legend>
+          <label>
+            <input type="checkbox" id="toggleOshiText" checked />推しカラー（文字）
+          </label>
+          <label>
+            <input type="checkbox" id="toggleOshiBlock" />推しカラー（色塊）
+          </label>
+        </fieldset>
+
+        <!-- メンバー期別フィルタ -->
+        <div class="form-group">
+          <label for="generationSelect">期別</label>
+          <select id="generationSelect">
+            <option value="all">全期</option>
+            <option value="3">3期</option>
+            <option value="…"> … </option>
+          </select>
+        </div>
+
+        <button id="downloadPngBtn" class="primary-btn">PNG ダウンロード</button>
+        <button id="downloadPdfBtn" class="secondary-btn">PDF ダウンロード</button>
+      </aside>
+
+      <!-- プレビュー -->
+      <section class="preview-wrapper">
+        <canvas id="ticketCanvas" width="1280" height="720"></canvas>
+      </section>
+    </main>
+
+    <script src="script.js" type="module"></script>
+    <noscript>JavaScript を有効にしてください。</noscript>
+  </body>
 </html>
