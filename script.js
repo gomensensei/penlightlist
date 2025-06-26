@@ -34,8 +34,8 @@ class PenlightGenerator {
     };
     this.colorMap = {
       '#FF0000': '赤', '#FFA500': 'オレンジ', '#FFFF00': '黄', '#0000FF': '青', '#00FF00': '緑',
-      '#FFFFFF': '白', '#FF69B4': '濃いピンク', '#FFB6C1': '薄ピンク', '#32CD32': '黄緑',
-      '#00FFFF': '水', '#800080': '紫', '#FF1493': '深紅', '#FFD700': '金', '#C0C0C0': '銀'
+      '#FFFFFF': '白', '#FF69B4': 'ピンク', '#FFB6C1': '薄ピンク', '#32CD32': '黄緑',
+      '#00CED1': '水', '#800080': '紫', '#FF1493': '濃いピンク', '#FFD700': '金', '#C0C0C0': '銀'
     };
   }
 
@@ -59,9 +59,10 @@ class PenlightGenerator {
   preloadImage(name, src) {
     return new Promise((resolve) => {
       const img = new Image();
+      img.crossOrigin = "anonymous"; // 允許跨域加載圖片
       img.src = src;
       img.onload = () => { this.preloadedImages[name] = img; resolve(); };
-      img.onerror = () => { this.preloadedImages[name] = null; resolve(); };
+      img.onerror = () => { this.preloadedImages[name] = null; console.warn(`画像ロード失敗: ${name}, ${src}`); resolve(); };
     });
   }
 
@@ -259,7 +260,7 @@ class PenlightGenerator {
 
       if (this.state.showColorText) {
         tcx.textBaseline = 'middle';
-        const colors = (typeof mem.colors === 'string' ? mem.colors.split(' x ') : mem.colors) || [];
+        const colors = mem.colors.split(' x ') || [];
         let totWidth = 0;
         colors.forEach((c, i) => {
           const text = colorMap[c] || c;
@@ -280,7 +281,7 @@ class PenlightGenerator {
           }
         });
       } else if (this.state.showColorBlock) {
-        const colors = (typeof mem.colors === 'string' ? mem.colors.split(' x ') : mem.colors) || [];
+        const colors = mem.colors.split(' x ') || [];
         const bw = cw * (0.8 / Math.max(colors.length, 1));
         const tw = bw * colors.length;
         const xOffset = (cw - tw) / 2;
