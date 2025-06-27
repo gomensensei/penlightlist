@@ -1,5 +1,5 @@
 // ------------------------------------------------------------
-//  AKB48 ペンライトカラー表 – script.js 2025-06-27 FINAL-2
+//  AKB48 ペンライトカラー表 – script.js (2025-06-27 Final)
 // ------------------------------------------------------------
 class PenlightGenerator {
   constructor() {
@@ -124,8 +124,8 @@ class PenlightGenerator {
 
   /* ================= 事件綁定 ================= */
   bindEvents() {
-    const $q = sel => document.querySelectorAll(sel);
-    $q('#controls input:not(#customKonmei), #controls select')
+    document
+      .querySelectorAll('#controls input:not(#customKonmei), #controls select')
       .forEach(el => el.addEventListener('change', () => this.updateAndRender()));
 
     /* 色塊/文字二選一 */
@@ -187,14 +187,19 @@ class PenlightGenerator {
       list = this.members
         .filter(m => m.ki === this.state.kibetsu)
         .map(m => m.name_ja);
-    } else if (this.grid.length) {
+    } else {
+      /* 手動模式：保留現有 grid，不因已選人數改變行數 */
       list = [...this.grid];
+      if (!this.grid.length) {
+        this.grid = Array(cols * rowsSelect).fill(null);
+      }
+      this.resizeCanvas(cols, rowsSelect);
+      return;    // 手動模式結束
     }
 
-    const rows = Math.ceil(list.length / cols) || rowsSelect;
-    this.grid = Array(cols * rows).fill(null);
+    const rows = Math.ceil(list.length / cols) || 1;
+    this.grid  = Array(cols * rows).fill(null);
     list.forEach((n, i) => (this.grid[i] = n));
-
     this.resizeCanvas(cols, rows);
   }
 
@@ -211,7 +216,14 @@ class PenlightGenerator {
     this.cellHeight = cw * ratio;
     const headerH = this.state.showKonmei
       ? this.settings.公演名.フォントサイズ + 10 : 0;
-    this.canvas.height = rows * this.cellHeight + headerH;
+
+    /* 手動模式固定選單行數 */
+    if (!this.state.showAll && !this.state.showKibetsu) {
+      const [, rowsSel] = this.state.ninzu.split('x').map(Number);
+      this.canvas.height = rowsSel * this.cellHeight + headerH;
+    } else {
+      this.canvas.height = rows * this.cellHeight + headerH;
+    }
   }
 
   updateAndRender() {
@@ -254,7 +266,7 @@ class PenlightGenerator {
       ctx.lineWidth = 2 * scale;
       ctx.strokeRect(x, y, cw, ch);
 
-      /* 空格呈「選択」 */
+      /* 空格 = 選択 */
       if (!name) {
         if (!isExport) {
           ctx.fillStyle = '#F676A6';
@@ -298,7 +310,7 @@ class PenlightGenerator {
       );
       cursorY += fsName + 4 * scale;
 
-      /* ニックネーム */
+      /* 暱稱 */
       if (this.state.showNickname) {
         const fsNick = Math.min(ch * 0.11, 18 * scale);
         ctx.font = `${fsNick}px KozGoPr6N`;
