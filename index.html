@@ -35,45 +35,47 @@
   <h1 class="title">AKB48 ペンライトカラー表</h1>
 
   <!-- 操作列 -->
-  <div id="controls">
-    人数:
-    <select id="ninzuSelect">
-      <option value="2x1">2×1</option>
-      <option value="2x2">2×2</option>
-      <option value="3x2">3×2</option>
-      <option value="3x3">3×3</option>
-      <option value="4x2">4×2</option>
-      <option value="4x4">4×4</option>
-      <option value="5x4">5×4</option>
-      <option value="8x2">8×2</option>
-    </select>
+<div id="controls">
+  人数:
+  <select id="ninzuSelect">
+    <option value="2x1">2×1</option><option value="2x2">2×2</option>
+    <option value="3x2">3×2</option><option value="3x3">3×3</option>
+    <option value="4x2">4×2</option><option value="4x4">4×4</option>
+    <option value="5x4">5×4</option><option value="8x2">8×2</option>
+  </select>
 
-    公演名:
-    <select id="konmeiSelect">
-      <option value="ただいま　恋愛中">ただいま　恋愛中</option>
-      <option value="RESET">RESET</option>
-      <option value="ここからだ">ここからだ</option>
-      <option value="そこに未来はある">そこに未来はある</option>
-      <option value="other">他</option>
-    </select>
-    <input id="customKonmei" type="text" placeholder="カスタム公演名を入力" style="display:none" />
+  公演名:
+  <select id="konmeiSelect">
+    <option value="ただいま　恋愛中">ただいま　恋愛中</option>
+    <option value="RESET">RESET</option>
+    <option value="ここからだ">ここからだ</option>
+    <option value="そこに未来はある">そこに未来はある</option>
+    <option value="other">他</option>
+  </select>
+  <input id="customKonmei" type="text" placeholder="カスタム公演名を入力" style="display:none" />
 
-    期別:
-    <select id="kibetsuSelect">
-      <option value="13期">13期</option>
-      <option value="15期">15期</option>
-      <option value="チーム8">チーム8</option>
-      <option value="ドラフト2期">ドラフト2期</option>
-      <option value="16期">16期</option>
-      <option value="ドラフト3期">ドラフト3期</option>
-      <option value="17期">17期</option>
-      <option value="18期">18期</option>
-      <option value="19期">19期</option>
-      <option value="20期">20期</option>
-    </select>
+  期別:
+  <select id="kibetsuSelect">
+    <option value="13期">13期</option><option value="15期">15期</option>
+    <option value="チーム8">チーム8</option><option value="ドラフト2期">ドラフト2期</option>
+    <option value="16期">16期</option><option value="ドラフト3期">ドラフト3期</option>
+    <option value="17期">17期</option><option value="18期">18期</option>
+    <option value="19期">19期</option><option value="20期">20期</option>
+  </select>
 
-    <button id="downloadButton" class="button">ダウンロード (300 DPI)</button>
-  </div>
+  <br />
+
+  <label><input type="checkbox" id="showAll" /> 全員</label>
+  <label><input type="checkbox" id="showKibetsu" /> 期別</label>
+  <label><input type="checkbox" id="showKonmei" checked /> 公演名</label>
+  <label><input type="checkbox" id="showPhoto" /> 写真</label>
+  <label><input type="checkbox" id="showNickname" /> ネックネーム</label>
+  <label><input type="checkbox" id="showKi" /> 期</label>
+  <label><input type="checkbox" id="showColorBlock" checked /> 推しカラー(色塊)</label>
+  <label><input type="checkbox" id="showColorText" /> 推しカラー(文字)</label>
+
+  <button id="downloadButton" class="button">ダウンロード (300 DPI)</button>
+</div>
 
   <!-- 顯示/隱藏選項 -->
   <div id="options">
