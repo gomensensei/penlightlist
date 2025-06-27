@@ -1,10 +1,10 @@
-console.log('⚡ script.js FINAL-5 loaded');
-
 /* ------------------------------------------------------------
-   AKB48 ペンライトカラー表 – script.js 2025-06-27  FINAL-5
+   AKB48 ペンライトカラー表 – script.js 2025-06-27 FINAL-5a
    ------------------------------------------------------------ */
+console.log('⚡ script.js FINAL-5a loaded');
+
 class PenlightGenerator {
-  constructor () {
+  constructor() {
     this.canvas = document.getElementById('renderCanvas');
     this.ctx    = this.canvas.getContext('2d');
 
@@ -30,194 +30,247 @@ class PenlightGenerator {
   }
 
   /* ---------- 初期化 ---------- */
-  async init(){
+  async init() {
     this.members = await (await fetch('members.json')).json();
-    await Promise.all(this.members.map(m=>this._pre(m.name_ja,m.image)));
+    await Promise.all(this.members.map(m => this._preload(m.name_ja, m.image)));
     this._bind(); this.updateAndRender();
   }
-  _pre(k,src){return new Promise(r=>{
-    const i=new Image(); i.src=src;
-    i.onload=()=>{this.preloadedImages[k]=i;r();};
-    i.onerror=()=>{this.preloadedImages[k]=null;r();};
-  });}
+  _preload(key, src) {
+    return new Promise(r => {
+      const img = new Image(); img.src = src;
+      img.onload  = () => { this.preloadedImages[key] = img;  r(); };
+      img.onerror = () => { this.preloadedImages[key] = null; r(); };
+    });
+  }
 
   /* ---------- 事件 ---------- */
-  _bind(){
+  _bind() {
     document.querySelectorAll('#controls input, #controls select')
-      .forEach(el=>el.addEventListener('change',()=>this.updateAndRender()));
+      .forEach(el => el.addEventListener('change', () => this.updateAndRender()));
 
-    const cb=id=>document.getElementById(id);
-    cb('showColorBlock').addEventListener('change',e=>{
-      if(e.target.checked) cb('showColorText').checked=false; this.updateAndRender();});
-    cb('showColorText').addEventListener('change',e=>{
-      if(e.target.checked) cb('showColorBlock').checked=false; this.updateAndRender();});
-    cb('showKibetsu').addEventListener('change',()=>{
-      cb('showAll').checked=false; this.updateAndRender();
+    const cb = id => document.getElementById(id);
+    cb('showColorBlock').addEventListener('change', e => {
+      if (e.target.checked) cb('showColorText').checked = false;
+      this.updateAndRender();
     });
-    this.canvas.addEventListener('click',e=>this._click(e));
-    cb('downloadButton').addEventListener('click',()=>this.exportPNG());
-  }
-
-  /* ---------- 更新狀態 ---------- */
-  _sync(){
-    const $=id=>document.getElementById(id);
-    Object.assign(this.state,{
-      ninzu: $('ninzuSelect').value, konmei:$('konmeiSelect').value,
-      kibetsu:$('kibetsuSelect').value, customKonmei:$('customKonmei').value,
-      showAll:$('showAll').checked, showKibetsu:$('showKibetsu').checked,
-      showKonmei:$('showKonmei').checked, showPhoto:$('showPhoto').checked,
-      showNickname:$('showNickname').checked, showKi:$('showKi').checked,
-      showColorBlock:$('showColorBlock').checked, showColorText:$('showColorText').checked
+    cb('showColorText').addEventListener('change', e => {
+      if (e.target.checked) cb('showColorBlock').checked = false;
+      this.updateAndRender();
     });
-    $('customKonmei').style.display=this.state.konmei==='other'?'inline-block':'none';
+    cb('showKibetsu').addEventListener('change', () => {
+      cb('showAll').checked = false; this.updateAndRender();
+    });
+
+    this.canvas.addEventListener('click', e => this._handleClick(e));
+    cb('downloadButton').addEventListener('click', () => this.exportPNG());
   }
 
-  _updateGrid(){
-    const [cols,rowsSel]=this.state.ninzu.split('x').map(Number);
-    let list=[];
-    if(this.state.showAll){
-      list=this.members.map(m=>m.name_ja);
-    }else if(this.state.showKibetsu){
-      list=this.members.filter(m=>m.ki===this.state.kibetsu).map(m=>m.name_ja);
+  /* ---------- 狀態同步 ---------- */
+  _sync() {
+    const $ = id => document.getElementById(id);
+    Object.assign(this.state, {
+      ninzu: $('ninzuSelect').value,
+      konmei: $('konmeiSelect').value,
+      kibetsu: $('kibetsuSelect').value,
+      customKonmei: $('customKonmei').value,
+      showAll: $('showAll').checked, showKibetsu: $('showKibetsu').checked,
+      showKonmei: $('showKonmei').checked, showPhoto: $('showPhoto').checked,
+      showNickname: $('showNickname').checked, showKi: $('showKi').checked,
+      showColorBlock: $('showColorBlock').checked, showColorText: $('showColorText').checked
+    });
+    $('customKonmei').style.display =
+      this.state.konmei === 'other' ? 'inline-block' : 'none';
+  }
+
+  /* ---------- 格子 ---------- */
+  _updateGrid() {
+    const [cols, rowsSel] = this.state.ninzu.split('x').map(Number);
+    let list = [];
+    if (this.state.showAll) {
+      list = this.members.map(m => m.name_ja);
+    } else if (this.state.showKibetsu) {
+      list = this.members.filter(m => m.ki === this.state.kibetsu)
+                         .map(m => m.name_ja);
     }
-    const rows=list.length?Math.ceil(list.length/cols):rowsSel;
-    if(!list.length && this.grid.length===cols*rowsSel){
-      /* 保留手動格 */
-    }else{
-      this.grid = Array(cols*rows).fill(null);
-      list.forEach((n,i)=>this.grid[i]=n);
+    const rows = list.length ? Math.ceil(list.length / cols) : rowsSel;
+    if (!list.length && this.grid.length === cols * rowsSel) {
+      /* 手動模式保留原格 */
+    } else {
+      this.grid = Array(cols * rows).fill(null);
+      list.forEach((n, i) => this.grid[i] = n);
     }
-    this._resize(cols,rows);
+    this._resize(cols, rows);
+  }
+  _resize(cols, rows) {
+    const cw = this.canvas.width / cols;
+    let ratio = 0.5;
+    if (this.state.showPhoto) ratio += 0.6;
+    if (this.state.showNickname) ratio += 0.12;
+    if (this.state.showKi) ratio += 0.12;
+    if (this.state.showColorBlock || this.state.showColorText) ratio += 0.18;
+    this.cellHeight = cw * ratio;
+    const header = this.state.showKonmei ? this.FS.title + 13 : 0;
+    this.canvas.height = rows * this.cellHeight + header;
   }
 
-  _resize(cols,rows){
-    const cw=this.canvas.width/cols;
-    let ratio=0.5;
-    if(this.state.showPhoto) ratio+=0.6;
-    if(this.state.showNickname) ratio+=0.12;
-    if(this.state.showKi) ratio+=0.12;
-    if(this.state.showColorBlock||this.state.showColorText) ratio+=0.18;
-    this.cellHeight=cw*ratio;
-    const header=this.state.showKonmei?this.FS.title+13:0;
-    this.canvas.height=rows*this.cellHeight+header;
-  }
-
-  updateAndRender(){ this._sync(); this._updateGrid(); this._render(); }
+  updateAndRender() { this._sync(); this._updateGrid(); this._render(); }
 
   /* ---------- 繪製 ---------- */
-  _render(tc=this.canvas,ctx=this.ctx,imgMap=this.preloadedImages){
-    ctx.clearRect(0,0,tc.width,tc.height);
-    ctx.fillStyle='#fff4f6'; ctx.fillRect(0,0,tc.width,tc.height);
+  _render(tc = this.canvas, ctx = this.ctx, imgMap = this.preloadedImages) {
+    ctx.clearRect(0, 0, tc.width, tc.height);
+    ctx.fillStyle = '#fff4f6'; ctx.fillRect(0, 0, tc.width, tc.height);
 
-    if(this.state.showKonmei){
-      ctx.fillStyle='#F676A6'; ctx.textAlign='center'; ctx.textBaseline='top';
-      ctx.font=`${this.FS.title}px KozGoPr6N`;
-      const title=this.state.konmei==='other'?this.state.customKonmei:this.state.konmei;
-      ctx.fillText(title,tc.width/2,2);
+    if (this.state.showKonmei) {
+      ctx.fillStyle = '#F676A6';
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'top';
+      ctx.font = `${this.FS.title}px KozGoPr6N`;
+      const title = this.state.konmei === 'other'
+        ? this.state.customKonmei : this.state.konmei;
+      ctx.fillText(title, tc.width / 2, 2);            // 下移 2px
     }
-    const [cols]=this.state.ninzu.split('x').map(Number);
-    const cw=tc.width/cols, ch=this.cellHeight;
-    const y0=this.state.showKonmei?(this.FS.title+13):0;
 
-    this.grid.forEach((name,i)=>{
-      const r=Math.floor(i/cols),c=i%cols,x=c*cw,y=r*ch+y0;
-      ctx.strokeStyle='#F676A6'; ctx.lineWidth=2; ctx.strokeRect(x,y,cw,ch);
+    const [cols] = this.state.ninzu.split('x').map(Number);
+    const cw = tc.width / cols, ch = this.cellHeight;
+    const y0 = this.state.showKonmei ? (this.FS.title + 13) : 0;
 
-      if(name==null){
-        ctx.fillStyle='#F676A6'; ctx.textAlign='center'; ctx.textBaseline='middle';
-        ctx.font='24px KozGoPr6N'; ctx.fillText('選択',x+cw/2,y+ch/2); return;
+    this.grid.forEach((name, i) => {
+      const r = Math.floor(i / cols), c = i % cols;
+      const x = c * cw, y = r * ch + y0;
+      ctx.strokeStyle = '#F676A6'; ctx.lineWidth = 2;
+      ctx.strokeRect(x, y, cw, ch);
+
+      if (name == null) {
+        ctx.fillStyle = '#F676A6'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+        ctx.font = '24px KozGoPr6N';
+        ctx.fillText('選択', x + cw / 2, y + ch / 2);
+        return;
       }
 
-      const m = this.members.find(u=>u.name_ja===name);
-      if(!m || !Array.isArray(m.colors)){ /* 資料缺漏 → 畫空格 */
-        ctx.fillStyle='#F676A6'; ctx.textAlign='center'; ctx.textBaseline='middle';
-        ctx.font='24px KozGoPr6N'; ctx.fillText('選択',x+cw/2,y+ch/2); return;
+      const m = this.members.find(u => u.name_ja === name.trim());
+      if (!m || !Array.isArray(m.colors)) {
+        ctx.fillStyle = '#F676A6'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+        ctx.font = '24px KozGoPr6N';
+        ctx.fillText('選択', x + cw / 2, y + ch / 2);
+        return;
       }
 
-      let yy=y+6;
-      if(this.state.showPhoto && imgMap[name]){
-        const img=imgMap[name], asp=img.naturalWidth/img.naturalHeight;
-        let ph=ch*0.55,pw=ph*asp; if(pw>cw*0.8){pw=cw*0.8;ph=pw/asp;}
-        ctx.drawImage(img,x+(cw-pw)/2,yy,pw,ph); yy+=ph+4;
+      let yy = y + 6;
+      if (this.state.showPhoto && imgMap[name]) {
+        const img = imgMap[name], asp = img.naturalWidth / img.naturalHeight;
+        let ph = ch * 0.55, pw = ph * asp;
+        if (pw > cw * 0.8) { pw = cw * 0.8; ph = pw / asp; }
+        ctx.drawImage(img, x + (cw - pw) / 2, yy, pw, ph);
+        yy += ph + 4;
       }
-      ctx.fillStyle='#F676A6'; ctx.textAlign='center'; ctx.textBaseline='top';
-      ctx.font=`${this.FS.name}px KozGoPr6N`; ctx.fillText(m.name_ja,x+cw/2,yy); yy+=this.FS.name+4;
-      if(this.state.showNickname){ ctx.font=`${this.FS.nick}px KozGoPr6N`; ctx.fillText(m.nickname,x+cw/2,yy); yy+=this.FS.nick+2; }
-      if(this.state.showKi){ ctx.font=`${this.FS.gen}px KozGoPr6N`; ctx.fillText(m.ki,x+cw/2,yy); }
-      if(this.state.showColorText){
-        ctx.font='18px KozGoPr6N'; ctx.textBaseline='middle';
-        ctx.fillText(m.colors.map(c=>this.colorMap[c]||c).join(' × '),x+cw/2,y+ch*0.86);
-      }else if(this.state.showColorBlock){
-        const bw=(cw*0.8)/m.colors.length,bh=bw*0.7,sx=x+(cw-bw*m.colors.length)/2;
-        m.colors.forEach((c,j)=>{ctx.fillStyle=c; ctx.fillRect(sx+j*bw,y+ch*0.82,bw,bh);});
+
+      ctx.fillStyle = '#F676A6'; ctx.textAlign = 'center'; ctx.textBaseline = 'top';
+      ctx.font = `${this.FS.name}px KozGoPr6N`;
+      ctx.fillText(m.name_ja, x + cw / 2, yy); yy += this.FS.name + 4;
+      if (this.state.showNickname) {
+        ctx.font = `${this.FS.nick}px KozGoPr6N`;
+        ctx.fillText(m.nickname, x + cw / 2, yy); yy += this.FS.nick + 2;
+      }
+      if (this.state.showKi) {
+        ctx.font = `${this.FS.gen}px KozGoPr6N`;
+        ctx.fillText(m.ki, x + cw / 2, yy);
+      }
+
+      if (this.state.showColorText) {
+        ctx.font = '18px KozGoPr6N'; ctx.textBaseline = 'middle';
+        ctx.fillText(m.colors.map(c => this.colorMap[c] || c).join(' × '),
+          x + cw / 2, y + ch * 0.86);
+      } else if (this.state.showColorBlock) {
+        const bw = (cw * 0.8) / m.colors.length, bh = bw * 0.7;
+        const sx = x + (cw - bw * m.colors.length) / 2;
+        m.colors.forEach((c, j) => {
+          ctx.fillStyle = c; ctx.fillRect(sx + j * bw, y + ch * 0.82, bw, bh);
+        });
       }
     });
   }
 
-  /* ---------- 點擊 ---------- */
-  _click(e){
-    const r=this.canvas.getBoundingClientRect();
-    let x=e.clientX-r.left, y=e.clientY-r.top;
-    if(this.state.showKonmei) y-=(this.FS.title+13);
-    const [cols]=this.state.ninzu.split('x').map(Number);
-    const cw=this.canvas.width/cols,ch=this.cellHeight;
-    const col=Math.floor(x/cw),row=Math.floor(y/ch),idx=row*cols+col;
-    if(idx<0||idx>=this.grid.length) return;
-    if(this.grid[idx]!=null && x%cw>cw-40 && y%ch<40){ this.grid[idx]=null; this._render(); return; }
-    if(this.grid[idx]==null) this._popup(idx);
+  /* ---------- Canvas 點擊 ---------- */
+  _handleClick(e) {
+    const rect = this.canvas.getBoundingClientRect();
+    let x = e.clientX - rect.left, y = e.clientY - rect.top;
+    if (this.state.showKonmei) y -= (this.FS.title + 13);
+
+    const [cols] = this.state.ninzu.split('x').map(Number);
+    const cw = this.canvas.width / cols, ch = this.cellHeight;
+    const col = Math.floor(x / cw), row = Math.floor(y / ch), idx = row * cols + col;
+    if (idx < 0 || idx >= this.grid.length) return;
+
+    if (this.grid[idx] != null && x % cw > cw - 40 && y % ch < 40) {
+      this.grid[idx] = null; this._render(); return;
+    }
+    if (this.grid[idx] == null) this._popup(idx);
   }
 
   /* ---------- Popup ---------- */
-  _popup(idx){
-    this.currentIndex=idx;
-    const pop=document.getElementById('popup'); pop.innerHTML='';
-    [...new Set(this.members.map(m=>m.ki))].forEach(ki=>{
-      const det=document.createElement('details');
-      det.innerHTML=`<summary>${ki}</summary>`;
-      const wrap=document.createElement('div'); wrap.className='member-list';
-      this.members.filter(m=>m.ki===ki).forEach(mem=>{
-        const it=document.createElement('div'); it.className='member-item';
-        it.innerHTML=`<img src="${mem.image}" width="48"><span>${mem.name_ja}</span>`;
-        it.onclick=()=>{pop.querySelectorAll('.member-item').forEach(i=>i.classList.remove('selected'));it.classList.add('selected');};
+  _popup(idx) {
+    this.currentIndex = idx;
+    const pop = document.getElementById('popup');
+    pop.innerHTML = '';
+    [...new Set(this.members.map(m => m.ki))].forEach(ki => {
+      const det = document.createElement('details');
+      det.innerHTML = `<summary>${ki}</summary>`;
+      const wrap = document.createElement('div'); wrap.className = 'member-list';
+      this.members.filter(m => m.ki === ki).forEach(mem => {
+        const it = document.createElement('div'); it.className = 'member-item';
+        it.innerHTML = `<img src="${mem.image}" width="48"><span>${mem.name_ja}</span>`;
+        it.onclick = () => {
+          pop.querySelectorAll('.member-item').forEach(i => i.classList.remove('selected'));
+          it.classList.add('selected');
+        };
         wrap.appendChild(it);
       });
       det.appendChild(wrap); pop.appendChild(det);
     });
-    const ok=document.createElement('button'); ok.textContent='選択';
-    ok.onclick=()=>{
-      const sel=pop.querySelector('.member-item.selected span');
-      if(sel){ this.grid[this.currentIndex]=sel.textContent; pop.style.display='none'; this._render(); }
+    const ok = document.createElement('button'); ok.textContent = '選択';
+    ok.onclick = () => {
+      const sel = pop.querySelector('.member-item.selected span');
+      if (sel) {
+        this.grid[this.currentIndex] = sel.textContent.trim();
+        pop.style.display = 'none'; this._render();
+      }
     };
-    const close=document.createElement('button'); close.textContent='閉じる';
-    close.onclick=()=>pop.style.display='none';
-    pop.appendChild(ok); pop.appendChild(close); pop.style.display='block';
+    const close = document.createElement('button'); close.textContent = '閉じる';
+    close.onclick = () => (pop.style.display = 'none');
+    pop.appendChild(ok); pop.appendChild(close);
+    pop.style.display = 'block';
   }
 
   /* ---------- 匯出 PNG ---------- */
-  exportPNG(){
+  exportPNG() {
     this.updateAndRender();
-    const names=[...new Set(this.grid.filter(Boolean))];
-    const tasks=names.map(n=>{
-      const m=this.members.find(x=>x.name_ja===n); if(!m) return Promise.resolve();
-      const img=new Image(); img.crossOrigin='anonymous';
-      const {host,pathname}=new URL(m.image);
-      img.src=`https://images.weserv.nl/?url=${encodeURIComponent(host+pathname)}`;
-      return new Promise(r=>{
-        img.onload=()=>{this.preloadedImages[`EXPORT_${n}`]=img;r();};
-        img.onerror=()=>{this.preloadedImages[`EXPORT_${n}`]=null;r();};
+    const names = [...new Set(this.grid.filter(Boolean))];
+    const tasks = names.map(n => {
+      const mem = this.members.find(m => m.name_ja === n.trim());
+      if (!mem) return Promise.resolve();
+      const prox = new Image(); prox.crossOrigin = 'anonymous';
+      const { host, pathname } = new URL(mem.image);
+      prox.src = `https://images.weserv.nl/?url=${encodeURIComponent(host + pathname)}`;
+      return new Promise(r => {
+        prox.onload = () => { this.preloadedImages[`EXPORT_${n}`] = prox; r(); };
+        prox.onerror = () => { this.preloadedImages[`EXPORT_${n}`] = null; r(); };
       });
     });
-    Promise.all(tasks).then(()=>{
-      const sc=2,tmp=document.createElement('canvas');
-      tmp.width=this.canvas.width*sc; tmp.height=this.canvas.height*sc;
-      const p=tmp.getContext('2d'); p.scale(sc,sc);
-      const map=new Proxy(this.preloadedImages,{get:(t,k)=>t[`EXPORT_${k}`]||t[k]});
-      this._render(tmp,p,map);
-      const a=document.createElement('a'); a.download='penlight_colors.png';
-      a.href=tmp.toDataURL('image/png'); a.click();
+
+    Promise.all(tasks).then(() => {
+      const scale = 2, tmp = document.createElement('canvas');
+      tmp.width = this.canvas.width * scale;
+      tmp.height = this.canvas.height * scale;
+      const p = tmp.getContext('2d'); p.scale(scale, scale);
+      const map = new Proxy(this.preloadedImages, {
+        get: (t, k) => t[`EXPORT_${k}`] || t[k]
+      });
+      this._render(tmp, p, map);
+      const a = document.createElement('a');
+      a.download = 'penlight_colors.png'; a.href = tmp.toDataURL('image/png'); a.click();
     });
   }
 }
 
-/* 啟動 */
-window.addEventListener('DOMContentLoaded',()=>new PenlightGenerator().init());
+/* ---------- 啟動 ---------- */
+window.addEventListener('DOMContentLoaded', () => new PenlightGenerator().init());
