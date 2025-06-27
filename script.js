@@ -67,65 +67,25 @@ class PenlightGenerator {
       await Promise.all(this.members.map(m => this.preloadImage(m.name_ja, m.image)));
     } catch (error) {
       console.error("Data load error:", error);
+      this.members = []; // Fallback to empty array to prevent crash
     }
   }
 
   async preloadImage(name, src) {
     return new Promise((resolve) => {
-      const proxyOptions = [
-        'https://cors-anywhere.herokuapp.com/',
-        'https://api.allorigins.win/get?url='
-      ];
-      const tryProxy = async (proxy) => {
-        try {
-          const response = await fetch(`${proxy}${encodeURIComponent(src)}`, {
-            method: 'GET',
-            headers: {
-              'Referer': 'https://www.akb48.co.jp',
-              'Origin': 'https://www.akb48.co.jp'
-            }
-          });
-          if (!response.ok) throw new Error(`Proxy ${proxy} failed: ${response.status} ${response.statusText}`);
-          const blob = await response.blob();
-          const url = URL.createObjectURL(blob);
-          const img = new Image();
-          img.crossOrigin = "anonymous";
-          img.onload = () => {
-            this.preloadedImages[name] = img;
-            console.log(`Image loaded successfully via ${proxy}: ${name}, ${src}`);
-            resolve();
-          };
-          img.onerror = (e) => {
-            console.warn(`Image load failed via ${proxy}: ${name}, ${src}, Error: ${e.type}, HTTP Status: ${e.target?.status}`);
-            throw new Error('Proxy failed');
-          };
-          img.src = url;
-        } catch (error) {
-          console.error(`Proxy error: ${error.message}`);
-          throw error;
-        }
+      this.preloadedImages[name] = null; // Default to null
+      const placeholder = new Image();
+      placeholder.src = 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAACklEQVR4nGMAAQAABQABDQottAAAAABJRU5ErkJggg==';
+      placeholder.onload = () => {
+        this.preloadedImages[name] = placeholder;
+        console.log(`Using placeholder for: ${name}, ${src}`);
+        resolve();
       };
-
-      (async () => {
-        for (const proxy of proxyOptions) {
-          try {
-            await tryProxy(proxy);
-            return;
-          } catch (error) {
-            if (proxy === proxyOptions[proxyOptions.length - 1]) {
-              console.error(`All proxies failed for ${name}, ${src}`);
-              this.preloadedImages[name] = null;
-              const placeholder = new Image();
-              placeholder.src = 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAACklEQVR4nGMAAQAABQABDQottAAAAABJRU5ErkJggg==';
-              placeholder.onload = () => {
-                this.preloadedImages[name] = placeholder;
-                console.log(`Using placeholder for: ${name}`);
-                resolve();
-              };
-            }
-          }
-        }
-      })();
+      placeholder.onerror = (e) => {
+        console.warn(`Placeholder load failed for ${name}, ${src}, Error: ${e.type}`);
+        this.preloadedImages[name] = null;
+        resolve();
+      };
     });
   }
 
@@ -242,6 +202,7 @@ class PenlightGenerator {
       this.resizeCanvas(cols, this.grid.length);
     } catch (error) {
       console.error("Grid update error:", error);
+      this.grid = []; // Fallback to empty grid
     }
   }
 
@@ -260,6 +221,7 @@ class PenlightGenerator {
       if (this.canvas) this.canvas.height = rows * ch + hd;
     } catch (error) {
       console.error("Canvas resize error:", error);
+      if (this.canvas) this.canvas.height = 600; // Fallback height
     }
   }
 
@@ -296,9 +258,9 @@ class PenlightGenerator {
         if (!name) {
           if (!isDL) {
             tcx.fillStyle = '#FF69B4';
-            tcx.fillRect(x + cw / 2 - 20, y + ch / 2 - 20, 40, 40); // Larger centered button
+            tcx.fillRect(x + cw / 2 - 20, y + ch / 2 - 20, 40, 40);
             tcx.fillStyle = '#FFFFFF';
-            tcx.font = `16px KozGoPr6N`; // Larger font for button
+            tcx.font = `16px KozGoPr6N`;
             tcx.textAlign = 'center';
             tcx.textBaseline = 'middle';
             tcx.fillText('選択', x + cw / 2, y + ch / 2);
@@ -357,20 +319,20 @@ class PenlightGenerator {
 
         if (this.state.showColorText) {
           tcx.textBaseline = 'middle';
-          const colors = mem.colors.split(' x ') || [];
+          const colors = mem.colors ? mem.colors.split(' x ') : [];
           let totWidth = 0;
           colors.forEach((c, i) => {
-            const text = c;
+            const text = c || '';
             tcx.font = `${this.settings['色文字' + (i + 1)].フォントサイズ * scale}px KozGoPr6N`;
             totWidth += tcx.measureText(text).width + (i < colors.length - 1 ? tcx.measureText(' x ').width + 40 : 0);
           });
           let xx = x + (cw - totWidth) / 2 + this.settings.色文字1.X * scale;
           if (xx + totWidth > x + cw) {
             console.warn(`Text overflow for ${name}, adjusting position`);
-            xx = x + cw - totWidth; // Adjust to fit within cell
+            xx = x + cw - totWidth;
           }
           colors.forEach((c, i) => {
-            const text = c;
+            const text = c || '';
             tcx.fillStyle = colorMap[c] || '#000000';
             tcx.font = `${this.settings['色文字' + (i + 1)].フォントサイズ * scale}px KozGoPr6N`;
             if (text === '白' || text === '黄') {
@@ -389,8 +351,8 @@ class PenlightGenerator {
             }
           });
         } else if (this.state.showColorBlock) {
-          const colors = mem.colors.split(' x ') || [];
-          console.log(`Rendering color blocks for ${name}:`, colors);
+          const colors = mem.colors ? mem.colors.split(' x ') : [];
+          console.log(`Rendering color blocks for ${name}: ${colors.map(c => colorMap[c] || 'default')}`);
           const bw = cw * (0.75 / Math.max(colors.length, 1));
           const tw = bw * colors.length;
           const xOffset = (cw - tw) / 2;
@@ -417,22 +379,22 @@ class PenlightGenerator {
 
   updateState() {
     try {
-      this.state.ninzu = document.getElementById("ninzuSelect").value;
-      this.state.konmei = document.getElementById("konmeiSelect").value;
-      this.state.kibetsu = document.getElementById("kibetsuSelect").value;
-      this.state.showAll = document.getElementById("showAll").checked;
-      this.state.showKibetsu = document.getElementById("showKibetsu").checked;
-      this.state.showKonmei = document.getElementById("showKonmei").checked;
-      this.state.showPhoto = document.getElementById("showPhoto").checked;
-      this.state.showNickname = document.getElementById("showNickname").checked;
-      this.state.showKi = document.getElementById("showKi").checked;
-      this.state.showColorBlock = document.getElementById("showColorBlock").checked;
-      this.state.showColorText = document.getElementById("showColorText").checked;
-      this.state.customKonmei = document.getElementById("customKonmei").value;
+      this.state.ninzu = document.getElementById("ninzuSelect")?.value || "2x1";
+      this.state.konmei = document.getElementById("konmeiSelect")?.value || "ただいま　恋愛中";
+      this.state.kibetsu = document.getElementById("kibetsuSelect")?.value || "13期";
+      this.state.showAll = document.getElementById("showAll")?.checked || false;
+      this.state.showKibetsu = document.getElementById("showKibetsu")?.checked || false;
+      this.state.showKonmei = document.getElementById("showKonmei")?.checked || false;
+      this.state.showPhoto = document.getElementById("showPhoto")?.checked || false;
+      this.state.showNickname = document.getElementById("showNickname")?.checked || false;
+      this.state.showKi = document.getElementById("showKi")?.checked || false;
+      this.state.showColorBlock = document.getElementById("showColorBlock")?.checked || true;
+      this.state.showColorText = document.getElementById("showColorText")?.checked || false;
+      this.state.customKonmei = document.getElementById("customKonmei")?.value || "";
       if (this.state.konmei === 'other') {
-        document.getElementById('customKonmei').style.display = 'block';
+        document.getElementById('customKonmei')?.style.display = 'block';
       } else {
-        document.getElementById('customKonmei').style.display = 'none';
+        document.getElementById('customKonmei')?.style.display = 'none';
       }
     } catch (error) {
       console.error("State update error:", error);
@@ -455,21 +417,21 @@ class PenlightGenerator {
       const showColorBlock = document.getElementById('showColorBlock');
       if (showColorBlock) {
         showColorBlock.addEventListener('change', (e) => {
-          if (e.target.checked) document.getElementById('showColorText').checked = false;
+          if (e.target.checked) document.getElementById('showColorText')?.checked = false;
           this.updateAndRender();
         });
       }
       const showColorText = document.getElementById('showColorText');
       if (showColorText) {
         showColorText.addEventListener('change', (e) => {
-          if (e.target.checked) document.getElementById('showColorBlock').checked = false;
+          if (e.target.checked) document.getElementById('showColorBlock')?.checked = false;
           this.updateAndRender();
         });
       }
       const showKibetsu = document.getElementById('showKibetsu');
       if (showKibetsu) {
         showKibetsu.addEventListener('change', () => {
-          document.getElementById('showAll').checked = false;
+          document.getElementById('showAll')?.checked = false;
           this.updateAndRender();
         });
       }
@@ -487,41 +449,51 @@ class PenlightGenerator {
       }
       if (this.canvas) {
         this.canvas.addEventListener('click', (e) => {
-          const r = this.canvas.getBoundingClientRect();
-          const mx = e.clientX - r.left;
-          const my = e.clientY - r.top - (this.state.showKonmei ? (this.settings.公演名.フォントサイズ + 20) * (this.canvas.width / this.baseCanvasWidth) : 0);
-          const cols = +this.state.ninzu.split("x")[0];
-          const cw = this.canvas.width / cols;
-          const ch = cw * this.baseAspect * (this.state.showPhoto ? 1.5 : 1);
-          const col = Math.floor(mx / cw);
-          const row = Math.floor(my / ch);
-          const idx = row * cols + col;
-          if (idx >= 0 && idx < this.grid.length) {
-            const x = col * cw, y = row * ch;
-            if (mx >= x + cw / 2 - 20 && mx <= x + cw / 2 + 20 && my >= y + ch / 2 - 20 && my <= y + ch / 2 + 20 && !this.grid[idx]) {
-              this.showPopup(idx);
+          try {
+            const r = this.canvas.getBoundingClientRect();
+            const mx = e.clientX - r.left;
+            const my = e.clientY - r.top - (this.state.showKonmei ? (this.settings.公演名.フォントサイズ + 20) * (this.canvas.width / this.baseCanvasWidth) : 0);
+            const cols = +this.state.ninzu.split("x")[0];
+            const cw = this.canvas.width / cols;
+            const ch = cw * this.baseAspect * (this.state.showPhoto ? 1.5 : 1);
+            const col = Math.floor(mx / cw);
+            const row = Math.floor(my / ch);
+            const idx = row * cols + col;
+            if (idx >= 0 && idx < this.grid.length) {
+              const x = col * cw, y = row * ch;
+              if (mx >= x + cw / 2 - 20 && mx <= x + cw / 2 + 20 && my >= y + ch / 2 - 20 && my <= y + ch / 2 + 20 && !this.grid[idx]) {
+                this.showPopup(idx);
+              }
             }
+          } catch (error) {
+            console.error("Canvas click error:", error);
           }
         });
       }
       const downloadButton = document.getElementById('downloadButton');
       if (downloadButton) {
         downloadButton.addEventListener('click', async () => {
-          await this.loadData();
-          const tmp = document.createElement('canvas');
-          const cols = +this.state.ninzu.split("x")[0];
-          const rows = Math.ceil(this.grid.length / cols);
-          const cw = this.canvas.width / cols;
-          const ch = cw * this.baseAspect * (this.state.showPhoto ? 1.5 : 1);
-          const hd = this.state.showKonmei ? this.settings.公演名.フォントサイズ + 20 : 0;
-          tmp.width = this.canvas.width;
-          tmp.height = rows * ch + hd; // Adjusted height without extra scaling
-          const p = tmp.getContext('2d');
-          this.renderGrid(tmp, p);
-          const a = document.createElement('a');
-          a.download = 'penlight_colors_300dpi.png';
-          a.href = tmp.toDataURL('image/png', 1.0);
-          a.click();
+          try {
+            await this.loadData();
+            const tmp = document.createElement('canvas');
+            const cols = +this.state.ninzu.split("x")[0];
+            const rows = Math.ceil(this.grid.length / cols);
+            const cw = this.canvas.width / cols;
+            const ch = cw * this.baseAspect * (this.state.showPhoto ? 1.5 : 1);
+            const hd = this.state.showKonmei ? this.settings.公演名.フォントサイズ + 20 : 0;
+            tmp.width = this.canvas.width;
+            tmp.height = rows * ch + hd;
+            if (!tmp.getContext) throw new Error("Canvas context not supported");
+            const p = tmp.getContext('2d');
+            if (!p) throw new Error("Failed to get canvas context");
+            this.renderGrid(tmp, p);
+            const a = document.createElement('a');
+            a.download = 'penlight_colors_300dpi.png';
+            a.href = tmp.toDataURL('image/png', 1.0);
+            a.click();
+          } catch (error) {
+            console.error("Download error:", error);
+          }
         });
       }
     } catch (error) {
