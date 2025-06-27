@@ -1,5 +1,5 @@
 // ------------------------------------------------------------
-//  AKB48 ペンライトカラー表 – script.js 2025-06-27 Final
+//  AKB48 ペンライトカラー表 – script.js 2025-06-27 FINAL-2
 // ------------------------------------------------------------
 class PenlightGenerator {
   constructor() {
@@ -11,20 +11,20 @@ class PenlightGenerator {
 
     /* ---------- 資料 ---------- */
     this.members         = [];
-    this.preloadedImages = {};   // 預覽用
-    this.grid            = [];   // 當前格子 (null or name_ja)
-    this.currentIndex    = null; // 點擊索引
-    this.cellHeight      = 0;    // 動態格高
+    this.preloadedImages = {};       // 預覽用
+    this.grid            = [];       // 當前格子 (null or name_ja)
+    this.currentIndex    = null;     // 點擊索引
+    this.cellHeight      = 0;        // 動態格高
 
     /* ---------- 詳細設定初值 ---------- */
     this.settings = {
-      公演名:     { フォントサイズ: 28, 文字間隔: 0, X: 0, Y: 20 },
-      全名 :      { フォントサイズ: null, 文字間隔: 0, X: 0, Y: 0 },
-      ネックネーム:{ フォントサイズ: 20, 文字間隔: 0, X: 0, Y: 0 },
-      期別 :      { フォントサイズ: 18, 文字間隔: 0, X: 0, Y: 0 },
-      写真 :      { X: 0, Y: 0 },
-      色塊 :      { X: 0, Y: 0 },
-      色文字:     { フォントサイズ: 18, X: 0, Y: 0 }
+      公演名     : { フォントサイズ: 28, 文字間隔: 0, X: 0, Y: 20 },
+      全名      : { フォントサイズ: null, 文字間隔: 0, X: 0, Y: 0 },
+      ネックネーム : { フォントサイズ: 20, 文字間隔: 0, X: 0, Y: 0 },
+      期別      : { フォントサイズ: 18, 文字間隔: 0, X: 0, Y: 0 },
+      写真      : { X: 0, Y: 0 },
+      色塊      : { X: 0, Y: 0 },
+      色文字    : { フォントサイズ: 18, X: 0, Y: 0 }
     };
 
     /* ---------- UI 狀態 ---------- */
@@ -98,12 +98,11 @@ class PenlightGenerator {
     this.makeDraggable(panel);
 
     /* 表單初始值 */
-    const $ = id => document.getElementById(id);
-    $('ninzuSelect').value   = this.state.ninzu;
-    $('konmeiSelect').value  = this.state.konmei;
-    $('kibetsuSelect').value = this.state.kibetsu;
-    $('showColorBlock').checked = this.state.showColorBlock;
-    $('showColorText').checked  = this.state.showColorText;
+    document.getElementById('ninzuSelect').value   = this.state.ninzu;
+    document.getElementById('konmeiSelect').value  = this.state.konmei;
+    document.getElementById('kibetsuSelect').value = this.state.kibetsu;
+    document.getElementById('showColorBlock').checked = this.state.showColorBlock;
+    document.getElementById('showColorText').checked  = this.state.showColorText;
   }
   /* 拖曳面板 */
   makeDraggable(el) {
@@ -150,11 +149,12 @@ class PenlightGenerator {
       .addEventListener('click', () =>
         document.getElementById('設定パネル').classList.toggle('collapsed'));
 
-    /* Canvas 點擊 (+ 選人 / 取消) */
+    /* Canvas 點擊 (+ / 取消) */
     this.canvas.addEventListener('click', e => this.handleCanvasClick(e));
 
     /* 下載 */
-    document.getElementById('downloadButton').addEventListener('click', () => this.exportPNG());
+    document.getElementById('downloadButton')
+      .addEventListener('click', () => this.exportPNG());
   }
 
   /* ================= 狀態 → 畫面 ================= */
@@ -184,8 +184,9 @@ class PenlightGenerator {
     if (this.state.showAll) {
       list = this.members.map(m => m.name_ja);
     } else if (this.state.showKibetsu) {
-      list = this.members.filter(m => m.ki === this.state.kibetsu)
-                         .map(m => m.name_ja);
+      list = this.members
+        .filter(m => m.ki === this.state.kibetsu)
+        .map(m => m.name_ja);
     } else if (this.grid.length) {
       list = [...this.grid];
     }
@@ -199,7 +200,7 @@ class PenlightGenerator {
 
   resizeCanvas(cols, rows) {
     const cw = this.canvas.width / cols;
-    let ratio = 0.5; // 基底：全名+色塊
+    let ratio = 0.5; // base
 
     if (this.state.showPhoto)     ratio += 0.6;
     if (this.state.showNickname)  ratio += 0.12;
@@ -208,7 +209,8 @@ class PenlightGenerator {
       ratio += 0.18;
 
     this.cellHeight = cw * ratio;
-    const headerH = this.state.showKonmei ? this.settings.公演名.フォントサイズ + 10 : 0;
+    const headerH = this.state.showKonmei
+      ? this.settings.公演名.フォントサイズ + 10 : 0;
     this.canvas.height = rows * this.cellHeight + headerH;
   }
 
@@ -227,33 +229,32 @@ class PenlightGenerator {
 
     /* 公演名 */
     if (this.state.showKonmei) {
-      const t = this.state.konmei === 'other'
+      const title = this.state.konmei === 'other'
         ? this.state.customKonmei.trim() : this.state.konmei;
       ctx.fillStyle = '#F676A6';
       ctx.textAlign = 'center';
       ctx.textBaseline = 'top';
       ctx.font = `${this.settings.公演名.フォントサイズ * scale}px KozGoPr6N`;
-      ctx.fillText(t, tc.width / 2, this.settings.公演名.Y * scale);
+      ctx.fillText(title, tc.width / 2, this.settings.公演名.Y * scale);
     }
 
     const [cols] = this.state.ninzu.split('x').map(Number);
     const cw = tc.width / cols;
     const ch = this.cellHeight * scale;
-    const topOffset = this.state.showKonmei
+    const offsetTop = this.state.showKonmei
       ? (this.settings.公演名.フォントサイズ + 10) * scale : 0;
 
     this.grid.forEach((name, i) => {
       const r = Math.floor(i / cols), c = i % cols;
-      const x = c * cw, y = r * ch + topOffset;
+      const x = c * cw, y = r * ch + offsetTop;
 
-      /* 背景+框 */
       ctx.fillStyle = '#fff';
       ctx.fillRect(x, y, cw, ch);
       ctx.strokeStyle = '#F676A6';
       ctx.lineWidth = 2 * scale;
       ctx.strokeRect(x, y, cw, ch);
 
-      /* 空格 → 選択 */
+      /* 空格呈「選択」 */
       if (!name) {
         if (!isExport) {
           ctx.fillStyle = '#F676A6';
@@ -297,7 +298,7 @@ class PenlightGenerator {
       );
       cursorY += fsName + 4 * scale;
 
-      /* 暱稱 */
+      /* ニックネーム */
       if (this.state.showNickname) {
         const fsNick = Math.min(ch * 0.11, 18 * scale);
         ctx.font = `${fsNick}px KozGoPr6N`;
@@ -327,21 +328,21 @@ class PenlightGenerator {
         const fsC = Math.min(ch * 0.09, this.settings.色文字.フォントサイズ * scale);
         ctx.font = `${fsC}px KozGoPr6N`;
         ctx.textBaseline = 'middle';
-        const txt = colors.map(c => this.colorMap[c] || c).join(' × ');
+        const colorTxt = colors.map(c => this.colorMap[c] || c).join(' × ');
         ctx.fillStyle = '#F676A6';
         ctx.fillText(
-          txt,
+          colorTxt,
           x + cw / 2 + this.settings.色文字.X * scale,
           y + ch * 0.86 + this.settings.色文字.Y * scale
         );
       } else if (this.state.showColorBlock) {
         const bw = (cw * 0.8) / colors.length;
         const bh = bw * 0.7;
-        const startX = x + (cw - bw * colors.length) / 2 + this.settings.色塊.X * scale;
+        const start = x + (cw - bw * colors.length) / 2 + this.settings.色塊.X * scale;
         colors.forEach((c, idx) => {
           ctx.fillStyle = c || '#ddd';
           ctx.fillRect(
-            startX + idx * bw,
+            start + idx * bw,
             y + ch * 0.82 + this.settings.色塊.Y * scale,
             bw, bh
           );
@@ -350,7 +351,7 @@ class PenlightGenerator {
     });
   }
 
-  /* ================= Canvas 點擊 (+/取消) ================= */
+  /* ================= Canvas Click (+/取消) ================= */
   handleCanvasClick(e) {
     const rect = this.canvas.getBoundingClientRect();
     let x = e.clientX - rect.left;
@@ -369,18 +370,17 @@ class PenlightGenerator {
     const idx = row * cols + col;
     if (idx < 0 || idx >= this.grid.length) return;
 
-    // 右上角刪除
+    // 右上角取消
     if (this.grid[idx] && x % cw > cw - 40 && y % ch < 40) {
       this.grid[idx] = null;
       this.updateAndRender();
       return;
     }
-
-    // 空格選人
+    // 空格 → 選人
     if (!this.grid[idx]) this.showPopup(idx);
   }
 
-  /* ================= 彈出選單 ================= */
+  /* ================= Popup  ================= */
   showPopup(idx) {
     this.currentIndex = idx;
     const popup = document.getElementById('popup');
@@ -424,7 +424,6 @@ class PenlightGenerator {
     const close = document.createElement('button');
     close.textContent = '閉じる';
     close.onclick = () => (popup.style.display = 'none');
-
     popup.appendChild(ok);
     popup.appendChild(close);
     popup.style.display = 'block';
@@ -432,25 +431,25 @@ class PenlightGenerator {
 
   /* ================= 匯出 PNG ================= */
   exportPNG() {
-    // 確實更新畫布尺寸
+    /* 確保最新尺寸 */
     this.resizeCanvas(...this.state.ninzu.split('x').map(Number));
 
-    // 代理載入所有當前 grid 所需照片
+    /* 代理載圖 (weserv) 以通過 CORS */
     const names = [...new Set(this.grid.filter(Boolean))];
-    const proxyLoads = names.map(n => {
+    const loads = names.map(n => {
       const mem = this.members.find(m => m.name_ja === n);
       if (!mem) return Promise.resolve();
-      const pImg = new Image();
-      pImg.crossOrigin = 'anonymous';
-      const raw = mem.image.replace(/^https?:\\/\\//, '');
-      pImg.src = `https://images.weserv.nl/?url=${encodeURIComponent(raw)}`;
+      const prox = new Image();
+      prox.crossOrigin = 'anonymous';
+      const { host, pathname } = new URL(mem.image);
+      prox.src = `https://images.weserv.nl/?url=${encodeURIComponent(host + pathname)}`;
       return new Promise(r => {
-        pImg.onload  = () => { this.preloadedImages[`EXPORT_${n}`] = pImg; r(); };
-        pImg.onerror = () => { this.preloadedImages[`EXPORT_${n}`] = null;  r(); };
+        prox.onload  = () => { this.preloadedImages[`EXPORT_${n}`] = prox; r(); };
+        prox.onerror = () => { this.preloadedImages[`EXPORT_${n}`] = null;  r(); };
       });
     });
 
-    Promise.all(proxyLoads).then(() => {
+    Promise.all(loads).then(() => {
       const scale = 2;
       const tmp = document.createElement('canvas');
       tmp.width  = this.canvas.width  * scale;
@@ -458,11 +457,11 @@ class PenlightGenerator {
       const p = tmp.getContext('2d');
       p.scale(scale, scale);
 
-      // 代理 Map：優先用 EXPORT_ 圖
-      const map = new Proxy(this.preloadedImages, {
-        get: (t, k) => t[`EXPORT_${k}`] || t[k]
+      // 使用代理＋預覽混合圖
+      const imgMap = new Proxy(this.preloadedImages, {
+        get(t, k) { return t[`EXPORT_${k}`] || t[k]; }
       });
-      this.renderGrid(tmp, p, map);
+      this.renderGrid(tmp, p, imgMap);
 
       const a = document.createElement('a');
       a.download = 'penlight_colors.png';
