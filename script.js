@@ -208,38 +208,52 @@ class PenlightGenerator {
   }
 
   /* ---------- Popup ---------- */
-  _popup(idx) {
-    this.currentIndex = idx;
-    const pop = document.getElementById('popup');
-    pop.innerHTML = '';
-    [...new Set(this.members.map(m => m.ki))].forEach(ki => {
-      const det = document.createElement('details');
-      det.innerHTML = `<summary>${ki}</summary>`;
-      const wrap = document.createElement('div'); wrap.className = 'member-list';
-      this.members.filter(m => m.ki === ki).forEach(mem => {
-        const it = document.createElement('div'); it.className = 'member-item';
-        it.innerHTML = `<img src="${mem.image}" width="48"><span>${mem.name_ja}</span>`;
-        it.onclick = () => {
-          pop.querySelectorAll('.member-item').forEach(i => i.classList.remove('selected'));
-          it.classList.add('selected');
-        };
-        wrap.appendChild(it);
-      });
-      det.appendChild(wrap); pop.appendChild(det);
+_popup(idx) {
+  this.currentIndex = idx;
+  const pop = document.getElementById('popup');
+  pop.innerHTML = '';
+
+  [...new Set(this.members.map(m => m.ki))].forEach(ki => {
+    const det = document.createElement('details');
+    det.innerHTML = `<summary>${ki}</summary>`;
+    const wrap = document.createElement('div');
+    wrap.className = 'member-list';
+
+    this.members.filter(m => m.ki === ki).forEach(mem => {
+      const item = document.createElement('div');
+      item.className = 'member-item';
+      item.dataset.name = mem.name_ja;                 // ← 精確姓名儲在 data
+      item.innerHTML =
+        `<img src="${mem.image}" width="48"><span>${mem.name_ja}</span>`;
+      item.onclick = () => {
+        pop.querySelectorAll('.member-item')
+           .forEach(i => i.classList.remove('selected'));
+        item.classList.add('selected');
+      };
+      wrap.appendChild(item);
     });
-    const ok = document.createElement('button'); ok.textContent = '選択';
-    ok.onclick = () => {
-      const sel = pop.querySelector('.member-item.selected span');
-      if (sel) {
-        this.grid[this.currentIndex] = sel.textContent.trim();
-        pop.style.display = 'none'; this._render();
-      }
-    };
-    const close = document.createElement('button'); close.textContent = '閉じる';
-    close.onclick = () => (pop.style.display = 'none');
-    pop.appendChild(ok); pop.appendChild(close);
-    pop.style.display = 'block';
-  }
+    det.appendChild(wrap);
+    pop.appendChild(det);
+  });
+
+  const ok = document.createElement('button');
+  ok.textContent = '選択';
+  ok.onclick = () => {
+    const sel = pop.querySelector('.member-item.selected');
+    if (sel) {
+      this.grid[this.currentIndex] = sel.dataset.name; // ← 使用 data-name
+      pop.style.display = 'none';
+      this._render();
+    }
+  };
+  const close = document.createElement('button');
+  close.textContent = '閉じる';
+  close.onclick = () => (pop.style.display = 'none');
+
+  pop.appendChild(ok);
+  pop.appendChild(close);
+  pop.style.display = 'block';
+}
 
   /* ---------- 匯出 PNG ---------- */
   exportPNG() {
