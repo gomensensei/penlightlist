@@ -5,39 +5,30 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>AKB48 ペンライトカラー表</title>
 
-  <!-- Web Fonts -->
+  <!-- Fonts -->
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@400;700&display=swap" rel="stylesheet" />
 
   <link rel="stylesheet" href="style.css" />
-
   <style>
-    /* 讓 controls 在同一列置中，超寬自動換行 */
+    .title{ text-align:center; margin:8px 0; color:#F676A6; }
     #controls{
-      display:flex; flex-wrap:wrap; gap:8px;
-      align-items:center; justify-content:center;
-      margin-bottom:10px;
+      display:flex;flex-wrap:wrap;gap:8px;justify-content:center;align-items:center;
+      margin-bottom:10px;font-size:0.95em;
     }
-    #controls label{ color:#F676A6; font-size:0.95em; white-space:nowrap; }
-    #controls select, #controls input[type="text"]{
-      font-size:0.95em; padding:3px 4px;
-    }
-    /* Popup 基本樣式 */
-    #popup{
-      display:none; position:fixed; top:50%; left:50%;
-      transform:translate(-50%,-50%); z-index:2000;
-      background:#fff; border:2px solid #F676A6; border-radius:6px;
-      padding:10px; max-height:80vh; overflow:auto; width:88%; max-width:640px;
-    }
+    #controls label{ color:#F676A6; white-space:nowrap; }
+    #controls select, #controls input[type="text"]{ padding:3px 4px;font-size:0.95em; }
+    /* popup */
+    #popup{display:none;position:fixed;top:50%;left:50%;transform:translate(-50%,-50%);
+      background:#fff;z-index:2000;border:2px solid #F676A6;border-radius:6px;
+      padding:10px;max-height:80vh;overflow:auto;width:88%;max-width:640px;}
     #popup summary{cursor:pointer;background:#F676A6;color:#fff;padding:4px;border-radius:4px;}
     #popup .member-list{display:flex;flex-wrap:wrap;gap:6px;margin:6px 0;}
-    #popup .member-item{
-      display:flex;align-items:center;cursor:pointer;border:1px solid #ddd;
-      padding:4px 6px;border-radius:4px;font-size:0.9em;
-    }
+    #popup .member-item{display:flex;align-items:center;cursor:pointer;border:1px solid #ddd;
+      padding:4px 6px;border-radius:4px;font-size:0.9em;}
     #popup .member-item.selected{background:#ffeaf5;border-color:#F676A6;}
-    #popup .member-item img{width:48px;height:48px;margin-right:4px;object-fit:cover;}
+    #popup img{width:48px;height:48px;margin-right:4px;object-fit:cover;}
     #popup button{margin:6px 4px;padding:6px 12px;border:none;border-radius:4px;cursor:pointer;}
     #popup button:first-of-type{background:#F676A6;color:#fff;}
     #popup button:last-of-type{background:#ccc;}
@@ -46,7 +37,6 @@
 <body>
   <h1 class="title">AKB48 ペンライトカラー表</h1>
 
-  <!-- controls -->
   <div id="controls">
     <label>人数:
       <select id="ninzuSelect">
@@ -78,7 +68,6 @@
       </select>
     </label>
 
-    <!-- Checkbox 群 -->
     <label><input type="checkbox" id="showAll"> 全員</label>
     <label><input type="checkbox" id="showKibetsu"> 期別</label>
     <label><input type="checkbox" id="showKonmei" checked> 公演名</label>
@@ -91,13 +80,10 @@
     <button id="downloadButton" class="button">ダウンロード (300 DPI)</button>
   </div>
 
-  <!-- Canvas -->
   <canvas id="renderCanvas" width="900" height="600"></canvas>
 
-  <!-- Popup -->
   <div id="popup"></div>
 
-  <!-- Script -->
-<script src="script.js?v=5"></script>
+  <script src="script.js" defer></script>
 </body>
 </html>
