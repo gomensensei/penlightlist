@@ -2,13 +2,20 @@
    AKB48 ペンライトカラー表 – script.js 2025-06-27 FINAL-6
    ------------------------------------------------------------ */
 
-/* 任何比對前，一律呼叫 normalize()：移除所有半形空格、全形空格、換行 */
+/* 將字串所有半形／全形空白、換行去除，用於姓名比對 */
 const normalize = s => s.replace(/[ \t\r\n　]+/g, '');
+
+/* 期別 → 人数 (cols x rows) 對映表 */
+const periodLayout = {
+  '13期':'2x1','15期':'2x1','ドラフト2期':'2x1','ドラフト3期':'2x1',
+  'チーム8':'3x3','17期':'3x3','16期':'4x2','18期':'4x2',
+  '19期':'3x2','20期':'2x2'
+};
 
 console.log('⚡ script.js FINAL-6 loaded');
 
 class PenlightGenerator {
-  constructor () {
+  constructor() {
     this.canvas = document.getElementById('renderCanvas');
     this.ctx    = this.canvas.getContext('2d');
 
@@ -34,36 +41,51 @@ class PenlightGenerator {
   }
 
   /* ---------- 初期化 ---------- */
-  async init () {
+  async init() {
     this.members = await (await fetch('members.json')).json();
-    await Promise.all(this.members.map(m=>this._pre(m.name_ja,m.image)));
+    await Promise.all(this.members.map(m => this._preload(m.name_ja, m.image)));
     this._bind(); this.updateAndRender();
   }
-  _pre(k,src){return new Promise(r=>{
-    const img=new Image(); img.src=src;
-    img.onload=()=>{this.preloadedImages[k]=img;r();};
-    img.onerror=()=>{this.preloadedImages[k]=null;r();};
-  });}
+  _preload(key, src) {
+    return new Promise(r=>{
+      const img = new Image(); img.src = src;
+      img.onload  = () => { this.preloadedImages[key] = img;  r(); };
+      img.onerror = () => { this.preloadedImages[key] = null; r(); };
+    });
+  }
 
   /* ---------- 事件 ---------- */
-  _bind(){
+  _bind() {
+    /* controls 變更 */
     document.querySelectorAll('#controls input, #controls select')
       .forEach(el=>el.addEventListener('change',()=>this.updateAndRender()));
 
+    /* 色塊 / 文字互斥 */
     const cb=id=>document.getElementById(id);
     cb('showColorBlock').addEventListener('change',e=>{
       if(e.target.checked) cb('showColorText').checked=false; this.updateAndRender();});
     cb('showColorText').addEventListener('change',e=>{
       if(e.target.checked) cb('showColorBlock').checked=false; this.updateAndRender();});
+
+    /* 勾期別取消全員，並根據 periodLayout 自動切换人数下拉 */
+    cb('kibetsuSelect').addEventListener('change',()=>{
+      const lay = periodLayout[cb('kibetsuSelect').value];
+      if(lay) cb('ninzuSelect').value = lay;
+      this.updateAndRender();
+    });
     cb('showKibetsu').addEventListener('change',()=>{
       cb('showAll').checked=false; this.updateAndRender();
     });
+
+    /* Canvas 點擊 */
     this.canvas.addEventListener('click',e=>this._click(e));
+
+    /* 下載 */
     cb('downloadButton').addEventListener('click',()=>this.exportPNG());
   }
 
-  /* ---------- 狀態同步 ---------- */
-  _sync(){
+  /* ---------- 狀態 & 格子 ---------- */
+  _sync() {
     const $=id=>document.getElementById(id);
     Object.assign(this.state,{
       ninzu: $('ninzuSelect').value, konmei:$('konmeiSelect').value,
@@ -76,30 +98,33 @@ class PenlightGenerator {
     $('customKonmei').style.display=this.state.konmei==='other'?'inline-block':'none';
   }
 
-  /* ---------- 格子 ---------- */
-  _updateGrid(){
-    const [cols,rowsSel]=this.state.ninzu.split('x').map(Number);
+  _updateGrid() {
+    const [cols, rowsSel] = this.state.ninzu.split('x').map(Number);
     let list=[];
-    if(this.state.showAll){
-      list=this.members.map(m=>m.name_ja);
-    }else if(this.state.showKibetsu){
+    if(this.state.showAll) list=this.members.map(m=>m.name_ja);
+    else if(this.state.showKibetsu)
       list=this.members.filter(m=>m.ki===this.state.kibetsu).map(m=>m.name_ja);
-    }
-    const rows=list.length?Math.ceil(list.length/cols):rowsSel;
-    if(!list.length && this.grid.length===cols*rowsSel){
-      /* 手動保留 */
+
+    const rows = list.length ? Math.ceil(list.length/cols) : rowsSel;
+    const need = cols * rows;
+
+    if(!list.length && this.grid.length===need){
+      /* 手動模式並且行列未變 → 保留 grid */
     }else{
-      this.grid=Array(cols*rows).fill(null);
+      /* 先填 null，再覆寫有成員的格 */
+      this.grid = Array(need).fill(null);
       list.forEach((n,i)=>this.grid[i]=n);
     }
-    this._resize(cols,rows);
+    this._resize(cols, rows);
   }
-  _resize(cols,rows){
+
+  _resize(cols, rows) {
     const cw=this.canvas.width/cols;
-    let r=0.5; if(this.state.showPhoto)r+=0.6;
-    if(this.state.showNickname)r+=0.12;
-    if(this.state.showKi)r+=0.12;
-    if(this.state.showColorBlock||this.state.showColorText)r+=0.18;
+    let r=0.5;
+    if(this.state.showPhoto) r+=0.6;
+    if(this.state.showNickname) r+=0.12;
+    if(this.state.showKi) r+=0.12;
+    if(this.state.showColorBlock||this.state.showColorText) r+=0.18;
     this.cellHeight=cw*r;
     const header=this.state.showKonmei?this.FS.title+13:0;
     this.canvas.height=rows*this.cellHeight+header;
@@ -108,7 +133,7 @@ class PenlightGenerator {
   updateAndRender(){this._sync();this._updateGrid();this._render();}
 
   /* ---------- 繪製 ---------- */
-  _render(tc=this.canvas,ctx=this.ctx,imgMap=this.preloadedImages){
+  _render(tc=this.canvas, ctx=this.ctx, imgMap=this.preloadedImages){
     ctx.clearRect(0,0,tc.width,tc.height);
     ctx.fillStyle='#fff4f6';ctx.fillRect(0,0,tc.width,tc.height);
 
@@ -130,9 +155,8 @@ class PenlightGenerator {
         ctx.fillStyle='#F676A6';ctx.textAlign='center';ctx.textBaseline='middle';
         ctx.font='24px KozGoPr6N';ctx.fillText('選択',x+cw/2,y+ch/2);return;
       }
-
-      const m=this.members.find(u=>normalize(u.name_ja)===normalize(name));
-      if(!m){ctx.fillStyle='#F676A6';ctx.textAlign='center';ctx.textBaseline='middle';
+      const mem=this.members.find(m=>normalize(m.name_ja)===normalize(name));
+      if(!mem){ctx.fillStyle='#F676A6';ctx.textAlign='center';ctx.textBaseline='middle';
         ctx.font='24px KozGoPr6N';ctx.fillText('選択',x+cw/2,y+ch/2);return;}
 
       let yy=y+6;
@@ -142,15 +166,16 @@ class PenlightGenerator {
         ctx.drawImage(img,x+(cw-pw)/2,yy,pw,ph);yy+=ph+4;
       }
       ctx.fillStyle='#F676A6';ctx.textAlign='center';ctx.textBaseline='top';
-      ctx.font=`${this.FS.name}px KozGoPr6N`;ctx.fillText(m.name_ja,x+cw/2,yy);yy+=this.FS.name+4;
-      if(this.state.showNickname){ctx.font=`${this.FS.nick}px KozGoPr6N`;ctx.fillText(m.nickname,x+cw/2,yy);yy+=this.FS.nick+2;}
-      if(this.state.showKi){ctx.font=`${this.FS.gen}px KozGoPr6N`;ctx.fillText(m.ki,x+cw/2,yy);}
+      ctx.font=`${this.FS.name}px KozGoPr6N`;ctx.fillText(mem.name_ja,x+cw/2,yy);yy+=this.FS.name+4;
+      if(this.state.showNickname){ctx.font=`${this.FS.nick}px KozGoPr6N`;ctx.fillText(mem.nickname,x+cw/2,yy);yy+=this.FS.nick+2;}
+      if(this.state.showKi){ctx.font=`${this.FS.gen}px KozGoPr6N`;ctx.fillText(mem.ki,x+cw/2,yy);}
       if(this.state.showColorText){
         ctx.font='18px KozGoPr6N';ctx.textBaseline='middle';
-        ctx.fillText(m.colors.map(c=>this.colorMap[c]||c).join(' × '),x+cw/2,y+ch*0.86);
+        ctx.fillText(mem.colors.map(c=>this.colorMap[c]||c).join(' × '),
+          x+cw/2,y+ch*0.86);
       }else if(this.state.showColorBlock){
-        const bw=(cw*0.8)/m.colors.length,bh=bw*0.7,sx=x+(cw-bw*m.colors.length)/2;
-        m.colors.forEach((c,j)=>{ctx.fillStyle=c;ctx.fillRect(sx+j*bw,y+ch*0.82,bw,bh);});
+        const bw=(cw*0.8)/mem.colors.length,bh=bw*0.7,sx=x+(cw-bw*mem.colors.length)/2;
+        mem.colors.forEach((c,j)=>{ctx.fillStyle=c;ctx.fillRect(sx+j*bw,y+ch*0.82,bw,bh);});
       }
     });
   }
@@ -164,7 +189,6 @@ class PenlightGenerator {
     const cw=this.canvas.width/cols,ch=this.cellHeight;
     const col=Math.floor(x/cw),row=Math.floor(y/ch),idx=row*cols+col;
     if(idx<0||idx>=this.grid.length)return;
-
     if(this.grid[idx]!=null && x%cw>cw-40 && y%ch<40){this.grid[idx]=null;this._render();return;}
     if(this.grid[idx]==null)this._popup(idx);
   }
@@ -176,15 +200,15 @@ class PenlightGenerator {
     [...new Set(this.members.map(m=>m.ki))].forEach(ki=>{
       const det=document.createElement('details');
       det.innerHTML=`<summary>${ki}</summary>`;
-      const wrap=document.createElement('div');wrap.className='member-list';
+      const list=document.createElement('div');list.className='member-list';
       this.members.filter(m=>m.ki===ki).forEach(mem=>{
-        const it=document.createElement('div');it.className='member-item';
-        it.dataset.name=mem.name_ja;
-        it.innerHTML=`<img src="${mem.image}" width="48"><span>${mem.name_ja}</span>`;
-        it.onclick=()=>{pop.querySelectorAll('.member-item').forEach(i=>i.classList.remove('selected'));it.classList.add('selected');};
-        wrap.appendChild(it);
+        const item=document.createElement('div');item.className='member-item';
+        item.dataset.name=mem.name_ja;
+        item.innerHTML=`<img src="${mem.image}" width="48"><span>${mem.name_ja}</span>`;
+        item.onclick=()=>{pop.querySelectorAll('.member-item').forEach(i=>i.classList.remove('selected'));item.classList.add('selected');};
+        list.appendChild(item);
       });
-      det.appendChild(wrap);pop.appendChild(det);
+      det.appendChild(list);pop.appendChild(det);
     });
     const ok=document.createElement('button');ok.textContent='選択';
     ok.onclick=()=>{
@@ -203,12 +227,12 @@ class PenlightGenerator {
     const tasks=names.map(n=>{
       const mem=this.members.find(m=>normalize(m.name_ja)===normalize(n));
       if(!mem)return Promise.resolve();
-      const img=new Image();img.crossOrigin='anonymous';
+      const proxy=new Image();proxy.crossOrigin='anonymous';
       const {host,pathname}=new URL(mem.image);
-      img.src=`https://images.weserv.nl/?url=${encodeURIComponent(host+pathname)}`;
+      proxy.src=`https://images.weserv.nl/?url=${encodeURIComponent(host+pathname)}`;
       return new Promise(r=>{
-        img.onload=()=>{this.preloadedImages[`EXPORT_${n}`]=img;r();};
-        img.onerror=()=>{this.preloadedImages[`EXPORT_${n}`]=null;r();};
+        proxy.onload=()=>{this.preloadedImages[`EXPORT_${n}`]=proxy;r();};
+        proxy.onerror=()=>{this.preloadedImages[`EXPORT_${n}`]=null;r();};
       });
     });
     Promise.all(tasks).then(()=>{
