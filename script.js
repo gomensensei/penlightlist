@@ -1,61 +1,49 @@
 // ------------------------------------------------------------
-//  AKB48 ペンライトカラー表 – script.js 2025-06-27 完整修正版
-//  修正重點：
-//  1. 詳細設定按鈕功能正常（#settingsButton）
-//  2. 公演名置中顯示 & 自訂輸入同步
-//  3. 手動選人網格狀態不會被重置
-//  4. 動態 cellHeight：依內容自動增減高度
-//  5. 下載匯出畫布完整、無裁切 (scale=2)
-//  6. CORS 圖片載入 (crossOrigin='anonymous')，下載含照片
-//  7. colorMap 完整，濃ピンク不再黑塊；未知色 fallback
-//  8. 推しカラー文字置中、不重疊
-//  9. 空格「選択」繪成置中大按鈕
-// 10. 姓名字體永遠 ≥ 暱稱字體 +2px
+//  AKB48 ペンライトカラー表 – script.js 2025-06-27 Final
 // ------------------------------------------------------------
 class PenlightGenerator {
   constructor() {
-    // DOM
-    this.canvas  = document.getElementById('renderCanvas');
-    this.ctx     = this.canvas.getContext('2d');
-    // 基準寬高
+    /* ---------- Canvas & 基準 ---------- */
+    this.canvas = document.getElementById('renderCanvas');
+    this.ctx    = this.canvas.getContext('2d');
     this.baseCanvasWidth = this.canvas.width;
     this.baseAspect      = this.canvas.height / this.canvas.width;
 
-    // 資料
-    this.members          = [];
-    this.preloadedImages  = {};
-    this.grid             = [];      // 存放選中成員姓名（null 代表空格）
-    this.currentIndex     = null;    // 目前點擊的格子索引
-    this.cellHeight       = 0;       // 依設定計算的動態高度
+    /* ---------- 資料 ---------- */
+    this.members         = [];
+    this.preloadedImages = {};   // 預覽用
+    this.grid            = [];   // 當前格子 (null or name_ja)
+    this.currentIndex    = null; // 點擊索引
+    this.cellHeight      = 0;    // 動態格高
 
-    // 詳細設定初始值
+    /* ---------- 詳細設定初值 ---------- */
     this.settings = {
-      公演名: { フォントサイズ: 28, 文字間隔: 0, X: 0, Y: 20 },
-      全名 : { フォントサイズ: null, 文字間隔: 0, X: 0, Y: 0 },
-      ネックネーム: { フォントサイズ: 20, 文字間隔: 0, X: 0, Y: 0 },
-      期別 : { フォントサイズ: 18, 文字間隔: 0, X: 0, Y: 0 },
-      写真 : { X: 0, Y: 0, 幅: null, 高さ: null },
-      色塊 : { X: 0, Y: 0, 幅: null },
-      色文字: { フォントサイズ: 18, X: 0, Y: 0 }
+      公演名:     { フォントサイズ: 28, 文字間隔: 0, X: 0, Y: 20 },
+      全名 :      { フォントサイズ: null, 文字間隔: 0, X: 0, Y: 0 },
+      ネックネーム:{ フォントサイズ: 20, 文字間隔: 0, X: 0, Y: 0 },
+      期別 :      { フォントサイズ: 18, 文字間隔: 0, X: 0, Y: 0 },
+      写真 :      { X: 0, Y: 0 },
+      色塊 :      { X: 0, Y: 0 },
+      色文字:     { フォントサイズ: 18, X: 0, Y: 0 }
     };
 
-    // UI 狀態
+    /* ---------- UI 狀態 ---------- */
     this.state = {
-      ninzu:        '4x4',
-      konmei:       'ただいま　恋愛中',
-      kibetsu:      '13期',
-      showAll:      false,
-      showKibetsu:  false,
-      showKonmei:   true,
-      showPhoto:    false,
+      ninzu: '4x4',
+      konmei: 'ただいま　恋愛中',
+      kibetsu: '13期',
+      showAll: false,
+      showKibetsu: false,
+      showKonmei: true,
+      showPhoto: false,
       showNickname: false,
-      showKi:       false,
+      showKi: false,
       showColorBlock: true,
-      showColorText:  false,
+      showColorText: false,
       customKonmei: ''
     };
 
-    // 色碼 → 日文色名
+    /* ---------- 色碼→日文色名 ---------- */
     this.colorMap = {
       '#FF0000': '赤',
       '#FFA500': 'オレンジ',
@@ -72,7 +60,7 @@ class PenlightGenerator {
     };
   }
 
-  /* ------------------- 初始化 ------------------- */
+  /* ================= 初期化 ================= */
   async init() {
     await this.loadData();
     this.setupUI();
@@ -80,7 +68,7 @@ class PenlightGenerator {
     this.updateAndRender();
   }
 
-  /* 載入 members.json 並預載圖片（CORS） */
+  /* ---------- 載入成員資料 & 預覽圖片 ---------- */
   async loadData() {
     const res = await fetch('members.json');
     this.members = await res.json();
@@ -88,40 +76,45 @@ class PenlightGenerator {
       this.members.map(m => this.preloadImage(m.name_ja, m.image))
     );
   }
+  /* 預覽用：不加 crossOrigin，確保畫面一定出圖（即使 taint） */
   preloadImage(name, src) {
     return new Promise(res => {
       const img = new Image();
-      img.crossOrigin = 'anonymous';
       img.src = src;
-      img.onload = () => { this.preloadedImages[name] = img; res(); };
+      img.onload  = () => { this.preloadedImages[name] = img;  res(); };
       img.onerror = () => { this.preloadedImages[name] = null; res(); };
     });
   }
 
-  /* ------------------- UI 與事件 ------------------- */
+  /* ================= UI 建置 ================= */
   setupUI() {
-    // 詳細設定面板拖曳與收摺
+    /* 詳細設定面板骨架 + 收摺 */
     const panel = document.getElementById('設定パネル');
-    panel.querySelector('strong').onclick = () =>
-      panel.classList.toggle('collapsed');
+    panel.innerHTML = `
+      <strong>詳細設定</strong>
+      <div id="詳細中身"></div>`;
+    panel.querySelector('strong').onclick =
+      () => panel.classList.toggle('collapsed');
     this.makeDraggable(panel);
 
-    // 將初始值填入表單
-    document.getElementById('ninzuSelect').value   = this.state.ninzu;
-    document.getElementById('konmeiSelect').value  = this.state.konmei;
-    document.getElementById('kibetsuSelect').value = this.state.kibetsu;
-    document.getElementById('showColorBlock').checked = this.state.showColorBlock;
-    document.getElementById('showColorText').checked  = this.state.showColorText;
+    /* 表單初始值 */
+    const $ = id => document.getElementById(id);
+    $('ninzuSelect').value   = this.state.ninzu;
+    $('konmeiSelect').value  = this.state.konmei;
+    $('kibetsuSelect').value = this.state.kibetsu;
+    $('showColorBlock').checked = this.state.showColorBlock;
+    $('showColorText').checked  = this.state.showColorText;
   }
+  /* 拖曳面板 */
   makeDraggable(el) {
-    let offsetX = 0, offsetY = 0;
+    let ox = 0, oy = 0;
     el.addEventListener('mousedown', e => {
       if (e.target.tagName === 'INPUT') return;
-      offsetX = e.clientX - el.offsetLeft;
-      offsetY = e.clientY - el.offsetTop;
+      ox = e.clientX - el.offsetLeft;
+      oy = e.clientY - el.offsetTop;
       const move = ev => {
-        el.style.left = `${ev.clientX - offsetX}px`;
-        el.style.top  = `${ev.clientY - offsetY}px`;
+        el.style.left = `${ev.clientX - ox}px`;
+        el.style.top  = `${ev.clientY - oy}px`;
       };
       document.addEventListener('mousemove', move);
       document.addEventListener('mouseup', () =>
@@ -130,13 +123,13 @@ class PenlightGenerator {
     });
   }
 
+  /* ================= 事件綁定 ================= */
   bindEvents() {
-    // 主控制區 input/select
-    document
-      .querySelectorAll('#controls input:not(#customKonmei), #controls select')
+    const $q = sel => document.querySelectorAll(sel);
+    $q('#controls input:not(#customKonmei), #controls select')
       .forEach(el => el.addEventListener('change', () => this.updateAndRender()));
 
-    // 色塊 / 文字 二選一
+    /* 色塊/文字二選一 */
     document.getElementById('showColorBlock').addEventListener('change', e => {
       if (e.target.checked) document.getElementById('showColorText').checked = false;
       this.updateAndRender();
@@ -146,26 +139,25 @@ class PenlightGenerator {
       this.updateAndRender();
     });
 
-    // 勾選期別後取消全員
-    document.getElementById('showKibetsu')
-      .addEventListener('change', () => {
-        document.getElementById('showAll').checked = false;
-        this.updateAndRender();
-      });
+    /* 勾期別取消全員 */
+    document.getElementById('showKibetsu').addEventListener('change', () => {
+      document.getElementById('showAll').checked = false;
+      this.updateAndRender();
+    });
 
-    // 詳細設定按鈕
+    /* 詳細設定按鈕 */
     document.getElementById('settingsButton')
       .addEventListener('click', () =>
         document.getElementById('設定パネル').classList.toggle('collapsed'));
 
-    // Canvas 點擊（+ 選人／取消）
+    /* Canvas 點擊 (+ 選人 / 取消) */
     this.canvas.addEventListener('click', e => this.handleCanvasClick(e));
 
-    // 下載
+    /* 下載 */
     document.getElementById('downloadButton').addEventListener('click', () => this.exportPNG());
   }
 
-  /* ------------- 狀態更新 & 重繪 ------------- */
+  /* ================= 狀態 → 畫面 ================= */
   updateState() {
     const $ = id => document.getElementById(id);
     this.state.ninzu         = $('ninzuSelect').value;
@@ -181,49 +173,39 @@ class PenlightGenerator {
     this.state.showColorText = $('showColorText').checked;
     this.state.customKonmei  = $('customKonmei').value;
 
-    // 自訂公演名輸入框顯示
     $('customKonmei').style.display =
       this.state.konmei === 'other' ? 'inline-block' : 'none';
   }
 
   updateGrid() {
     const [cols, rowsSelect] = this.state.ninzu.split('x').map(Number);
+    let list = [];
 
-    // 決定需顯示的成員清單
-    let displayList = [];
     if (this.state.showAll) {
-      displayList = this.members.map(m => m.name_ja);
+      list = this.members.map(m => m.name_ja);
     } else if (this.state.showKibetsu) {
-      displayList = this.members
-        .filter(m => m.ki === this.state.kibetsu)
-        .map(m => m.name_ja);
-    } else {
-      // 手動模式：保留現有 grid
-      if (this.grid.length) {
-        displayList = [...this.grid];
-      }
+      list = this.members.filter(m => m.ki === this.state.kibetsu)
+                         .map(m => m.name_ja);
+    } else if (this.grid.length) {
+      list = [...this.grid];
     }
 
-    // 依選擇人數決定行列
-    const rows = Math.ceil(displayList.length / cols) || rowsSelect;
+    const rows = Math.ceil(list.length / cols) || rowsSelect;
     this.grid = Array(cols * rows).fill(null);
-    displayList.forEach((name, i) => (this.grid[i] = name));
+    list.forEach((n, i) => (this.grid[i] = n));
 
-    // 更新 cellHeight 與 canvas.height
     this.resizeCanvas(cols, rows);
   }
 
   resizeCanvas(cols, rows) {
     const cw = this.canvas.width / cols;
+    let ratio = 0.5; // 基底：全名+色塊
 
-    // 基本高度 (姓名+色塊)
-    let ratio = 0.5;
-
-    // 若有照片、暱稱、期別、顏色文字則加高
     if (this.state.showPhoto)     ratio += 0.6;
     if (this.state.showNickname)  ratio += 0.12;
     if (this.state.showKi)        ratio += 0.12;
-    if (this.state.showColorBlock || this.state.showColorText) ratio += 0.18;
+    if (this.state.showColorBlock || this.state.showColorText)
+      ratio += 0.18;
 
     this.cellHeight = cw * ratio;
     const headerH = this.state.showKonmei ? this.settings.公演名.フォントサイズ + 10 : 0;
@@ -236,45 +218,42 @@ class PenlightGenerator {
     this.renderGrid();
   }
 
-  /* ------------------- Canvas 內容 ------------------- */
-  renderGrid(tc = this.canvas, ctx = this.ctx) {
+  /* ================= 畫格子 ================= */
+  renderGrid(tc = this.canvas, ctx = this.ctx, imgMap = this.preloadedImages) {
     const isExport = tc !== this.canvas;
     const scale = tc.width / this.canvas.width;
-
-    // 清空背景
     ctx.fillStyle = '#fff4f6';
     ctx.fillRect(0, 0, tc.width, tc.height);
 
-    // 公演名
+    /* 公演名 */
     if (this.state.showKonmei) {
-      const title =
-        this.state.konmei === 'other' ? this.state.customKonmei.trim() : this.state.konmei;
+      const t = this.state.konmei === 'other'
+        ? this.state.customKonmei.trim() : this.state.konmei;
       ctx.fillStyle = '#F676A6';
       ctx.textAlign = 'center';
       ctx.textBaseline = 'top';
       ctx.font = `${this.settings.公演名.フォントサイズ * scale}px KozGoPr6N`;
-      ctx.fillText(title, tc.width / 2, this.settings.公演名.Y * scale);
+      ctx.fillText(t, tc.width / 2, this.settings.公演名.Y * scale);
     }
 
     const [cols] = this.state.ninzu.split('x').map(Number);
     const cw = tc.width / cols;
     const ch = this.cellHeight * scale;
-    const topOffset = this.state.showKonmei ? (this.settings.公演名.フォントサイズ + 10) * scale : 0;
+    const topOffset = this.state.showKonmei
+      ? (this.settings.公演名.フォントサイズ + 10) * scale : 0;
 
     this.grid.forEach((name, i) => {
-      const r = Math.floor(i / cols);
-      const c = i % cols;
-      const x = c * cw;
-      const y = r * ch + topOffset;
+      const r = Math.floor(i / cols), c = i % cols;
+      const x = c * cw, y = r * ch + topOffset;
 
-      // Cell 背景 & 邊框
+      /* 背景+框 */
       ctx.fillStyle = '#fff';
       ctx.fillRect(x, y, cw, ch);
       ctx.strokeStyle = '#F676A6';
       ctx.lineWidth = 2 * scale;
       ctx.strokeRect(x, y, cw, ch);
 
-      /* -------- 空格：繪製「選択」按鈕 -------- */
+      /* 空格 → 選択 */
       if (!name) {
         if (!isExport) {
           ctx.fillStyle = '#F676A6';
@@ -286,33 +265,27 @@ class PenlightGenerator {
         return;
       }
 
-      /* -------- 取得成員資料 -------- */
       const mem = this.members.find(m => m.name_ja === name);
       let cursorY = y + 8 * scale;
 
-      /* -------- 照片 -------- */
-      if (this.state.showPhoto && this.preloadedImages[name]) {
-        const img = this.preloadedImages[name];
-        const imgAsp = img.naturalWidth / img.naturalHeight;
-        let ph = ch * 0.55;
-        let pw = ph * imgAsp;
-        if (pw > cw * 0.8) {
-          pw = cw * 0.8;
-          ph = pw / imgAsp;
-        }
+      /* 照片 */
+      if (this.state.showPhoto && imgMap[name]) {
+        const img = imgMap[name];
+        const asp = img.naturalWidth / img.naturalHeight;
+        let ph = ch * 0.55, pw = ph * asp;
+        if (pw > cw * 0.8) { pw = cw * 0.8; ph = pw / asp; }
         ctx.drawImage(
           img,
           x + (cw - pw) / 2 + this.settings.写真.X * scale,
           cursorY + this.settings.写真.Y * scale,
-          pw,
-          ph
+          pw, ph
         );
         cursorY += ph + 5 * scale;
       }
 
-      /* -------- 姓名（全名） -------- */
-      const baseFont = Math.min(ch * 0.16, cw * 0.18);
-      const fsName = Math.max(baseFont, (this.settings.全名.フォントサイズ || 20) * scale);
+      /* 姓名 */
+      const baseFS = Math.min(ch * 0.16, cw * 0.18);
+      const fsName = Math.max(baseFS, (this.settings.全名.フォントサイズ || 22) * scale);
       ctx.fillStyle = '#F676A6';
       ctx.font = `${fsName}px KozGoPr6N`;
       ctx.textAlign = 'center';
@@ -324,7 +297,7 @@ class PenlightGenerator {
       );
       cursorY += fsName + 4 * scale;
 
-      /* -------- 暱稱 -------- */
+      /* 暱稱 */
       if (this.state.showNickname) {
         const fsNick = Math.min(ch * 0.11, 18 * scale);
         ctx.font = `${fsNick}px KozGoPr6N`;
@@ -336,7 +309,7 @@ class PenlightGenerator {
         cursorY += fsNick + 3 * scale;
       }
 
-      /* -------- 期別 -------- */
+      /* 期別 */
       if (this.state.showKi) {
         const fsKi = Math.min(ch * 0.11, 16 * scale);
         ctx.font = `${fsKi}px KozGoPr6N`;
@@ -348,25 +321,20 @@ class PenlightGenerator {
         cursorY += fsKi + 3 * scale;
       }
 
-      /* -------- 推しカラー -------- */
+      /* 推しカラー */
       const colors = mem.colors;
       if (this.state.showColorText) {
-        // 文字模式
+        const fsC = Math.min(ch * 0.09, this.settings.色文字.フォントサイズ * scale);
+        ctx.font = `${fsC}px KozGoPr6N`;
         ctx.textBaseline = 'middle';
-        const fsColor = Math.min(ch * 0.09, this.settings.色文字.フォントサイズ * scale);
-        ctx.font = `${fsColor}px KozGoPr6N`;
-
-        // 構造文字
-        const parts = colors.map(c => this.colorMap[c] || c);
-        const colorStr = parts.join(' × ');
+        const txt = colors.map(c => this.colorMap[c] || c).join(' × ');
         ctx.fillStyle = '#F676A6';
         ctx.fillText(
-          colorStr,
+          txt,
           x + cw / 2 + this.settings.色文字.X * scale,
           y + ch * 0.86 + this.settings.色文字.Y * scale
         );
       } else if (this.state.showColorBlock) {
-        // 色塊模式
         const bw = (cw * 0.8) / colors.length;
         const bh = bw * 0.7;
         const startX = x + (cw - bw * colors.length) / 2 + this.settings.色塊.X * scale;
@@ -375,23 +343,23 @@ class PenlightGenerator {
           ctx.fillRect(
             startX + idx * bw,
             y + ch * 0.82 + this.settings.色塊.Y * scale,
-            bw,
-            bh
+            bw, bh
           );
         });
       }
     });
   }
 
-  /* ------------- Canvas 點擊 (+ 選人 / 取消) ------------- */
+  /* ================= Canvas 點擊 (+/取消) ================= */
   handleCanvasClick(e) {
     const rect = this.canvas.getBoundingClientRect();
     let x = e.clientX - rect.left;
     let y = e.clientY - rect.top;
 
-    const headerH = this.state.showKonmei ? this.settings.公演名.フォントサイズ + 10 : 0;
+    const headerH = this.state.showKonmei
+      ? this.settings.公演名.フォントサイズ + 10 : 0;
     y -= headerH;
-    if (y < 0) return; // 點到標題
+    if (y < 0) return;
 
     const [cols] = this.state.ninzu.split('x').map(Number);
     const cw = this.canvas.width / cols;
@@ -399,59 +367,53 @@ class PenlightGenerator {
     const col = Math.floor(x / cw);
     const row = Math.floor(y / ch);
     const idx = row * cols + col;
-
     if (idx < 0 || idx >= this.grid.length) return;
 
-    // 右上角取消
+    // 右上角刪除
     if (this.grid[idx] && x % cw > cw - 40 && y % ch < 40) {
       this.grid[idx] = null;
       this.updateAndRender();
       return;
     }
 
-    // 空格 → 選人
-    if (!this.grid[idx]) {
-      this.showPopup(idx);
-    }
+    // 空格選人
+    if (!this.grid[idx]) this.showPopup(idx);
   }
 
-  /* ------------- 彈出成員選單 ------------- */
+  /* ================= 彈出選單 ================= */
   showPopup(idx) {
     this.currentIndex = idx;
     const popup = document.getElementById('popup');
-    popup.innerHTML = ''; // 清空
+    popup.innerHTML = '';
 
-    // 以 ki 分組
     const groups = [...new Set(this.members.map(m => m.ki))];
     groups.forEach(g => {
-      const details = document.createElement('details');
-      const summary = document.createElement('summary');
-      summary.textContent = g;
-      details.appendChild(summary);
+      const det = document.createElement('details');
+      const sum = document.createElement('summary');
+      sum.textContent = g;
+      det.appendChild(sum);
 
       const list = document.createElement('div');
       list.className = 'member-list';
-      this.members
-        .filter(m => m.ki === g)
-        .forEach(m => {
-          const item = document.createElement('div');
-          item.className = 'member-item';
-          item.innerHTML = `<img src=\"${m.image}\" width=\"48\"><span>${m.name_ja}</span>`;
-          item.onclick = () => {
-            popup.querySelectorAll('.member-item').forEach(i => i.classList.remove('selected'));
-            item.classList.add('selected');
-          };
-          list.appendChild(item);
-        });
-      details.appendChild(list);
-      popup.appendChild(details);
+      this.members.filter(m => m.ki === g).forEach(m => {
+        const item = document.createElement('div');
+        item.className = 'member-item';
+        item.innerHTML =
+          `<img src=\"${m.image}\" width=\"48\"><span>${m.name_ja}</span>`;
+        item.onclick = () => {
+          popup.querySelectorAll('.member-item')
+               .forEach(i => i.classList.remove('selected'));
+          item.classList.add('selected');
+        };
+        list.appendChild(item);
+      });
+      det.appendChild(list);
+      popup.appendChild(det);
     });
 
-    // Footer 按鈕
-    const okBtn  = document.createElement('button');
-    okBtn.id = 'popupSelectBtn';
-    okBtn.textContent = '選択';
-    okBtn.onclick = () => {
+    const ok = document.createElement('button');
+    ok.textContent = '選択';
+    ok.onclick = () => {
       const sel = popup.querySelector('.member-item.selected span');
       if (sel) {
         this.grid[this.currentIndex] = sel.textContent;
@@ -459,39 +421,58 @@ class PenlightGenerator {
         this.updateAndRender();
       }
     };
-    const closeBtn = document.createElement('button');
-    closeBtn.id = 'popupCloseBtn';
-    closeBtn.textContent = '閉じる';
-    closeBtn.onclick = () => (popup.style.display = 'none');
+    const close = document.createElement('button');
+    close.textContent = '閉じる';
+    close.onclick = () => (popup.style.display = 'none');
 
-    popup.appendChild(okBtn);
-    popup.appendChild(closeBtn);
-
+    popup.appendChild(ok);
+    popup.appendChild(close);
     popup.style.display = 'block';
   }
 
-  /* ------------- 匯出 PNG ------------- */
+  /* ================= 匯出 PNG ================= */
   exportPNG() {
-    // 重新計算確保畫布完整
+    // 確實更新畫布尺寸
     this.resizeCanvas(...this.state.ninzu.split('x').map(Number));
-    // 兩倍解析度
-    const scale = 2;
-    const tmp = document.createElement('canvas');
-    tmp.width  = this.canvas.width  * scale;
-    tmp.height = this.canvas.height * scale;
-    const p = tmp.getContext('2d');
-    p.scale(scale, scale);
-    this.renderGrid(tmp, p);
 
-    const a = document.createElement('a');
-    a.download = 'penlight_colors.png';
-    a.href = tmp.toDataURL('image/png');
-    a.click();
+    // 代理載入所有當前 grid 所需照片
+    const names = [...new Set(this.grid.filter(Boolean))];
+    const proxyLoads = names.map(n => {
+      const mem = this.members.find(m => m.name_ja === n);
+      if (!mem) return Promise.resolve();
+      const pImg = new Image();
+      pImg.crossOrigin = 'anonymous';
+      const raw = mem.image.replace(/^https?:\\/\\//, '');
+      pImg.src = `https://images.weserv.nl/?url=${encodeURIComponent(raw)}`;
+      return new Promise(r => {
+        pImg.onload  = () => { this.preloadedImages[`EXPORT_${n}`] = pImg; r(); };
+        pImg.onerror = () => { this.preloadedImages[`EXPORT_${n}`] = null;  r(); };
+      });
+    });
+
+    Promise.all(proxyLoads).then(() => {
+      const scale = 2;
+      const tmp = document.createElement('canvas');
+      tmp.width  = this.canvas.width  * scale;
+      tmp.height = this.canvas.height * scale;
+      const p = tmp.getContext('2d');
+      p.scale(scale, scale);
+
+      // 代理 Map：優先用 EXPORT_ 圖
+      const map = new Proxy(this.preloadedImages, {
+        get: (t, k) => t[`EXPORT_${k}`] || t[k]
+      });
+      this.renderGrid(tmp, p, map);
+
+      const a = document.createElement('a');
+      a.download = 'penlight_colors.png';
+      a.href = tmp.toDataURL('image/png');
+      a.click();
+    });
   }
 }
 
-/* ------------------ 啟動 ------------------ */
+/* ================= 啟動 ================= */
 window.addEventListener('DOMContentLoaded', () => {
-  const gen = new PenlightGenerator();
-  gen.init();
+  new PenlightGenerator().init();
 });
