@@ -1,51 +1,33 @@
-// 提醒：在本地開發時，需使用 VSCode Live Server 等運行環境，否則 fetch() JSON 會因 CORS 報錯
 let langsDB = {};
 let membersDB = [];
 
+// 內建回退數據 (Fallback Data) - 確保本地打開不會因為 CORS 死圖
+const fallbackLangs = {
+    "zh-HK": { "app_title": "成員名單及應援色", "preset_placeholder": "-- 快速載入公演模板 (空白格) --", "ctrl_grid": "Grid 格數控制", "btn_8": "8 人", "btn_12": "12 人", "btn_16": "16 人", "btn_minus": "減 1 格", "btn_plus": "加 1 格", "ctrl_display": "顯示內容設定", "cfg_photo": "顯示成員圓形頭像", "cfg_gen": "顯示期別", "cfg_name": "顯示名字", "cfg_nick": "顯示暱稱", "ctrl_color_mode": "應援色呈現方式", "mode_block": "色塊方格 (打斜各半AB色)", "mode_text": "陰影色字 (單色底高對比)", "ctrl_sort": "排列方式", "sort_color": "按顏色", "sort_gen": "按期數", "btn_download": "下載名單", "modal_title": "選擇成員", "loading": "渲染高解析度圖片中...", "footer_text": "© 2026 AKB48 應援名單生成器. Not affiliated with AKB48 official." }
+};
+
+const fallbackMembers = [
+    { id: "1", name_ja: "岩立 沙穂", nickname: "さっほー", ki: "13期生", genNum: 13, colorData: [ {color: "#3860FF", name: "青"}, {color: "#FFFFFF", name: "白"}, {color: "#FF3633", name: "赤"} ], image: "https://d2r1lkk9i7row.cloudfront.net/mobile/member/83100622.jpg" },
+    { id: "2", name_ja: "村山 彩希", nickname: "ゆいりー", ki: "13期生", genNum: 13, colorData: [ {color: "#d32f2f", name: "赤"}, {color: "#ffeb3b", name: "黄"} ], image: "https://d2r1lkk9i7row.cloudfront.net/mobile/member/83100632.jpg" }
+];
+
 async function initApp() {
     try {
-        const [memRes, langRes] = await Promise.all([
-            fetch('members.json'),
-            fetch('langs.json')
-        ]);
-        const rawMembers = await memRes.json();
+        const [memRes, langRes] = await Promise.all([ fetch('members.json'), fetch('langs.json') ]);
+        if (!memRes.ok || !langRes.ok) throw new Error("Fetch failed");
+        membersDB = await memRes.json();
         langsDB = await langRes.json();
-        
-        // 將舊格式的 members.json 動態轉化為新格式
-        membersDB = rawMembers.map((m, index) => {
-            let genNum = 99;
-            if (m.generation.includes('期')) genNum = parseFloat(m.generation);
-            else if (m.generation.includes('Team 8')) genNum = 14;
-            else if (m.generation.includes('ドラフト')) genNum = 15.5;
-
-            let colors = [];
-            if (m.color_a) colors.push({ color: m.color_a, name: "色A" });
-            if (m.color_b) colors.push({ color: m.color_b, name: "色B" });
-            
-            // 岩立沙穂 3色特例修正
-            if (m.name_ja === "岩立 沙穂") {
-                colors = [{ color: "#3860FF", name: "色A" }, { color: "#FFFFFF", name: "色B" }, { color: "#FF3633", name: "色C" }];
-            }
-
-            return {
-                id: String(index + 1),
-                name_ja: m.name_ja,
-                nickname: m.name_en, // 暫時以 en_name 作為 nickname
-                ki: m.generation,
-                genNum: genNum,
-                colorData: colors,
-                image: m.image
-            };
-        });
-
-        applyLanguage();
-        renderHTMLGrid();
     } catch (err) {
-        console.error("Failed to load JSON data:", err);
-        alert("無法讀取 JSON 資料，請確保在伺服器環境 (如 Live Server 或 GitHub Pages) 運行。");
+        console.log("Using local JSON fallback due to CORS or missing files.");
+        membersDB = fallbackMembers;
+        langsDB = fallbackLangs;
     }
+    
+    applyLanguage();
+    renderHTMLGrid();
 }
 
+// 系統狀態
 let currentLang = 'zh-HK';
 let gridSlots = new Array(16).fill(null); 
 let activeSlotIndex = -1;
@@ -59,19 +41,25 @@ document.getElementById('langSelector').addEventListener('change', (e) => {
 });
 
 function applyLanguage() {
-    if (!langsDB[currentLang]) return;
+    const langData = langsDB[currentLang] || langsDB['zh-HK'];
     document.querySelectorAll('[data-i18n]').forEach(el => {
         const key = el.getAttribute('data-i18n');
-        if(langsDB[currentLang][key]) {
-            if(el.tagName === 'INPUT' || el.tagName === 'OPTION') el.textContent = langsDB[currentLang][key];
-            else el.textContent = langsDB[currentLang][key];
+        if(langData[key]) {
+            if(el.tagName === 'INPUT' || el.tagName === 'OPTION') el.textContent = langData[key];
+            else el.textContent = langData[key];
         }
     });
     const sel = document.getElementById('presetSelector');
-    if (sel.options[0]) sel.options[0].textContent = langsDB[currentLang]['preset_placeholder'] || "-- 快速載入公演模板 (空白格) --";
+    if (sel.options[0]) sel.options[0].textContent = langData['preset_placeholder'] || "-- 快速載入公演模板 (空白格) --";
 }
 
-// 產生打斜各半的硬邊漸變 (Hard Stops)
+// 六角形轉 rgba 以支援光暈
+function hexToRgba(hex, alpha) {
+    let r = parseInt(hex.slice(1, 3), 16), g = parseInt(hex.slice(3, 5), 16), b = parseInt(hex.slice(5, 7), 16);
+    return `rgba(${r}, ${g}, ${b}, ${alpha})`;
+}
+
+// 打斜各半色塊計算 (CSS gradient - Hard Stops)
 function getDiagonalGradient(colorData) {
     const c = colorData.map(cd => cd.color);
     if (c.length === 1) return c[0];
@@ -108,7 +96,7 @@ function calculateGridCols(total) {
 function setGridSize(size) {
     const oldSlots = [...gridSlots];
     gridSlots = new Array(size).fill(null);
-    oldSlots.forEach((m, i) => { if (i < size) gridSlots[i] = m; });
+    oldSlots.forEach((member, i) => { if (i < size) gridSlots[i] = member; });
     renderHTMLGrid();
 }
 
@@ -127,7 +115,10 @@ function renderHTMLGrid() {
 
     gridSlots.forEach((memberObj, index) => {
         const cell = document.createElement('div');
-        cell.className = 'grid-cell' + (memberObj ? ' filled mode-' + colorMode : '');
+        // 添加 no-photo class 控制置中放大
+        let classes = `grid-cell${memberObj ? ' filled mode-' + colorMode : ''}`;
+        if (!cfgPhoto) classes += ` no-photo`;
+        cell.className = classes;
 
         if (!memberObj) {
             cell.innerHTML = `<i data-lucide="plus" class="add-icon"></i>`;
@@ -139,6 +130,8 @@ function renderHTMLGrid() {
                 bgStyle = `background: ${getDiagonalGradient(memberObj.colorData)};`;
                 overlayHtml = `<div class="cell-overlay"></div>`;
             } else {
+                // 陰影色字模式：加入微弱 Radial Glow 背景
+                bgStyle = `background: radial-gradient(circle at center, ${hexToRgba(memberObj.colorData[0].color, 0.15)} 0%, transparent 70%);`;
                 colorHtml = `<div class="color-display">` + memberObj.colorData.map((c, i) => {
                     let span = `<span class="c-text" style="color:${c.color}; text-shadow: 1px 1px 3px rgba(0,0,0,0.8);">${c.name}</span>`;
                     if (i < memberObj.colorData.length - 1) span += `<span class="c-text-x">x</span>`;
@@ -164,6 +157,7 @@ function renderHTMLGrid() {
         }
         htmlGrid.appendChild(cell);
     });
+    // 每次更新 DOM 後必須重新呼叫 createIcons 否則會消失
     lucide.createIcons();
 }
 
@@ -284,7 +278,13 @@ async function drawCanvasExport() {
                 overlayGrad.addColorStop(0, 'rgba(0,0,0,0)'); overlayGrad.addColorStop(1, 'rgba(0,0,0,0.85)');
                 ctx.fillStyle = overlayGrad; ctx.fillRect(x, y + cellH - 220, cellW, 220);
             } else {
+                // 文本模式背景 Radial Glow
                 ctx.fillStyle = isDark ? '#1E1E1E' : '#FFFFFF'; ctx.fillRect(x, y, cellW, cellH);
+                const cx = x + cellW / 2, cy = y + cellH / 2;
+                const rGrad = ctx.createRadialGradient(cx, cy, 0, cx, cy, cellW);
+                rGrad.addColorStop(0, hexToRgba(member.colorData[0].color, 0.15));
+                rGrad.addColorStop(1, 'transparent');
+                ctx.fillStyle = rGrad; ctx.fillRect(x, y, cellW, cellH);
             }
 
             if (cfgPhoto && member.image) {
@@ -303,17 +303,20 @@ async function drawCanvasExport() {
             ctx.textAlign = 'center';
             const textColor = colorMode === 'block' ? '#FFFFFF' : (isDark ? '#FFFFFF' : '#2C3E50');
             const subColor = colorMode === 'block' ? 'rgba(255,255,255,0.8)' : (isDark ? '#888' : '#999');
-            let currentY = y + cellH * 0.65;
             
-            if (colorMode === 'block') { ctx.shadowColor = "rgba(0,0,0,0.6)"; ctx.shadowBlur = 4; ctx.shadowOffsetY = 2; } 
+            // 動態調整無頭像時的 Y 軸和字體比例
+            let currentY = cfgPhoto ? (y + cellH * 0.65) : (y + cellH * 0.45);
+            let fontScale = cfgPhoto ? 1 : 1.35;
+            
+            if (colorMode === 'block') { ctx.shadowColor = "rgba(0,0,0,0.6)"; ctx.shadowBlur = 4; ctx.shadowOffsetX = 0; ctx.shadowOffsetY = 2; } 
             else { ctx.shadowColor = "transparent"; }
 
-            if (cfgGen && member.ki) { ctx.fillStyle = subColor; ctx.font = `700 ${cellW * 0.06}px 'Noto Sans JP'`; ctx.fillText(member.ki, x + cellW/2, currentY); currentY += cellW * 0.1; }
-            if (cfgName) { ctx.fillStyle = textColor; ctx.font = `900 ${cellW * 0.11}px 'Noto Sans JP'`; ctx.fillText(member.name_ja, x + cellW/2, currentY); currentY += cellW * 0.08; }
-            if (cfgNick && member.nickname) { ctx.fillStyle = subColor; ctx.font = `700 ${cellW * 0.07}px 'Noto Sans JP'`; ctx.fillText(`(${member.nickname})`, x + cellW/2, currentY); currentY += cellW * 0.1; }
+            if (cfgGen && member.ki) { ctx.fillStyle = subColor; ctx.font = `700 ${cellW * 0.06 * fontScale}px 'Noto Sans JP'`; ctx.fillText(member.ki, x + cellW/2, currentY); currentY += cellW * 0.1 * fontScale; }
+            if (cfgName) { ctx.fillStyle = textColor; ctx.font = `900 ${cellW * 0.11 * fontScale}px 'Noto Sans JP'`; ctx.fillText(member.name_ja, x + cellW/2, currentY); currentY += cellW * 0.08 * fontScale; }
+            if (cfgNick && member.nickname) { ctx.fillStyle = subColor; ctx.font = `700 ${cellW * 0.07 * fontScale}px 'Noto Sans JP'`; ctx.fillText(`(${member.nickname})`, x + cellW/2, currentY); currentY += cellW * 0.1 * fontScale; }
 
             if (colorMode === 'text') {
-                currentY += cellW * 0.02; ctx.font = `900 ${cellW * 0.08}px 'Noto Sans JP'`;
+                currentY += cellW * 0.02 * fontScale; ctx.font = `900 ${cellW * 0.08 * fontScale}px 'Noto Sans JP'`;
                 let totalW = 0;
                 member.colorData.forEach((cd, idx) => { totalW += ctx.measureText(cd.name).width; if (idx < member.colorData.length - 1) totalW += ctx.measureText(" x ").width; });
                 let startX = x + cellW/2 - totalW/2; ctx.textAlign = 'left';
@@ -321,8 +324,8 @@ async function drawCanvasExport() {
                     ctx.fillStyle = cd.color; ctx.shadowColor = "rgba(0,0,0,0.8)"; ctx.shadowBlur = 4; ctx.shadowOffsetX = 1; ctx.shadowOffsetY = 1;
                     ctx.fillText(cd.name, startX, currentY); startX += ctx.measureText(cd.name).width;
                     if (idx < member.colorData.length - 1) {
-                        ctx.shadowColor = "transparent"; ctx.fillStyle = subColor; ctx.font = `bold ${cellW * 0.06}px 'Noto Sans JP'`;
-                        ctx.fillText(" x ", startX, currentY); startX += ctx.measureText(" x ").width; ctx.font = `900 ${cellW * 0.08}px 'Noto Sans JP'`; 
+                        ctx.shadowColor = "transparent"; ctx.fillStyle = subColor; ctx.font = `bold ${cellW * 0.06 * fontScale}px 'Noto Sans JP'`;
+                        ctx.fillText(" x ", startX, currentY); startX += ctx.measureText(" x ").width; ctx.font = `900 ${cellW * 0.08 * fontScale}px 'Noto Sans JP'`; 
                     }
                 });
                 ctx.shadowColor = "transparent"; ctx.textAlign = 'center'; 
