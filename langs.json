@@ -7,7 +7,7 @@
         "ctrl_color_mode": "應援色呈現方式", "mode_block": "色塊方格 (打斜各半AB色)", "mode_text": "陰影色字 (單色底高對比)",
         "ctrl_sort": "排列方式", "sort_color": "按顏色", "sort_gen": "按期數",
         "btn_download": "下載名單", "modal_title": "選擇成員", "loading": "渲染高解析度圖片中...",
-        "footer_text": "© 2026 AKB48 應援名單生成器 (Penlight Generator). Not affiliated with AKB48 official."
+        "footer_text": "© 2026 AKB48 應援名單生成器. Not affiliated with AKB48 official."
     },
     "ja": {
         "app_title": "出演メンバー＆サイリウムカラー", "preset_placeholder": "-- テンプレート読み込み (空枠) --",
