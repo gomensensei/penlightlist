@@ -1,7 +1,7 @@
 let langsDB = {};
 let membersDB = [];
+let isTitleCustomized = false;
 
-// 確保不論環境都有 UI 組件
 const fallbackUI = {
     plus: '<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 5v14M5 12h14"/></svg>',
     x: '<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 6 6 18M6 6l12 12"/></svg>'
@@ -15,18 +15,21 @@ async function initApp() {
         langsDB = await langRes.json();
     } catch (err) {
         console.warn("Using local JSON fallback due to CORS.");
-        langsDB = { "zh-HK": { "app_title": "成員名單及應援色", "preset_placeholder": "-- 快速載入公演模板 --", "btn_download": "下載名單", "copyright_notice": "網站僅供非商業用途使用，版權歸©AKB48及株式会社DH所有。" } };
-        membersDB = []; // Fallback empty to prevent crash
+        langsDB = { "zh-HK": { "app_title": "成員名單及應援色", "default_title": "「手をつなぎながら」公演", "title_placeholder": "📝 點擊輸入公演名稱...", "preset_placeholder": "-- 快速載入公演模板 --", "btn_download": "下載名單" } };
+        membersDB = []; 
     }
-    
     applyLanguage();
+    // Default 8 cells (4x2)
+    gridSlots = new Array(8).fill(null);
     renderHTMLGrid();
 }
 
 let currentLang = 'zh-HK';
-let gridSlots = new Array(8).fill(null); // Default 8 cells (4x2)
+let gridSlots = []; 
 let activeSlotIndex = -1;
 const htmlGrid = document.getElementById('htmlGrid');
+
+document.getElementById('customTitle').addEventListener('input', () => { isTitleCustomized = true; });
 
 document.getElementById('langSelector').addEventListener('change', (e) => {
     currentLang = e.target.value;
@@ -43,7 +46,10 @@ function applyLanguage() {
             else el.textContent = d[key];
         }
     });
-    // 不會覆蓋 customTitle 的值
+    const titleInput = document.getElementById('customTitle');
+    if (!isTitleCustomized && d['default_title']) { titleInput.value = d['default_title']; }
+    if (d['title_placeholder']) { titleInput.placeholder = d['title_placeholder']; }
+    
     const sel = document.getElementById('presetSelector');
     if (sel.options[0]) sel.options[0].textContent = d['preset_placeholder'] || "-- 快速載入公演模板 (空白格) --";
     const genSel = document.getElementById('genSelector');
@@ -55,7 +61,6 @@ function hexToRgba(hex, a) {
     return `rgba(${r}, ${g}, ${b}, ${a})`;
 }
 
-// 產生打斜各半的硬邊漸變 (Hard Stops)
 function getDiagonalGradient(cd) {
     const c = cd.map(x => x.color);
     if (c.length === 1) return c[0];
@@ -73,41 +78,38 @@ function getContrastYIQ(hexcolor){
 ['cfgPhoto', 'cfgGen', 'cfgName', 'cfgNick'].forEach(id => document.getElementById(id).addEventListener('change', renderHTMLGrid));
 document.querySelectorAll('input[name="colorMode"]').forEach(r => r.addEventListener('change', renderHTMLGrid));
 
-// 載入空白公演
 document.getElementById('presetSelector').addEventListener('change', (e) => {
     if (e.target.value) {
         gridSlots = new Array(parseInt(e.target.value)).fill(null);
         document.getElementById('customTitle').value = e.target.options[e.target.selectedIndex].text.split(' (')[0];
+        isTitleCustomized = true;
         renderHTMLGrid();
     }
     e.target.value = ''; 
 });
 
-// 一鍵載入期生 (包含拖拉顯示所有結果)
 document.getElementById('genSelector').addEventListener('change', (e) => {
     const gen = e.target.value;
     if (gen) {
-        let targetGen = gen;
-        // 處理ドラフト生邏輯 (包含 1/2/3期)
-        const filtered = membersDB.filter(m => gen === "ドラフト生" ? m.ki.includes("ドラフト") : m.ki === targetGen);
+        const filtered = membersDB.filter(m => gen === "ドラフト生" ? m.ki.includes("ドラフト") : m.ki === gen);
         if (filtered.length > 0) {
             gridSlots = [...filtered];
             document.getElementById('customTitle').value = gen + " 應援名單";
+            isTitleCustomized = true;
             renderHTMLGrid();
         } else { alert("找不到該期生成員資料。"); }
     }
     e.target.value = '';
 });
 
-// 智能計算 Flexbox 行列比例
 function calculateGridCols(total) {
     if (total <= 3) return total;
     if (total === 4) return 4; 
-    if (total === 5) return 3; // 19ki/21ki: 3 + 2 (Flexbox 置中)
+    if (total === 5) return 3; 
     if (total === 6) return 3; 
-    if (total === 7) return 4; // 16ki: 4 + 3 (Flexbox 置中)
+    if (total === 7) return 4; 
     if (total === 8) return 4; 
-    if (total === 9) return 3; // 17ki: 3 x 3
+    if (total === 9) return 3; 
     if (total <= 12) return 4; 
     if (total <= 16) return 4; 
     return Math.ceil(Math.sqrt(total)); 
@@ -144,7 +146,6 @@ function renderHTMLGrid() {
             if (mode === 'block') {
                 bg = `background: ${getDiagonalGradient(obj.colorData)};`;
                 overlay = `<div class="cell-overlay"></div>`;
-                // 色塊模式下隱藏文字，只顯示色塊本體
             } else {
                 bg = `background: radial-gradient(circle at center, ${hexToRgba(obj.colorData[0].color, 0.15)} 0%, transparent 70%);`;
                 colorHtml = `<div class="color-display">` + obj.colorData.map((c, i) => {
@@ -154,10 +155,8 @@ function renderHTMLGrid() {
                 }).join('') + `</div>`;
             }
 
-            // 多語言名字與平假名呈現邏輯
             let finalNameHtml = '', finalGenHtml = '';
             if (['zh-HK', 'zh-CN', 'ja'].includes(currentLang)) {
-                // 利用 <ruby> 標籤實現優雅注音
                 if(gen) finalGenHtml = `<div class="cell-gen">${obj.ki}</div>`;
                 if(name) finalNameHtml = `<ruby class="cell-name">${obj.name_ja}<rt>${obj.name_kana || ''}</rt></ruby>`;
             } else if (currentLang === 'ko') {
@@ -222,15 +221,13 @@ function sortColorsByHue(cArr) {
         const isMono = (hsl) => hsl.s < 0.1 || hsl.l < 0.1 || hsl.l > 0.9;
         if (isMono(hslA) && !isMono(hslB)) return 1;
         if (!isMono(hslA) && isMono(hslB)) return -1;
-        return hslA.h - hslB.h; // 紅(0) -> 紫(300)
+        return hslA.h - hslB.h; 
     });
 }
 
 function sortByColor() {
     let filled = gridSlots.filter(x => x !== null);
-    // 內部顏色即時排序
     filled.forEach(m => { m.colorData = sortColorsByHue([...m.colorData]); });
-    // 整體按 A 色排序
     filled.sort((a,b) => {
         const hslA = hexToHSL(a.colorData[0].color), hslB = hexToHSL(b.colorData[0].color);
         const isMonoA = hslA.s < 0.1 || hslA.l < 0.1 || hslA.l > 0.9;
@@ -249,7 +246,6 @@ function sortByGen() {
     renderHTMLGrid();
 }
 
-// 全局綁定 Ripple 效果
 document.addEventListener('click', function(e) {
     const btn = e.target.closest('.btn');
     if (!btn) return;
@@ -268,7 +264,7 @@ document.addEventListener('click', function(e) {
 
 document.getElementById('themeToggle').addEventListener('click', () => document.body.classList.toggle('dark-mode'));
 
-// Canvas 導出 (包含置中放大與 Furigana 繪製)
+// Canvas 導出 (順序畫字完美解決重疊問題)
 async function drawCanvasExport() {
     const overlay = document.getElementById('loadingOverlay');
     overlay.style.display = 'flex';
@@ -305,11 +301,8 @@ async function drawCanvasExport() {
     });
 
     for (let i = 0; i < gridSlots.length; i++) {
-        // 移除了強制置中算法，保持正常流動
         let cellsInThisRow = cols;
-        if (Math.floor(i / cols) === rows - 1) {
-            cellsInThisRow = gridSlots.length % cols || cols;
-        }
+        if (Math.floor(i / cols) === rows - 1) cellsInThisRow = gridSlots.length % cols || cols;
         const rowWidth = cellsInThisRow * cellW + (cellsInThisRow - 1) * padding;
         const startX = (canvas.width - rowWidth) / 2;
         const x = startX + (i % cols) * (cellW + padding);
@@ -346,7 +339,7 @@ async function drawCanvasExport() {
             if (photo && member.image) {
                 const img = await loadImage(member.image);
                 if (img) {
-                    const avatarRadius = cellW * 0.22, cx = x + cellW / 2, cy = y + cellH * 0.35; 
+                    const avatarRadius = cellW * 0.22, cx = x + cellW / 2, cy = y + cellH * 0.33; 
                     ctx.beginPath(); ctx.arc(cx, cy, avatarRadius + 6, 0, Math.PI * 2); 
                     ctx.fillStyle = mode === 'block' ? 'rgba(255,255,255,0.8)' : (isDark ? '#333' : '#FFF'); ctx.fill();
                     ctx.save(); ctx.beginPath(); ctx.arc(cx, cy, avatarRadius, 0, Math.PI * 2); ctx.clip();
@@ -360,31 +353,38 @@ async function drawCanvasExport() {
             const textColor = mode === 'block' ? '#FFFFFF' : (isDark ? '#FFFFFF' : '#2C3E50');
             const subColor = mode === 'block' ? 'rgba(255,255,255,0.8)' : (isDark ? '#888' : '#999');
             
-            // 動態放大與置中
-            let currentY = photo ? (y + cellH * 0.65) : (y + cellH * 0.40);
+            // 完美間距 - 逐行往下排
+            let currentY = photo ? (y + cellH * 0.60) : (y + cellH * 0.35);
             let fontScale = photo ? 1 : 1.35;
-            if (!name && !nick) fontScale = 1; // 如果只剩相片不需放大
+            if (!name && !nick) fontScale = 1; 
             
             if (mode === 'block') { ctx.shadowColor = "rgba(0,0,0,0.6)"; ctx.shadowBlur = 4; ctx.shadowOffsetX = 0; ctx.shadowOffsetY = 2; } 
             else { ctx.shadowColor = "transparent"; }
 
+            // 1. 期生
             if (gen && member.ki) {
-                ctx.fillStyle = subColor; ctx.font = `700 ${cellW * 0.06 * fontScale}px 'Noto Sans JP'`;
-                ctx.fillText(member.ki, x + cellW/2, currentY); currentY += cellW * 0.12 * fontScale; 
+                ctx.fillStyle = subColor; ctx.font = `700 ${cellW * 0.05 * fontScale}px 'Noto Sans JP'`;
+                ctx.fillText(member.ki, x + cellW/2, currentY); currentY += cellW * 0.06 * fontScale; 
             }
 
+            // 2. 平假名 / Name
             if (name) {
                 if (['zh-HK', 'zh-CN', 'ja'].includes(currentLang) && member.name_kana) {
                     ctx.fillStyle = subColor; ctx.font = `700 ${cellW * 0.04 * fontScale}px 'Noto Sans JP'`;
-                    ctx.fillText(member.name_kana, x + cellW/2, currentY - cellW*0.09*fontScale);
+                    ctx.fillText(member.name_kana, x + cellW/2, currentY); currentY += cellW * 0.045 * fontScale;
                 }
                 const nameToUse = (currentLang === 'ko') ? member.name_ko : (['en', 'th', 'id'].includes(currentLang) ? member.name_en : member.name_ja);
                 ctx.fillStyle = textColor; ctx.font = `900 ${cellW * 0.11 * fontScale}px 'Noto Sans JP'`;
                 ctx.fillText(nameToUse, x + cellW/2, currentY); currentY += cellW * 0.08 * fontScale; 
             }
 
-            if (nick && member.nickname) { ctx.fillStyle = subColor; ctx.font = `700 ${cellW * 0.07 * fontScale}px 'Noto Sans JP'`; ctx.fillText(member.nickname, x + cellW/2, currentY); currentY += cellW * 0.1 * fontScale; }
+            // 3. 暱稱
+            if (nick && member.nickname) { 
+                ctx.fillStyle = subColor; ctx.font = `700 ${cellW * 0.06 * fontScale}px 'Noto Sans JP'`; 
+                ctx.fillText(member.nickname, x + cellW/2, currentY); currentY += cellW * 0.08 * fontScale; 
+            }
 
+            // 4. 色字
             if (mode === 'text') {
                 currentY += cellW * 0.02 * fontScale; ctx.font = `900 ${cellW * 0.08 * fontScale}px 'Noto Sans JP'`;
                 let totalW = 0;
@@ -414,7 +414,7 @@ async function drawCanvasExport() {
         const link = document.createElement('a'); link.download = `Support_Map_${Date.now()}.png`;
         link.href = canvas.toDataURL('image/png'); link.click();
     } catch(err) {
-        alert("下載失敗：瀏覽器安全性 (CORS) 阻擋了外部圖片。請嘗試取消勾選『顯示成員圓形頭像』再下載，或直接螢幕截圖。");
+        alert("下載失敗：因為 CORS 安全性，無法導出包含外部圖片的畫布。請嘗試取消勾選『顯示成員圓形頭像』再下載，或直接螢幕截圖。");
     }
     overlay.style.display = 'none';
 }
