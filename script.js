@@ -24,7 +24,7 @@ async function initApp() {
 }
 
 let currentLang = 'zh-HK';
-let gridSlots = new Array(8).fill(null); // Default 8 cells
+let gridSlots = new Array(8).fill(null); // Default 8 cells (4x2)
 let activeSlotIndex = -1;
 const htmlGrid = document.getElementById('htmlGrid');
 
@@ -43,8 +43,11 @@ function applyLanguage() {
             else el.textContent = d[key];
         }
     });
+    // 不會覆蓋 customTitle 的值
     const sel = document.getElementById('presetSelector');
     if (sel.options[0]) sel.options[0].textContent = d['preset_placeholder'] || "-- 快速載入公演模板 (空白格) --";
+    const genSel = document.getElementById('genSelector');
+    if (genSel.options[0]) genSel.options[0].textContent = d['gen_placeholder'] || "-- 選擇期數全體載入 --";
 }
 
 function hexToRgba(hex, a) {
@@ -60,6 +63,13 @@ function getDiagonalGradient(cd) {
     return `linear-gradient(135deg, ${c[0]} 0%, ${c[0]} 33.33%, ${c[1]} 33.33%, ${c[1]} 66.66%, ${c[2]} 66.66%, ${c[2]} 100%)`;
 }
 
+function getContrastYIQ(hexcolor){
+    hexcolor = hexcolor.replace("#", "");
+    if(hexcolor.length === 3) hexcolor = hexcolor.split('').map(c => c+c).join('');
+    const r = parseInt(hexcolor.substr(0,2),16), g = parseInt(hexcolor.substr(2,2),16), b = parseInt(hexcolor.substr(4,2),16);
+    return (((r*299)+(g*587)+(b*114))/1000 >= 128) ? '#000000' : '#FFFFFF';
+}
+
 ['cfgPhoto', 'cfgGen', 'cfgName', 'cfgNick'].forEach(id => document.getElementById(id).addEventListener('change', renderHTMLGrid));
 document.querySelectorAll('input[name="colorMode"]').forEach(r => r.addEventListener('change', renderHTMLGrid));
 
@@ -73,11 +83,13 @@ document.getElementById('presetSelector').addEventListener('change', (e) => {
     e.target.value = ''; 
 });
 
-// 一鍵載入期生
+// 一鍵載入期生 (包含拖拉顯示所有結果)
 document.getElementById('genSelector').addEventListener('change', (e) => {
     const gen = e.target.value;
     if (gen) {
-        const filtered = membersDB.filter(m => m.ki === gen);
+        let targetGen = gen;
+        // 處理ドラフト生邏輯 (包含 1/2/3期)
+        const filtered = membersDB.filter(m => gen === "ドラフト生" ? m.ki.includes("ドラフト") : m.ki === targetGen);
         if (filtered.length > 0) {
             gridSlots = [...filtered];
             document.getElementById('customTitle').value = gen + " 應援名單";
@@ -89,10 +101,8 @@ document.getElementById('genSelector').addEventListener('change', (e) => {
 
 // 智能計算 Flexbox 行列比例
 function calculateGridCols(total) {
-    if (total === 1) return 1;
-    if (total === 2) return 2;
-    if (total === 3) return 3;
-    if (total === 4) return 4;
+    if (total <= 3) return total;
+    if (total === 4) return 4; 
     if (total === 5) return 3; // 19ki/21ki: 3 + 2 (Flexbox 置中)
     if (total === 6) return 3; 
     if (total === 7) return 4; // 16ki: 4 + 3 (Flexbox 置中)
@@ -134,7 +144,7 @@ function renderHTMLGrid() {
             if (mode === 'block') {
                 bg = `background: ${getDiagonalGradient(obj.colorData)};`;
                 overlay = `<div class="cell-overlay"></div>`;
-                // 色塊模式下隱藏下方多餘文字
+                // 色塊模式下隱藏文字，只顯示色塊本體
             } else {
                 bg = `background: radial-gradient(circle at center, ${hexToRgba(obj.colorData[0].color, 0.15)} 0%, transparent 70%);`;
                 colorHtml = `<div class="color-display">` + obj.colorData.map((c, i) => {
@@ -144,10 +154,12 @@ function renderHTMLGrid() {
                 }).join('') + `</div>`;
             }
 
+            // 多語言名字與平假名呈現邏輯
             let finalNameHtml = '', finalGenHtml = '';
-            if (currentLang === 'zh-HK' || currentLang === 'zh-CN' || currentLang === 'ja') {
+            if (['zh-HK', 'zh-CN', 'ja'].includes(currentLang)) {
+                // 利用 <ruby> 標籤實現優雅注音
                 if(gen) finalGenHtml = `<div class="cell-gen">${obj.ki}</div>`;
-                if(name) finalNameHtml = `<div class="cell-kana">${obj.name_kana || ''}</div><div class="cell-name">${obj.name_ja}</div>`;
+                if(name) finalNameHtml = `<ruby class="cell-name">${obj.name_ja}<rt>${obj.name_kana || ''}</rt></ruby>`;
             } else if (currentLang === 'ko') {
                 if(gen) finalGenHtml = `<div class="cell-gen">${obj.ki}</div>`;
                 if(name) finalNameHtml = `<div class="cell-name">${obj.name_ko || obj.name_en}</div>`;
@@ -182,7 +194,7 @@ function openModal(idx) {
     b.innerHTML = '';
     membersDB.forEach(m => {
         const d = document.createElement('div'); d.className = 'member-option';
-        const nameToUse = (currentLang === 'ko') ? m.name_ko : ((currentLang === 'en' || currentLang === 'th' || currentLang === 'id') ? m.name_en : m.name_ja);
+        const nameToUse = (currentLang === 'ko') ? m.name_ko : (['en', 'th', 'id'].includes(currentLang) ? m.name_en : m.name_ja);
         d.innerHTML = `<img src="${m.image}" crossorigin="anonymous"><span>${nameToUse}</span>`;
         d.onclick = () => { gridSlots[activeSlotIndex] = m; closeModal(); renderHTMLGrid(); };
         b.appendChild(d);
@@ -216,9 +228,9 @@ function sortColorsByHue(cArr) {
 
 function sortByColor() {
     let filled = gridSlots.filter(x => x !== null);
-    // 內部顏色重新排序 (如: 青x白x赤 -> 赤x白x青)
+    // 內部顏色即時排序
     filled.forEach(m => { m.colorData = sortColorsByHue([...m.colorData]); });
-    // 整體成員排序
+    // 整體按 A 色排序
     filled.sort((a,b) => {
         const hslA = hexToHSL(a.colorData[0].color), hslB = hexToHSL(b.colorData[0].color);
         const isMonoA = hslA.s < 0.1 || hslA.l < 0.1 || hslA.l > 0.9;
@@ -256,7 +268,7 @@ document.addEventListener('click', function(e) {
 
 document.getElementById('themeToggle').addEventListener('click', () => document.body.classList.toggle('dark-mode'));
 
-// Canvas 導出 (包含 Try-Catch 解決 CORS 跨域圖片污染 Canvas 問題)
+// Canvas 導出 (包含置中放大與 Furigana 繪製)
 async function drawCanvasExport() {
     const overlay = document.getElementById('loadingOverlay');
     overlay.style.display = 'flex';
@@ -288,13 +300,12 @@ async function drawCanvasExport() {
 
     const loadImage = (url) => new Promise((resolve) => {
         const img = new Image(); img.crossOrigin = "Anonymous";
-        img.onload = () => resolve(img); 
-        img.onerror = () => resolve(null); // 如果圖片被 CORS 封鎖，直接放棄載入以保證可以下載純淨背景
-        img.src = url + "?v=" + Date.now();
+        img.onload = () => resolve(img); img.onerror = () => resolve(null); 
+        img.src = url; 
     });
 
     for (let i = 0; i < gridSlots.length; i++) {
-        // Flexbox 中心對齊算法轉換到 Canvas
+        // 移除了強制置中算法，保持正常流動
         let cellsInThisRow = cols;
         if (Math.floor(i / cols) === rows - 1) {
             cellsInThisRow = gridSlots.length % cols || cols;
@@ -349,8 +360,10 @@ async function drawCanvasExport() {
             const textColor = mode === 'block' ? '#FFFFFF' : (isDark ? '#FFFFFF' : '#2C3E50');
             const subColor = mode === 'block' ? 'rgba(255,255,255,0.8)' : (isDark ? '#888' : '#999');
             
-            let currentY = photo ? (y + cellH * 0.63) : (y + cellH * 0.40);
-            let fontScale = photo ? 1 : 1.4;
+            // 動態放大與置中
+            let currentY = photo ? (y + cellH * 0.65) : (y + cellH * 0.40);
+            let fontScale = photo ? 1 : 1.35;
+            if (!name && !nick) fontScale = 1; // 如果只剩相片不需放大
             
             if (mode === 'block') { ctx.shadowColor = "rgba(0,0,0,0.6)"; ctx.shadowBlur = 4; ctx.shadowOffsetX = 0; ctx.shadowOffsetY = 2; } 
             else { ctx.shadowColor = "transparent"; }
@@ -361,11 +374,11 @@ async function drawCanvasExport() {
             }
 
             if (name) {
-                if (currentLang === 'zh-HK' || currentLang === 'zh-CN' || currentLang === 'ja') {
+                if (['zh-HK', 'zh-CN', 'ja'].includes(currentLang) && member.name_kana) {
                     ctx.fillStyle = subColor; ctx.font = `700 ${cellW * 0.04 * fontScale}px 'Noto Sans JP'`;
-                    ctx.fillText(member.name_kana || '', x + cellW/2, currentY - cellW*0.04*fontScale);
+                    ctx.fillText(member.name_kana, x + cellW/2, currentY - cellW*0.09*fontScale);
                 }
-                const nameToUse = (currentLang === 'ko') ? member.name_ko : ((currentLang === 'en' || currentLang === 'th' || currentLang === 'id') ? member.name_en : member.name_ja);
+                const nameToUse = (currentLang === 'ko') ? member.name_ko : (['en', 'th', 'id'].includes(currentLang) ? member.name_en : member.name_ja);
                 ctx.fillStyle = textColor; ctx.font = `900 ${cellW * 0.11 * fontScale}px 'Noto Sans JP'`;
                 ctx.fillText(nameToUse, x + cellW/2, currentY); currentY += cellW * 0.08 * fontScale; 
             }
@@ -401,7 +414,7 @@ async function drawCanvasExport() {
         const link = document.createElement('a'); link.download = `Support_Map_${Date.now()}.png`;
         link.href = canvas.toDataURL('image/png'); link.click();
     } catch(err) {
-        alert("下載失敗：因為瀏覽器安全設定跨域封鎖 (CORS)，無法導出包含外部圖片的畫布。請嘗試取消勾選『顯示成員頭像』再下載，或直接截圖。");
+        alert("下載失敗：瀏覽器安全性 (CORS) 阻擋了外部圖片。請嘗試取消勾選『顯示成員圓形頭像』再下載，或直接螢幕截圖。");
     }
     overlay.style.display = 'none';
 }
