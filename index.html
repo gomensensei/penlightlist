@@ -4,6 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title data-i18n="app_title">AKB48 成員名單及應援色</title>
+    <!-- 引入日系字體 -->
     <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@400;700;900&display=swap" rel="stylesheet">
     <script src="https://unpkg.com/lucide@latest"></script>
     <link rel="stylesheet" href="style.css">
@@ -28,41 +29,45 @@
 
     <div class="main-container">
         
-        <!-- 預覽面板 (Mobile 在上, PC 在左) -->
+        <!-- 預覽面板 (Mobile 上, PC 左) -->
         <main class="preview-panel panel">
             <div class="header-edit-area">
                 <div class="title-input-wrapper">
                     <i data-lucide="edit-3" size="24" class="pulse-icon"></i>
-                    <input type="text" id="customTitle" class="custom-title-input" value="「手をつなぎながら」公演" placeholder="📝 點擊輸入公演名稱...">
+                    <input type="text" id="customTitle" class="custom-title-input" value="「ここからだ」公演" placeholder="📝 點擊輸入公演名稱...">
                 </div>
-                <div class="select-group">
-                    <select id="presetSelector" class="preset-select">
-                        <option value="" data-i18n="preset_placeholder">-- 快速載入公演模板 (空白格) --</option>
-                        <option value="16">「ここからだ」公演 (16人)</option>
-                        <option value="16">「そこに未来はある」公演 (16人)</option>
-                        <option value="8">「手をつなぎながら」公演 (8人)</option>
-                        <option value="8">「RESET」公演 (8人)</option>
-                    </select>
-                    <select id="genSelector" class="preset-select">
-                        <option value="" data-i18n="gen_placeholder">-- 一鍵載入指定期生成員 --</option>
-                        <option value="13期生">13期生</option>
-                        <option value="15期生">15期生</option>
-                        <option value="16期生">16期生</option>
-                        <option value="17期生">17期生</option>
-                        <option value="18期生">18期生</option>
-                        <option value="19期生">19期生</option>
-                        <option value="20期生">20期生</option>
-                        <option value="21期生">21期生</option>
-                        <option value="Team 8">Team 8</option>
-                        <option value="ドラフト生">ドラフト生</option>
-                    </select>
-                </div>
+                <select id="presetSelector" class="preset-select">
+                    <option value="" data-i18n="preset_placeholder">-- 快速載入公演模板 (空白格) --</option>
+                    <option value="16">「ここからだ」公演 (16人)</option>
+                    <option value="16">「そこに未来はある」公演 (16人)</option>
+                    <option value="8">「手をつなぎながら」公演 (8人)</option>
+                    <option value="8">「RESET」公演 (8人)</option>
+                </select>
             </div>
+            <!-- 動態 Flexbox Grid -->
             <div id="htmlGrid"></div>
         </main>
 
-        <!-- 控制面板 (Mobile 在下, PC 在右) -->
+        <!-- 控制面板 (Mobile 下, PC 右) -->
         <aside class="controls-panel panel">
+            
+            <div class="control-group">
+                <label class="title" data-i18n="ctrl_gen_load">一鍵載入期生全體</label>
+                <select id="genSelector" class="preset-select" style="width: 100%;">
+                    <option value="" data-i18n="gen_placeholder">-- 選擇期數全體載入 --</option>
+                    <option value="13期生">13期生</option>
+                    <option value="15期生">15期生</option>
+                    <option value="16期生">16期生</option>
+                    <option value="17期生">17期生</option>
+                    <option value="18期生">18期生</option>
+                    <option value="19期生">19期生</option>
+                    <option value="20期生">20期生</option>
+                    <option value="21期生">21期生</option>
+                    <option value="Team 8">Team 8</option>
+                    <option value="ドラフト生">ドラフト生</option>
+                </select>
+            </div>
+
             <div class="control-group">
                 <label class="title" data-i18n="ctrl_grid">Grid 格數控制</label>
                 <div class="flex-btns">
@@ -107,10 +112,10 @@
     </div>
 
     <footer class="app-footer" data-i18n="copyright_notice">
-        鑑於AKB48成員生誕祭劇場公演中，粉絲復刻的劇場門票令人動容，特別製作此網站... 版權歸©AKB48及株式会社DH所有。
+        希望新粉絲能進一步了解如何支持成員，現有粉絲能推し増し，並就不同公演與演唱會分享應援資訊。網站僅供非商業用途使用，版權歸©AKB48及株式会社DH所有。
     </footer>
 
-    <!-- 隱藏的繪圖畫布 -->
+    <!-- 隱藏畫布 -->
     <canvas id="exportCanvas"></canvas>
     
     <div id="loadingOverlay">
@@ -118,7 +123,7 @@
         <div data-i18n="loading">渲染高解析度圖片中...</div>
     </div>
 
-    <!-- 成員選擇 Modal -->
+    <!-- Modal -->
     <div class="modal-overlay" id="memberModal">
         <div class="modal-content">
             <div class="modal-header">
