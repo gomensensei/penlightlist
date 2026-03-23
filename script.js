@@ -15,26 +15,23 @@ async function initApp() {
         langsDB = await langRes.json();
     } catch (err) {
         console.warn("Using local JSON fallback due to CORS.");
-        // 極致 Fallback
-        langsDB = { "zh-HK": { "app_title": "成員名單及應援色", "preset_placeholder": "-- 快速載入公演模板 --", "btn_download": "下載名單", "copyright_notice": "版權歸©AKB48及株式会社DH所有。" } };
-        membersDB = []; // 避免報錯，仍可手動操作
+        langsDB = { "zh-HK": { "app_title": "成員名單及應援色", "preset_placeholder": "-- 快速載入公演模板 --", "btn_download": "下載名單", "copyright_notice": "網站僅供非商業用途使用，版權歸©AKB48及株式会社DH所有。" } };
+        membersDB = []; // Fallback empty to prevent crash
     }
     
     applyLanguage();
     renderHTMLGrid();
 }
 
-// Default 8 格
 let currentLang = 'zh-HK';
-let gridSlots = new Array(8).fill(null); 
+let gridSlots = new Array(8).fill(null); // Default 8 cells
 let activeSlotIndex = -1;
-
 const htmlGrid = document.getElementById('htmlGrid');
-const modal = document.getElementById('memberModal');
 
 document.getElementById('langSelector').addEventListener('change', (e) => {
     currentLang = e.target.value;
     applyLanguage();
+    renderHTMLGrid(); // Re-render to show Kana/Romaji properly
 });
 
 function applyLanguage() {
@@ -47,7 +44,7 @@ function applyLanguage() {
         }
     });
     const sel = document.getElementById('presetSelector');
-    if (sel.options[0]) sel.options[0].textContent = d['preset_placeholder'] || "-- 快速載入公演模板 (空白格) --";
+    if (sel.options[0]) sel.options[0].textContent = d['preset_placeholder'] || "-- 快速載入公演模板 --";
 }
 
 function hexToRgba(hex, a) {
@@ -55,7 +52,6 @@ function hexToRgba(hex, a) {
     return `rgba(${r}, ${g}, ${b}, ${a})`;
 }
 
-// 產生打斜各半的硬邊漸變 (Hard Stops)
 function getDiagonalGradient(cd) {
     const c = cd.map(x => x.color);
     if (c.length === 1) return c[0];
@@ -63,10 +59,16 @@ function getDiagonalGradient(cd) {
     return `linear-gradient(135deg, ${c[0]} 0%, ${c[0]} 33.33%, ${c[1]} 33.33%, ${c[1]} 66.66%, ${c[2]} 66.66%, ${c[2]} 100%)`;
 }
 
+function getContrastYIQ(hexcolor){
+    hexcolor = hexcolor.replace("#", "");
+    if(hexcolor.length === 3) hexcolor = hexcolor.split('').map(c => c+c).join('');
+    const r = parseInt(hexcolor.substr(0,2),16), g = parseInt(hexcolor.substr(2,2),16), b = parseInt(hexcolor.substr(4,2),16);
+    return (((r*299)+(g*587)+(b*114))/1000 >= 128) ? '#000000' : '#FFFFFF';
+}
+
 ['cfgPhoto', 'cfgGen', 'cfgName', 'cfgNick'].forEach(id => document.getElementById(id).addEventListener('change', renderHTMLGrid));
 document.querySelectorAll('input[name="colorMode"]').forEach(r => r.addEventListener('change', renderHTMLGrid));
 
-// 載入空白公演
 document.getElementById('presetSelector').addEventListener('change', (e) => {
     if (e.target.value) {
         gridSlots = new Array(parseInt(e.target.value)).fill(null);
@@ -76,7 +78,6 @@ document.getElementById('presetSelector').addEventListener('change', (e) => {
     e.target.value = ''; 
 });
 
-// 一鍵載入期生
 document.getElementById('genSelector').addEventListener('change', (e) => {
     const gen = e.target.value;
     if (gen) {
@@ -85,9 +86,7 @@ document.getElementById('genSelector').addEventListener('change', (e) => {
             gridSlots = [...filtered];
             document.getElementById('customTitle').value = gen + " 應援名單";
             renderHTMLGrid();
-        } else {
-            alert("找不到該期生成員資料。");
-        }
+        } else { alert("找不到該期生成員資料。"); }
     }
     e.target.value = '';
 });
@@ -106,12 +105,11 @@ function setGridSize(size) {
     oldSlots.forEach((m, i) => { if (i < size) gridSlots[i] = m; });
     renderHTMLGrid();
 }
-
 function changeGridBy(n) { setGridSize(Math.max(1, gridSlots.length + n)); }
 
 function renderHTMLGrid() {
     const cols = calculateGridCols(gridSlots.length);
-    htmlGrid.style.gridTemplateColumns = `repeat(${cols}, 1fr)`;
+    htmlGrid.style.setProperty('--cols', cols);
     htmlGrid.innerHTML = '';
 
     const photo = document.getElementById('cfgPhoto').checked;
@@ -122,7 +120,7 @@ function renderHTMLGrid() {
 
     gridSlots.forEach((obj, idx) => {
         const cell = document.createElement('div');
-        cell.className = `grid-cell${obj ? ' filled mode-' + mode : ''}${!photo ? ' no-photo' : ''}`;
+        cell.className = `grid-cell${obj ? ' filled mode-' + mode : ''}${!photo ? ' no-photo' : ''}${!name && !nick ? ' no-name' : ''}`;
 
         if (!obj) {
             cell.innerHTML = `<i class="add-icon">${fallbackUI.plus}</i>`;
@@ -132,8 +130,8 @@ function renderHTMLGrid() {
             if (mode === 'block') {
                 bg = `background: ${getDiagonalGradient(obj.colorData)};`;
                 overlay = `<div class="cell-overlay"></div>`;
+                colorHtml = `<div class="color-display">` + obj.colorData.map(c => `<div class="c-block" style="background:${c.color}; color:${getContrastYIQ(c.color)}">${c.name}</div>`).join('') + `</div>`;
             } else {
-                // 陰影色字模式：加入呼吸光暈
                 bg = `background: radial-gradient(circle at center, ${hexToRgba(obj.colorData[0].color, 0.15)} 0%, transparent 70%);`;
                 colorHtml = `<div class="color-display">` + obj.colorData.map((c, i) => {
                     let s = `<span class="c-text" style="color:${c.color}; text-shadow: 1px 1px 3px rgba(0,0,0,0.8);">${c.name}</span>`;
@@ -142,14 +140,27 @@ function renderHTMLGrid() {
                 }).join('') + `</div>`;
             }
 
+            // 多語言名字呈現邏輯 (包含 Furigana)
+            let finalNameHtml = '', finalGenHtml = '';
+            if (currentLang === 'zh-HK' || currentLang === 'zh-CN' || currentLang === 'ja') {
+                if(gen) finalGenHtml = `<div class="cell-kana">${obj.ki_kana || ''}</div><div class="cell-gen">${obj.ki}</div>`;
+                if(name) finalNameHtml = `<div class="cell-kana">${obj.name_kana || ''}</div><div class="cell-name">${obj.name_ja}</div>`;
+            } else if (currentLang === 'ko') {
+                if(gen) finalGenHtml = `<div class="cell-gen">${obj.ki}</div>`;
+                if(name) finalNameHtml = `<div class="cell-name">${obj.name_ko || obj.name_en}</div>`;
+            } else {
+                if(gen) finalGenHtml = `<div class="cell-gen">${obj.ki}</div>`;
+                if(name) finalNameHtml = `<div class="cell-name">${obj.name_en}</div>`;
+            }
+
             cell.innerHTML = `
                 <div class="cell-bg" style="${bg}"></div>${overlay}
                 <div class="cell-content">
-                    ${photo ? `<div class="avatar-wrap"><img src="${obj.image}" class="avatar-img" crossorigin="anonymous"></div>` : ''}
+                    ${photo ? `<div class="avatar-wrap"><img src="${obj.image}" class="avatar-img" crossorigin="anonymous" onerror="this.style.display='none'"></div>` : ''}
                     <div class="text-wrap">
-                        ${gen ? `<div class="cell-gen">${obj.ki}</div>` : ''}
-                        ${name ? `<div class="cell-name">${obj.name_ja}</div>` : ''}
-                        ${nick ? `<div class="cell-nick">(${obj.nickname})</div>` : ''}
+                        ${finalGenHtml}
+                        ${finalNameHtml}
+                        ${nick && obj.nickname ? `<div class="cell-nick">${obj.nickname}</div>` : ''}
                     </div>
                     ${colorHtml}
                 </div>
@@ -168,7 +179,8 @@ function openModal(idx) {
     b.innerHTML = '';
     membersDB.forEach(m => {
         const d = document.createElement('div'); d.className = 'member-option';
-        d.innerHTML = `<img src="${m.image}" crossorigin="anonymous"><span>${m.name_ja}</span>`;
+        const nameToUse = (currentLang === 'ko') ? m.name_ko : ((currentLang === 'en' || currentLang === 'th' || currentLang === 'id') ? m.name_en : m.name_ja);
+        d.innerHTML = `<img src="${m.image}" crossorigin="anonymous"><span>${nameToUse}</span>`;
         d.onclick = () => { gridSlots[activeSlotIndex] = m; closeModal(); renderHTMLGrid(); };
         b.appendChild(d);
     });
@@ -178,7 +190,6 @@ function openModal(idx) {
 function closeModal() { document.getElementById('memberModal').classList.remove('active'); }
 function removeMember(e, i) { e.stopPropagation(); gridSlots[i] = null; renderHTMLGrid(); }
 
-// 顏色排序邏輯：確保白色/黑色/灰色排到最後，其餘按紅到紫排序
 function hexToHSL(h) {
     let r = parseInt(h.slice(1,3),16)/255, g = parseInt(h.slice(3,5),16)/255, b = parseInt(h.slice(5,7),16)/255;
     let max = Math.max(r,g,b), min = Math.min(r,g,b), hue = 0, s = 0, l = (max+min)/2;
@@ -190,9 +201,9 @@ function hexToHSL(h) {
     return { h: hue * 360, s: s, l: l };
 }
 
-function sortColorsByHue(colorDataArray) {
-    return colorDataArray.sort((a, b) => {
-        const hslA = hexToHSL(a.color); const hslB = hexToHSL(b.color);
+function sortColorsByHue(cArr) {
+    return cArr.sort((a, b) => {
+        const hslA = hexToHSL(a.color), hslB = hexToHSL(b.color);
         const isMono = (hsl) => hsl.s < 0.1 || hsl.l < 0.1 || hsl.l > 0.9;
         if (isMono(hslA) && !isMono(hslB)) return 1;
         if (!isMono(hslA) && isMono(hslB)) return -1;
@@ -202,19 +213,16 @@ function sortColorsByHue(colorDataArray) {
 
 function sortByColor() {
     let filled = gridSlots.filter(x => x !== null);
-    // 1. 內部顏色重新排序 (令 岩立沙穂 青x白x赤 變 赤x白x青)
-    filled.forEach(m => { m.colorData = sortColorsByHue(m.colorData); });
-    
-    // 2. 整體按 A 色排序
+    // 內部顏色重新排序 (如: 青x白x赤 -> 赤x白x青)
+    filled.forEach(m => { m.colorData = sortColorsByHue([...m.colorData]); });
+    // 整體成員排序
     filled.sort((a,b) => {
-        const hslA = hexToHSL(a.colorData[0].color);
-        const hslB = hexToHSL(b.colorData[0].color);
+        const hslA = hexToHSL(a.colorData[0].color), hslB = hexToHSL(b.colorData[0].color);
         const isMonoA = hslA.s < 0.1 || hslA.l < 0.1 || hslA.l > 0.9;
         const isMonoB = hslB.s < 0.1 || hslB.l < 0.1 || hslB.l > 0.9;
         if (isMonoA && !isMonoB) return 1; if (!isMonoA && isMonoB) return -1;
         return hslA.h - hslB.h;
     });
-    
     gridSlots = [...filled, ...new Array(gridSlots.length - filled.length).fill(null)];
     renderHTMLGrid();
 }
@@ -245,7 +253,7 @@ document.addEventListener('click', function(e) {
 
 document.getElementById('themeToggle').addEventListener('click', () => document.body.classList.toggle('dark-mode'));
 
-// Canvas 導出 (支援無頭像置中放大)
+// Canvas 導出 (包含 Try-Catch 解決 CORS 問題)
 async function drawCanvasExport() {
     const overlay = document.getElementById('loadingOverlay');
     overlay.style.display = 'flex';
@@ -277,7 +285,8 @@ async function drawCanvasExport() {
 
     const loadImage = (url) => new Promise((resolve) => {
         const img = new Image(); img.crossOrigin = "Anonymous";
-        img.onload = () => resolve(img); img.onerror = () => resolve(null); img.src = url;
+        img.onload = () => resolve(img); img.onerror = () => resolve(null); 
+        img.src = url + "?v=" + Date.now(); // Cache-breaker
     });
 
     for (let i = 0; i < gridSlots.length; i++) {
@@ -306,7 +315,6 @@ async function drawCanvasExport() {
                 ctx.fillStyle = overlayGrad; ctx.fillRect(x, y + cellH - 220, cellW, 220);
             } else {
                 ctx.fillStyle = isDark ? '#1E1E1E' : '#FFFFFF'; ctx.fillRect(x, y, cellW, cellH);
-                // Radial Glow
                 const cx = x + cellW / 2, cy = y + cellH / 2;
                 const rGrad = ctx.createRadialGradient(cx, cy, 0, cx, cy, cellW);
                 rGrad.addColorStop(0, hexToRgba(member.colorData[0].color, 0.15)); rGrad.addColorStop(1, 'transparent');
@@ -330,18 +338,47 @@ async function drawCanvasExport() {
             const textColor = mode === 'block' ? '#FFFFFF' : (isDark ? '#FFFFFF' : '#2C3E50');
             const subColor = mode === 'block' ? 'rgba(255,255,255,0.8)' : (isDark ? '#888' : '#999');
             
-            // 動態放大與置中
-            let currentY = photo ? (y + cellH * 0.65) : (y + cellH * 0.40);
+            let currentY = photo ? (y + cellH * 0.63) : (y + cellH * 0.40);
             let fontScale = photo ? 1 : 1.4;
             
             if (mode === 'block') { ctx.shadowColor = "rgba(0,0,0,0.6)"; ctx.shadowBlur = 4; ctx.shadowOffsetX = 0; ctx.shadowOffsetY = 2; } 
             else { ctx.shadowColor = "transparent"; }
 
-            if (gen && member.ki) { ctx.fillStyle = subColor; ctx.font = `700 ${cellW * 0.06 * fontScale}px 'Noto Sans JP'`; ctx.fillText(member.ki, x + cellW/2, currentY); currentY += cellW * 0.1 * fontScale; }
-            if (name) { ctx.fillStyle = textColor; ctx.font = `900 ${cellW * 0.11 * fontScale}px 'Noto Sans JP'`; ctx.fillText(member.name_ja, x + cellW/2, currentY); currentY += cellW * 0.08 * fontScale; }
-            if (nick && member.nickname) { ctx.fillStyle = subColor; ctx.font = `700 ${cellW * 0.07 * fontScale}px 'Noto Sans JP'`; ctx.fillText(`(${member.nickname})`, x + cellW/2, currentY); currentY += cellW * 0.1 * fontScale; }
+            if (gen && member.ki) {
+                if (currentLang === 'zh-HK' || currentLang === 'zh-CN' || currentLang === 'ja') {
+                    ctx.fillStyle = subColor; ctx.font = `700 ${cellW * 0.04 * fontScale}px 'Noto Sans JP'`;
+                    ctx.fillText(member.ki_kana || '', x + cellW/2, currentY - cellW*0.02);
+                }
+                ctx.fillStyle = subColor; ctx.font = `700 ${cellW * 0.06 * fontScale}px 'Noto Sans JP'`;
+                ctx.fillText(member.ki, x + cellW/2, currentY); currentY += cellW * 0.12 * fontScale; 
+            }
 
-            if (mode === 'text') {
+            if (name) {
+                if (currentLang === 'zh-HK' || currentLang === 'zh-CN' || currentLang === 'ja') {
+                    ctx.fillStyle = subColor; ctx.font = `700 ${cellW * 0.04 * fontScale}px 'Noto Sans JP'`;
+                    ctx.fillText(member.name_kana || '', x + cellW/2, currentY - cellW*0.02);
+                }
+                const nameToUse = (currentLang === 'ko') ? member.name_ko : ((currentLang === 'en' || currentLang === 'th' || currentLang === 'id') ? member.name_en : member.name_ja);
+                ctx.fillStyle = textColor; ctx.font = `900 ${cellW * 0.11 * fontScale}px 'Noto Sans JP'`;
+                ctx.fillText(nameToUse, x + cellW/2, currentY); currentY += cellW * 0.08 * fontScale; 
+            }
+
+            if (nick && member.nickname) { ctx.fillStyle = subColor; ctx.font = `700 ${cellW * 0.07 * fontScale}px 'Noto Sans JP'`; ctx.fillText(member.nickname, x + cellW/2, currentY); currentY += cellW * 0.1 * fontScale; }
+
+            if (mode === 'block') {
+                currentY += cellW * 0.02;
+                const blockW = cellW * 0.22 * fontScale, blockH = cellW * 0.09 * fontScale, gap = 10;
+                const totalW = member.colorData.length * blockW + (member.colorData.length - 1) * gap;
+                let startX = x + cellW/2 - totalW/2;
+                member.colorData.forEach(cd => {
+                    ctx.fillStyle = cd.color; ctx.beginPath(); ctx.roundRect(startX, currentY, blockW, blockH, 8); ctx.fill();
+                    ctx.strokeStyle = "rgba(0,0,0,0.1)"; ctx.stroke();
+                    ctx.fillStyle = getContrastYIQ(cd.color); ctx.font = `900 ${cellW * 0.05 * fontScale}px 'Noto Sans JP'`;
+                    ctx.textBaseline = 'middle'; ctx.fillText(cd.name, startX + blockW/2, currentY + blockH/2);
+                    startX += blockW + gap;
+                });
+                ctx.textBaseline = 'alphabetic';
+            } else {
                 currentY += cellW * 0.02 * fontScale; ctx.font = `900 ${cellW * 0.08 * fontScale}px 'Noto Sans JP'`;
                 let totalW = 0;
                 member.colorData.forEach((cd, idx) => { totalW += ctx.measureText(cd.name).width; if (idx < member.colorData.length - 1) totalW += ctx.measureText(" x ").width; });
@@ -366,9 +403,14 @@ async function drawCanvasExport() {
         ctx.beginPath(); ctx.roundRect(x, y, cellW, cellH, 20); ctx.stroke();
     }
 
-    const link = document.createElement('a'); link.download = `Support_Map_${Date.now()}.png`;
-    link.href = canvas.toDataURL('image/png'); link.click();
+    try {
+        const link = document.createElement('a'); link.download = `Support_Map_${Date.now()}.png`;
+        link.href = canvas.toDataURL('image/png'); link.click();
+    } catch(err) {
+        alert("下載失敗：因為瀏覽器安全設定，無法導出包含外部圖片的畫布。請嘗試取消勾選『顯示成員頭像』再下載，或直接螢幕截圖。");
+    }
     overlay.style.display = 'none';
 }
 
+document.getElementById('downloadBtn').addEventListener('click', drawCanvasExport);
 window.addEventListener('DOMContentLoaded', initApp);
