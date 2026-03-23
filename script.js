@@ -31,7 +31,7 @@ const htmlGrid = document.getElementById('htmlGrid');
 document.getElementById('langSelector').addEventListener('change', (e) => {
     currentLang = e.target.value;
     applyLanguage();
-    renderHTMLGrid(); // Re-render to show Kana/Romaji properly
+    renderHTMLGrid(); 
 });
 
 function applyLanguage() {
@@ -44,7 +44,7 @@ function applyLanguage() {
         }
     });
     const sel = document.getElementById('presetSelector');
-    if (sel.options[0]) sel.options[0].textContent = d['preset_placeholder'] || "-- 快速載入公演模板 --";
+    if (sel.options[0]) sel.options[0].textContent = d['preset_placeholder'] || "-- 快速載入公演模板 (空白格) --";
 }
 
 function hexToRgba(hex, a) {
@@ -52,6 +52,7 @@ function hexToRgba(hex, a) {
     return `rgba(${r}, ${g}, ${b}, ${a})`;
 }
 
+// 產生打斜各半的硬邊漸變 (Hard Stops)
 function getDiagonalGradient(cd) {
     const c = cd.map(x => x.color);
     if (c.length === 1) return c[0];
@@ -59,16 +60,10 @@ function getDiagonalGradient(cd) {
     return `linear-gradient(135deg, ${c[0]} 0%, ${c[0]} 33.33%, ${c[1]} 33.33%, ${c[1]} 66.66%, ${c[2]} 66.66%, ${c[2]} 100%)`;
 }
 
-function getContrastYIQ(hexcolor){
-    hexcolor = hexcolor.replace("#", "");
-    if(hexcolor.length === 3) hexcolor = hexcolor.split('').map(c => c+c).join('');
-    const r = parseInt(hexcolor.substr(0,2),16), g = parseInt(hexcolor.substr(2,2),16), b = parseInt(hexcolor.substr(4,2),16);
-    return (((r*299)+(g*587)+(b*114))/1000 >= 128) ? '#000000' : '#FFFFFF';
-}
-
 ['cfgPhoto', 'cfgGen', 'cfgName', 'cfgNick'].forEach(id => document.getElementById(id).addEventListener('change', renderHTMLGrid));
 document.querySelectorAll('input[name="colorMode"]').forEach(r => r.addEventListener('change', renderHTMLGrid));
 
+// 載入空白公演
 document.getElementById('presetSelector').addEventListener('change', (e) => {
     if (e.target.value) {
         gridSlots = new Array(parseInt(e.target.value)).fill(null);
@@ -78,6 +73,7 @@ document.getElementById('presetSelector').addEventListener('change', (e) => {
     e.target.value = ''; 
 });
 
+// 一鍵載入期生
 document.getElementById('genSelector').addEventListener('change', (e) => {
     const gen = e.target.value;
     if (gen) {
@@ -91,11 +87,19 @@ document.getElementById('genSelector').addEventListener('change', (e) => {
     e.target.value = '';
 });
 
+// 智能計算 Flexbox 行列比例
 function calculateGridCols(total) {
-    if (total <= 4) return total;
-    if (total <= 8) return 4;
-    if (total <= 12) return 4;
-    if (total <= 16) return 4;
+    if (total === 1) return 1;
+    if (total === 2) return 2;
+    if (total === 3) return 3;
+    if (total === 4) return 4;
+    if (total === 5) return 3; // 19ki/21ki: 3 + 2 (Flexbox 置中)
+    if (total === 6) return 3; 
+    if (total === 7) return 4; // 16ki: 4 + 3 (Flexbox 置中)
+    if (total === 8) return 4; 
+    if (total === 9) return 3; // 17ki: 3 x 3
+    if (total <= 12) return 4; 
+    if (total <= 16) return 4; 
     return Math.ceil(Math.sqrt(total)); 
 }
 
@@ -130,7 +134,7 @@ function renderHTMLGrid() {
             if (mode === 'block') {
                 bg = `background: ${getDiagonalGradient(obj.colorData)};`;
                 overlay = `<div class="cell-overlay"></div>`;
-                colorHtml = `<div class="color-display">` + obj.colorData.map(c => `<div class="c-block" style="background:${c.color}; color:${getContrastYIQ(c.color)}">${c.name}</div>`).join('') + `</div>`;
+                // 色塊模式下隱藏下方多餘文字
             } else {
                 bg = `background: radial-gradient(circle at center, ${hexToRgba(obj.colorData[0].color, 0.15)} 0%, transparent 70%);`;
                 colorHtml = `<div class="color-display">` + obj.colorData.map((c, i) => {
@@ -140,10 +144,9 @@ function renderHTMLGrid() {
                 }).join('') + `</div>`;
             }
 
-            // 多語言名字呈現邏輯 (包含 Furigana)
             let finalNameHtml = '', finalGenHtml = '';
             if (currentLang === 'zh-HK' || currentLang === 'zh-CN' || currentLang === 'ja') {
-                if(gen) finalGenHtml = `<div class="cell-kana">${obj.ki_kana || ''}</div><div class="cell-gen">${obj.ki}</div>`;
+                if(gen) finalGenHtml = `<div class="cell-gen">${obj.ki}</div>`;
                 if(name) finalNameHtml = `<div class="cell-kana">${obj.name_kana || ''}</div><div class="cell-name">${obj.name_ja}</div>`;
             } else if (currentLang === 'ko') {
                 if(gen) finalGenHtml = `<div class="cell-gen">${obj.ki}</div>`;
@@ -207,7 +210,7 @@ function sortColorsByHue(cArr) {
         const isMono = (hsl) => hsl.s < 0.1 || hsl.l < 0.1 || hsl.l > 0.9;
         if (isMono(hslA) && !isMono(hslB)) return 1;
         if (!isMono(hslA) && isMono(hslB)) return -1;
-        return hslA.h - hslB.h;
+        return hslA.h - hslB.h; // 紅(0) -> 紫(300)
     });
 }
 
@@ -253,7 +256,7 @@ document.addEventListener('click', function(e) {
 
 document.getElementById('themeToggle').addEventListener('click', () => document.body.classList.toggle('dark-mode'));
 
-// Canvas 導出 (包含 Try-Catch 解決 CORS 問題)
+// Canvas 導出 (包含 Try-Catch 解決 CORS 跨域圖片污染 Canvas 問題)
 async function drawCanvasExport() {
     const overlay = document.getElementById('loadingOverlay');
     overlay.style.display = 'flex';
@@ -285,12 +288,20 @@ async function drawCanvasExport() {
 
     const loadImage = (url) => new Promise((resolve) => {
         const img = new Image(); img.crossOrigin = "Anonymous";
-        img.onload = () => resolve(img); img.onerror = () => resolve(null); 
-        img.src = url + "?v=" + Date.now(); // Cache-breaker
+        img.onload = () => resolve(img); 
+        img.onerror = () => resolve(null); // 如果圖片被 CORS 封鎖，直接放棄載入以保證可以下載純淨背景
+        img.src = url + "?v=" + Date.now();
     });
 
     for (let i = 0; i < gridSlots.length; i++) {
-        const x = padding + (i % cols) * (cellW + padding);
+        // Flexbox 中心對齊算法轉換到 Canvas
+        let cellsInThisRow = cols;
+        if (Math.floor(i / cols) === rows - 1) {
+            cellsInThisRow = gridSlots.length % cols || cols;
+        }
+        const rowWidth = cellsInThisRow * cellW + (cellsInThisRow - 1) * padding;
+        const startX = (canvas.width - rowWidth) / 2;
+        const x = startX + (i % cols) * (cellW + padding);
         const y = headerHeight + padding + Math.floor(i / cols) * (cellH + padding);
         const member = gridSlots[i];
 
@@ -345,10 +356,6 @@ async function drawCanvasExport() {
             else { ctx.shadowColor = "transparent"; }
 
             if (gen && member.ki) {
-                if (currentLang === 'zh-HK' || currentLang === 'zh-CN' || currentLang === 'ja') {
-                    ctx.fillStyle = subColor; ctx.font = `700 ${cellW * 0.04 * fontScale}px 'Noto Sans JP'`;
-                    ctx.fillText(member.ki_kana || '', x + cellW/2, currentY - cellW*0.02);
-                }
                 ctx.fillStyle = subColor; ctx.font = `700 ${cellW * 0.06 * fontScale}px 'Noto Sans JP'`;
                 ctx.fillText(member.ki, x + cellW/2, currentY); currentY += cellW * 0.12 * fontScale; 
             }
@@ -356,7 +363,7 @@ async function drawCanvasExport() {
             if (name) {
                 if (currentLang === 'zh-HK' || currentLang === 'zh-CN' || currentLang === 'ja') {
                     ctx.fillStyle = subColor; ctx.font = `700 ${cellW * 0.04 * fontScale}px 'Noto Sans JP'`;
-                    ctx.fillText(member.name_kana || '', x + cellW/2, currentY - cellW*0.02);
+                    ctx.fillText(member.name_kana || '', x + cellW/2, currentY - cellW*0.04*fontScale);
                 }
                 const nameToUse = (currentLang === 'ko') ? member.name_ko : ((currentLang === 'en' || currentLang === 'th' || currentLang === 'id') ? member.name_en : member.name_ja);
                 ctx.fillStyle = textColor; ctx.font = `900 ${cellW * 0.11 * fontScale}px 'Noto Sans JP'`;
@@ -365,20 +372,7 @@ async function drawCanvasExport() {
 
             if (nick && member.nickname) { ctx.fillStyle = subColor; ctx.font = `700 ${cellW * 0.07 * fontScale}px 'Noto Sans JP'`; ctx.fillText(member.nickname, x + cellW/2, currentY); currentY += cellW * 0.1 * fontScale; }
 
-            if (mode === 'block') {
-                currentY += cellW * 0.02;
-                const blockW = cellW * 0.22 * fontScale, blockH = cellW * 0.09 * fontScale, gap = 10;
-                const totalW = member.colorData.length * blockW + (member.colorData.length - 1) * gap;
-                let startX = x + cellW/2 - totalW/2;
-                member.colorData.forEach(cd => {
-                    ctx.fillStyle = cd.color; ctx.beginPath(); ctx.roundRect(startX, currentY, blockW, blockH, 8); ctx.fill();
-                    ctx.strokeStyle = "rgba(0,0,0,0.1)"; ctx.stroke();
-                    ctx.fillStyle = getContrastYIQ(cd.color); ctx.font = `900 ${cellW * 0.05 * fontScale}px 'Noto Sans JP'`;
-                    ctx.textBaseline = 'middle'; ctx.fillText(cd.name, startX + blockW/2, currentY + blockH/2);
-                    startX += blockW + gap;
-                });
-                ctx.textBaseline = 'alphabetic';
-            } else {
+            if (mode === 'text') {
                 currentY += cellW * 0.02 * fontScale; ctx.font = `900 ${cellW * 0.08 * fontScale}px 'Noto Sans JP'`;
                 let totalW = 0;
                 member.colorData.forEach((cd, idx) => { totalW += ctx.measureText(cd.name).width; if (idx < member.colorData.length - 1) totalW += ctx.measureText(" x ").width; });
@@ -407,7 +401,7 @@ async function drawCanvasExport() {
         const link = document.createElement('a'); link.download = `Support_Map_${Date.now()}.png`;
         link.href = canvas.toDataURL('image/png'); link.click();
     } catch(err) {
-        alert("下載失敗：因為瀏覽器安全設定，無法導出包含外部圖片的畫布。請嘗試取消勾選『顯示成員頭像』再下載，或直接螢幕截圖。");
+        alert("下載失敗：因為瀏覽器安全設定跨域封鎖 (CORS)，無法導出包含外部圖片的畫布。請嘗試取消勾選『顯示成員頭像』再下載，或直接截圖。");
     }
     overlay.style.display = 'none';
 }
