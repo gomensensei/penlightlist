@@ -1,0 +1,64 @@
+{
+    "zh-HK": {
+        "app_title": "成員名單及應援色", "preset_placeholder": "-- 快速載入公演模板 (空白格) --",
+        "ctrl_grid": "Grid 格數控制", "btn_8": "8 人", "btn_12": "12 人", "btn_16": "16 人",
+        "btn_minus": "減 1 格", "btn_plus": "加 1 格", "ctrl_display": "顯示內容設定",
+        "cfg_photo": "顯示成員圓形頭像", "cfg_gen": "顯示期別", "cfg_name": "顯示名字", "cfg_nick": "顯示暱稱",
+        "ctrl_color_mode": "應援色呈現方式", "mode_block": "色塊方格 (打斜各半AB色)", "mode_text": "陰影色字 (單色底高對比)",
+        "ctrl_sort": "排列方式", "sort_color": "按顏色", "sort_gen": "按期數",
+        "btn_download": "下載名單", "modal_title": "選擇成員", "loading": "渲染高解析度圖片中...",
+        "footer_text": "© 2026 AKB48 應援名單生成器 (Penlight Generator). Not affiliated with AKB48 official."
+    },
+    "ja": {
+        "app_title": "出演メンバー＆サイリウムカラー", "preset_placeholder": "-- テンプレート読み込み (空枠) --",
+        "ctrl_grid": "グリッド(枠数)設定", "btn_8": "8 人", "btn_12": "12 人", "btn_16": "16 人",
+        "btn_minus": "1枠 減", "btn_plus": "1枠 増", "ctrl_display": "表示設定",
+        "cfg_photo": "顔写真を表示", "cfg_gen": "期生を表示", "cfg_name": "名前を表示", "cfg_nick": "ニックネームを表示",
+        "ctrl_color_mode": "カラー表示形式", "mode_block": "カラーブロック (斜め分割)", "mode_text": "シャドウテキスト (高コントラスト)",
+        "ctrl_sort": "並び替え", "sort_color": "色で並び替え", "sort_gen": "期生で並び替え",
+        "btn_download": "画像をダウンロード", "modal_title": "メンバー選択", "loading": "高画質画像を生成中...",
+        "footer_text": "© 2026 AKB48 ペンライトジェネレーター. 非公式ファンサイトです。"
+    },
+    "en": {
+        "app_title": "Members & Penlight Colors", "preset_placeholder": "-- Load Preset (Empty Grid) --",
+        "ctrl_grid": "Grid Size Control", "btn_8": "8 Ppl", "btn_12": "12 Ppl", "btn_16": "16 Ppl",
+        "btn_minus": "Minus 1", "btn_plus": "Plus 1", "ctrl_display": "Display Settings",
+        "cfg_photo": "Show Avatar", "cfg_gen": "Show Generation", "cfg_name": "Show Name", "cfg_nick": "Show Nickname",
+        "ctrl_color_mode": "Color Display Mode", "mode_block": "Diagonal Color Blocks", "mode_text": "Shadowed Colored Text",
+        "ctrl_sort": "Sort By", "sort_color": "By Color", "sort_gen": "By Generation",
+        "btn_download": "Download Image", "modal_title": "Select Member", "loading": "Rendering High-Res Image...",
+        "footer_text": "© 2026 AKB48 Penlight Generator. Not affiliated with official AKB48."
+    },
+    "zh-CN": {
+        "app_title": "成员名单及应援色", "preset_placeholder": "-- 快速载入公演模板 (空白格) --", "ctrl_grid": "Grid 格数控制",
+        "btn_8": "8 人", "btn_12": "12 人", "btn_16": "16 人", "btn_minus": "减 1 格", "btn_plus": "加 1 格",
+        "ctrl_display": "显示内容设定", "cfg_photo": "显示成员圆形头像", "cfg_gen": "显示期别", "cfg_name": "显示名字", "cfg_nick": "显示昵称",
+        "ctrl_color_mode": "应援色呈现方式", "mode_block": "色块方格 (打斜各半AB色)", "mode_text": "阴影色字 (单色底高对比)",
+        "ctrl_sort": "排列方式", "sort_color": "按颜色", "sort_gen": "按期数", "btn_download": "下载名单",
+        "modal_title": "选择成员", "loading": "渲染高分辨率图片中...", "footer_text": "© 2026 AKB48 应援名单生成器. 非官方粉丝网站."
+    },
+    "ko": {
+        "app_title": "멤버 목록 및 응원색", "preset_placeholder": "-- 프리셋 로드 (빈 그리드) --", "ctrl_grid": "그리드 크기 설정",
+        "btn_8": "8명", "btn_12": "12명", "btn_16": "16명", "btn_minus": "1칸 감소", "btn_plus": "1칸 추가",
+        "ctrl_display": "표시 설정", "cfg_photo": "아바타 표시", "cfg_gen": "기수 표시", "cfg_name": "이름 표시", "cfg_nick": "닉네임 표시",
+        "ctrl_color_mode": "응원색 표시 방식", "mode_block": "대각선 컬러 블록", "mode_text": "그림자 컬러 텍스트",
+        "ctrl_sort": "정렬 방식", "sort_color": "색상별", "sort_gen": "기수별", "btn_download": "이미지 다운로드",
+        "modal_title": "멤버 선택", "loading": "고해상도 이미지 렌더링 중...", "footer_text": "© 2026 AKB48 응원색 생성기. 비공식 팬 사이트."
+    },
+    "th": {
+        "app_title": "รายชื่อสมาชิก & สีปากกา", "preset_placeholder": "-- โหลดพรีเซต (ช่องว่าง) --", "ctrl_grid": "การตั้งค่าขนาดกริด",
+        "btn_8": "8 คน", "btn_12": "12 คน", "btn_16": "16 คน", "btn_minus": "ลด 1 ช่อง", "btn_plus": "เพิ่ม 1 ช่อง",
+        "ctrl_display": "การตั้งค่าการแสดงผล", "cfg_photo": "แสดงรูปภาพ", "cfg_gen": "แสดงรุ่น", "cfg_name": "แสดงชื่อ", "cfg_nick": "แสดงชื่อเล่น",
+        "ctrl_color_mode": "โหมดการแสดงสี", "mode_block": "บล็อกสีทแยงมุม", "mode_text": "ข้อความสีมีเงา",
+        "ctrl_sort": "จัดเรียงตาม", "sort_color": "ตามสี", "sort_gen": "ตามรุ่น", "btn_download": "ดาวน์โหลดรูปภาพ",
+        "modal_title": "เลือกสมาชิก", "loading": "กำลังเรนเดอร์รูปภาพความละเอียดสูง...", "footer_text": "© 2026 AKB48 Penlight Generator ไม่เป็นทางการ"
+    },
+    "id": {
+        "app_title": "Daftar Anggota & Warna", "preset_placeholder": "-- Muat Preset (Grid Kosong) --", "ctrl_grid": "Kontrol Ukuran Grid",
+        "btn_8": "8 Org", "btn_12": "12 Org", "btn_16": "16 Org", "btn_minus": "Kurangi 1", "btn_plus": "Tambah 1",
+        "ctrl_display": "Pengaturan Tampilan", "cfg_photo": "Tampilkan Avatar", "cfg_gen": "Tampilkan Generasi", "cfg_name": "Tampilkan Nama", "cfg_nick": "Tampilkan Nama Panggilan",
+        "ctrl_color_mode": "Mode Tampilan Warna", "mode_block": "Blok Warna Diagonal", "mode_text": "Teks Warna Berbayang",
+        "ctrl_sort": "Urutkan Berdasarkan", "sort_color": "Berdasarkan Warna", "sort_gen": "Berdasarkan Generasi",
+        "btn_download": "Unduh Gambar", "modal_title": "Pilih Anggota", "loading": "Merender Gambar Resolusi Tinggi...", "footer_text": "© 2026 AKB48 Penlight Generator. Situs penggemar tidak resmi."
+    }
+}
