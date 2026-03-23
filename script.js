@@ -1,15 +1,7 @@
 let langsDB = {};
 let membersDB = [];
-
-// 確保不論環境都有 UI 組件
-const fallbackUI = {
-    plus: '<svg xmlns="http://www.w3.org/2000/svg" width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 5v14M5 12h14"/></svg>',
-    x: '<svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 6 6 18M6 6l12 12"/></svg>'
-};
-
-// 狀態變數
 let currentLang = 'zh-HK';
-let gridSlots = [];
+let gridSlots = new Array(8).fill(null); // 強制初始 8 格
 let activeSlotIndex = -1;
 let currentTitleState = { type: 'preset', id: '8_tewo' }; 
 let isTitleCustomized = false;
@@ -23,10 +15,13 @@ async function initApp() {
         membersDB = await memRes.json();
         langsDB = await langRes.json();
     } catch (err) {
-        console.warn("Fetch API failed. This is expected if running index.html locally without a server.");
+        console.warn("Fetch API failed. Check CORS or Local Server.");
+        // 防禦性 Fallback 確保 Github Pages 未生效前仍可運行
+        langsDB = { "zh-HK": { "app_title": "成員名單及應援色", "preset_placeholder": "-- 選擇空白公演人數 --", "btn_download": "下載名單" } };
+        membersDB = []; 
     }
     
-    gridSlots = new Array(8).fill(null); // 初始化為 8 格
+    lucide.createIcons();
     applyLanguage();
     renderHTMLGrid();
 }
@@ -54,7 +49,7 @@ function applyLanguage() {
     if (d['title_placeholder']) document.getElementById('customTitle').placeholder = d['title_placeholder'];
     
     const sel = document.getElementById('presetSelector');
-    if (sel.options[0]) sel.options[0].textContent = d['preset_placeholder'] || "-- 快速載入公演模板 (空白格) --";
+    if (sel.options[0]) sel.options[0].textContent = d['preset_placeholder'] || "-- 選擇空白公演人數 --";
     const genSel = document.getElementById('genSelector');
     if (genSel.options[0]) genSel.options[0].textContent = d['gen_placeholder'] || "-- 選擇期數全體載入 --";
 }
@@ -118,14 +113,15 @@ document.getElementById('genSelector').addEventListener('change', (e) => {
     e.target.value = '';
 });
 
+// 完美 Flexbox 欄數分配
 function calculateGridCols(total) {
     if (total <= 3) return total;
     if (total === 4) return 4; 
-    if (total === 5) return 3; 
+    if (total === 5) return 3; // 19/21ki: 上3下2
     if (total === 6) return 3; 
-    if (total === 7) return 4; 
+    if (total === 7) return 4; // 16ki: 上4下3
     if (total === 8) return 4; 
-    if (total === 9) return 3; 
+    if (total === 9) return 3; // 17ki/T8: 3x3
     if (total <= 12) return 4; 
     if (total <= 16) return 4; 
     return Math.ceil(Math.sqrt(total)); 
@@ -155,7 +151,7 @@ function renderHTMLGrid() {
         cell.className = `grid-cell${obj ? ' filled mode-' + mode : ''}${!photo ? ' no-photo' : ''}${!name && !nick ? ' no-name' : ''}`;
 
         if (!obj) {
-            cell.innerHTML = `<i class="add-icon">${fallbackUI.plus}</i>`;
+            cell.innerHTML = `<i class="add-icon"><svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 5v14M5 12h14"/></svg></i>`;
             cell.onclick = () => openModal(idx);
         } else {
             let colorHtml = '', bg = '', overlay = '';
@@ -194,12 +190,13 @@ function renderHTMLGrid() {
                     </div>
                     ${colorHtml}
                 </div>
-                <div class="remove-btn" onclick="removeMember(event, ${idx})">${fallbackUI.x}</div>
+                <div class="remove-btn" onclick="removeMember(event, ${idx})"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 6 6 18M6 6l12 12"/></svg></div>
             `;
             cell.onclick = () => openModal(idx);
         }
         htmlGrid.appendChild(cell);
     });
+    if (window.lucide) lucide.createIcons();
 }
 
 function openModal(idx) {
@@ -261,16 +258,17 @@ function sortByGen() {
     renderHTMLGrid();
 }
 
+// 完美修復 Ripple 點擊動畫
 document.addEventListener('click', function(e) {
     const btn = e.target.closest('.btn');
     if (!btn) return;
     const c = document.createElement("span");
-    const d = Math.max(btn.clientWidth, btn.clientHeight);
-    c.style.width = c.style.height = `${d}px`;
     const rect = btn.getBoundingClientRect();
+    const d = Math.max(rect.width, rect.height);
+    c.style.width = c.style.height = `${d}px`;
     c.style.left = `${e.clientX - rect.left - d/2}px`;
     c.style.top = `${e.clientY - rect.top - d/2}px`;
-    c.classList.add("ripple");
+    c.className = "ripple";
     const old = btn.querySelector(".ripple");
     if(old) old.remove();
     btn.appendChild(c);
@@ -279,12 +277,12 @@ document.addEventListener('click', function(e) {
 
 document.getElementById('themeToggle').addEventListener('click', () => document.body.classList.toggle('dark-mode'));
 
-// Canvas 導出 (完美 Sequential Y-Offset)
+// Canvas 導出 (完美防疊字 Y-Offset)
 async function drawCanvasExport() {
     const overlay = document.getElementById('loadingOverlay');
     overlay.style.display = 'flex';
 
-    await document.fonts.ready; // 確保字體完全 Load 好防甩字
+    await document.fonts.ready; 
 
     const canvas = document.getElementById('exportCanvas');
     const ctx = canvas.getContext('2d');
@@ -313,10 +311,10 @@ async function drawCanvasExport() {
 
     const loadImage = (url) => new Promise((resolve) => {
         const img = new Image(); img.crossOrigin = "Anonymous";
-        let timeout = setTimeout(() => resolve(null), 1500); // 1.5s 強迫超時防卡死
+        let timeout = setTimeout(() => resolve(null), 1500); 
         img.onload = () => { clearTimeout(timeout); resolve(img); };
         img.onerror = () => { clearTimeout(timeout); resolve(null); }; 
-        img.src = url + "?v=" + Date.now();
+        img.src = url + "?cors=1&v=" + Date.now();
     });
 
     for (let i = 0; i < gridSlots.length; i++) {
@@ -379,7 +377,7 @@ async function drawCanvasExport() {
             if (mode === 'block') { ctx.shadowColor = "rgba(0,0,0,0.6)"; ctx.shadowBlur = 4; ctx.shadowOffsetX = 0; ctx.shadowOffsetY = 2; } 
             else { ctx.shadowColor = "transparent"; }
 
-            // 完美順序向下累加 Y 座標
+            // 完美順序向下累加 Y 座標 (解決疊字)
             let textElements = [];
             if (gen && member.ki) {
                 textElements.push({ text: member.ki, font: `700 ${cellW*0.055*fontScale}px 'Noto Sans JP', sans-serif`, color: subColor, h: cellW*0.055*fontScale, gap: cellW*0.02*fontScale });
@@ -405,38 +403,8 @@ async function drawCanvasExport() {
             });
 
             if (mode === 'text') {
-                currentY += cellW * 0.05 * fontScale; 
+                currentY += cellW * 0.03 * fontScale; 
                 ctx.font = `900 ${cellW * 0.08 * fontScale}px 'Noto Sans JP', sans-serif`;
                 let totalW = 0;
                 member.colorData.forEach((cd, idx) => { totalW += ctx.measureText(cd.name).width; if (idx < member.colorData.length - 1) totalW += ctx.measureText(" x ").width; });
-                let textX = x + cellW/2 - totalW/2; ctx.textAlign = 'left';
-                member.colorData.forEach((cd, idx) => {
-                    ctx.fillStyle = cd.color; ctx.shadowColor = "rgba(0,0,0,0.8)"; ctx.shadowBlur = 4; ctx.shadowOffsetX = 1; ctx.shadowOffsetY = 1;
-                    ctx.fillText(cd.name, textX, currentY); textX += ctx.measureText(cd.name).width;
-                    if (idx < member.colorData.length - 1) {
-                        ctx.shadowColor = "transparent"; ctx.fillStyle = subColor; ctx.font = `bold ${cellW * 0.06 * fontScale}px 'Noto Sans JP', sans-serif`;
-                        ctx.fillText(" x ", textX, currentY + cellW*0.01*fontScale); textX += ctx.measureText(" x ").width; ctx.font = `900 ${cellW * 0.08 * fontScale}px 'Noto Sans JP', sans-serif`; 
-                    }
-                });
-                ctx.shadowColor = "transparent"; ctx.textAlign = 'center'; 
-            }
-        } else {
-            ctx.fillStyle = isDark ? 'rgba(255,255,255,0.02)' : 'rgba(0,0,0,0.02)';
-            ctx.fillRect(x, y, cellW, cellH);
-        }
-
-        ctx.restore();
-        ctx.lineWidth = 2; ctx.strokeStyle = mode === 'block' ? 'rgba(0,0,0,0.1)' : (isDark ? '#333' : '#EEE');
-        ctx.beginPath(); ctx.roundRect(x, y, cellW, cellH, 20); ctx.stroke();
-    }
-
-    try {
-        const link = document.createElement('a'); link.download = `Support_Map_${Date.now()}.png`;
-        link.href = canvas.toDataURL('image/png'); link.click();
-    } catch(err) {
-        alert("下載失敗：因為 CORS 安全性，無法導出包含外部圖片的畫布。請嘗試取消勾選『顯示成員圓形頭像』再下載，或直接螢幕截圖。");
-    }
-    overlay.style.display = 'none';
-}
-
-window.addEventListener('DOMContentLoaded', initApp);
+                let textX = x
