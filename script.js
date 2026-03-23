@@ -1,9 +1,15 @@
 let langsDB = {};
 let membersDB = [];
 
-// 系統狀態
+// 確保不論環境都有 UI 組件
+const fallbackUI = {
+    plus: '<svg xmlns="http://www.w3.org/2000/svg" width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 5v14M5 12h14"/></svg>',
+    x: '<svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 6 6 18M6 6l12 12"/></svg>'
+};
+
+// 狀態變數
 let currentLang = 'zh-HK';
-let gridSlots = new Array(8).fill(null); // 初始化 4x2
+let gridSlots = [];
 let activeSlotIndex = -1;
 let currentTitleState = { type: 'preset', id: '8_tewo' }; 
 let isTitleCustomized = false;
@@ -18,10 +24,9 @@ async function initApp() {
         langsDB = await langRes.json();
     } catch (err) {
         console.warn("Fetch API failed. This is expected if running index.html locally without a server.");
-        alert("請將檔案放置於伺服器或 GitHub Pages 上運行，否則無法讀取 members.json 數據庫！");
-        return; 
     }
     
+    gridSlots = new Array(8).fill(null); // 初始化為 8 格
     applyLanguage();
     renderHTMLGrid();
 }
@@ -113,15 +118,14 @@ document.getElementById('genSelector').addEventListener('change', (e) => {
     e.target.value = '';
 });
 
-// 動態網格算法 (Flexbox 精確比例)
 function calculateGridCols(total) {
     if (total <= 3) return total;
     if (total === 4) return 4; 
-    if (total === 5) return 3; // 19/21ki: 3+2
+    if (total === 5) return 3; 
     if (total === 6) return 3; 
-    if (total === 7) return 4; // 16ki: 4+3
+    if (total === 7) return 4; 
     if (total === 8) return 4; 
-    if (total === 9) return 3; // 17ki/T8: 3x3
+    if (total === 9) return 3; 
     if (total <= 12) return 4; 
     if (total <= 16) return 4; 
     return Math.ceil(Math.sqrt(total)); 
@@ -151,7 +155,7 @@ function renderHTMLGrid() {
         cell.className = `grid-cell${obj ? ' filled mode-' + mode : ''}${!photo ? ' no-photo' : ''}${!name && !nick ? ' no-name' : ''}`;
 
         if (!obj) {
-            cell.innerHTML = `<i class="add-icon"><svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 5v14M5 12h14"/></svg></i>`;
+            cell.innerHTML = `<i class="add-icon">${fallbackUI.plus}</i>`;
             cell.onclick = () => openModal(idx);
         } else {
             let colorHtml = '', bg = '', overlay = '';
@@ -190,7 +194,7 @@ function renderHTMLGrid() {
                     </div>
                     ${colorHtml}
                 </div>
-                <div class="remove-btn" onclick="removeMember(event, ${idx})"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 6 6 18M6 6l12 12"/></svg></div>
+                <div class="remove-btn" onclick="removeMember(event, ${idx})">${fallbackUI.x}</div>
             `;
             cell.onclick = () => openModal(idx);
         }
@@ -430,7 +434,7 @@ async function drawCanvasExport() {
         const link = document.createElement('a'); link.download = `Support_Map_${Date.now()}.png`;
         link.href = canvas.toDataURL('image/png'); link.click();
     } catch(err) {
-        alert("下載失敗：受限於伺服器 CORS，無法導出包含外部圖片的畫布。請嘗試取消勾選『顯示成員頭像』再下載，或直接截圖。");
+        alert("下載失敗：因為 CORS 安全性，無法導出包含外部圖片的畫布。請嘗試取消勾選『顯示成員圓形頭像』再下載，或直接螢幕截圖。");
     }
     overlay.style.display = 'none';
 }
