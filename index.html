@@ -1,89 +1,120 @@
 <!DOCTYPE html>
-<html lang="ja">
+<html lang="zh-HK">
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>AKB48 ペンライトカラー表</title>
-
-  <!-- Fonts -->
-  <link rel="preconnect" href="https://fonts.googleapis.com" />
-  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-  <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@400;700&display=swap" rel="stylesheet" />
-
-  <link rel="stylesheet" href="style.css" />
-  <style>
-    .title{ text-align:center; margin:8px 0; color:#F676A6; }
-    #controls{
-      display:flex;flex-wrap:wrap;gap:8px;justify-content:center;align-items:center;
-      margin-bottom:10px;font-size:0.95em;
-    }
-    #controls label{ color:#F676A6; white-space:nowrap; }
-    #controls select, #controls input[type="text"]{ padding:3px 4px;font-size:0.95em; }
-    /* popup */
-    #popup{display:none;position:fixed;top:50%;left:50%;transform:translate(-50%,-50%);
-      background:#fff;z-index:2000;border:2px solid #F676A6;border-radius:6px;
-      padding:10px;max-height:80vh;overflow:auto;width:88%;max-width:640px;}
-    #popup summary{cursor:pointer;background:#F676A6;color:#fff;padding:4px;border-radius:4px;}
-    #popup .member-list{display:flex;flex-wrap:wrap;gap:6px;margin:6px 0;}
-    #popup .member-item{display:flex;align-items:center;cursor:pointer;border:1px solid #ddd;
-      padding:4px 6px;border-radius:4px;font-size:0.9em;}
-    #popup .member-item.selected{background:#ffeaf5;border-color:#F676A6;}
-    #popup img{width:48px;height:48px;margin-right:4px;object-fit:cover;}
-    #popup button{margin:6px 4px;padding:6px 12px;border:none;border-radius:4px;cursor:pointer;}
-    #popup button:first-of-type{background:#F676A6;color:#fff;}
-    #popup button:last-of-type{background:#ccc;}
-  </style>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title data-i18n="app_title">AKB48 成員名單及應援色</title>
+    <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@400;700;900&display=swap" rel="stylesheet">
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <link rel="stylesheet" href="style.css">
 </head>
 <body>
-  <h1 class="title">AKB48 ペンライトカラー表</h1>
 
-  <div id="controls">
-    <label>人数:
-      <select id="ninzuSelect">
-        <option value="2x1">2×1</option><option value="2x2">2×2</option>
-        <option value="3x2">3×2</option><option value="3x3">3×3</option>
-        <option value="4x2">4×2</option><option value="4x4">4×4</option>
-        <option value="5x4">5×4</option><option value="8x2">8×2</option>
-      </select>
-    </label>
+    <header class="topbar">
+        <div class="brand"><i data-lucide="sparkles"></i> <span data-i18n="app_title">成員名單及應援色</span></div>
+        <div class="topbar-right">
+            <select class="lang-select" id="langSelector">
+                <option value="zh-HK">繁體</option>
+                <option value="zh-CN">简体</option>
+                <option value="ja">日本語</option>
+                <option value="en">English</option>
+                <option value="ko">한국어</option>
+                <option value="th">ไทย</option>
+                <option value="id">Bahasa Indonesia</option>
+            </select>
+            <button id="themeToggle" class="icon-btn"><i data-lucide="moon" size="18"></i></button>
+        </div>
+    </header>
 
-    <label>公演名:
-      <select id="konmeiSelect">
-        <option value="ただいま　恋愛中">ただいま　恋愛中</option>
-        <option value="RESET">RESET</option>
-        <option value="ここからだ">ここからだ</option>
-        <option value="そこに未来はある">そこに未来はある</option>
-        <option value="other">他</option>
-      </select>
-    </label>
-    <input id="customKonmei" type="text" placeholder="カスタム公演名を入力" style="display:none" />
+    <div class="main-container">
+        
+        <!-- 預覽面板 (Mobile 在上, PC 在左) -->
+        <main class="preview-panel panel">
+            <div class="header-edit-area">
+                <div class="title-input-wrapper">
+                    <i data-lucide="edit-3" size="24"></i>
+                    <input type="text" id="customTitle" class="custom-title-input" value="「ここからだ」公演" placeholder="📝 點擊輸入公演名稱...">
+                </div>
+                <select id="presetSelector" class="preset-select">
+                    <option value="" data-i18n="preset_placeholder">-- 快速載入公演模板 (空白格) --</option>
+                    <option value="16">「ここからだ」公演 (16人)</option>
+                    <option value="16">「そこに未来はある」公演 (16人)</option>
+                    <option value="8">「手をつなぎながら」公演 (8人)</option>
+                    <option value="8">「RESET」公演 (8人)</option>
+                </select>
+            </div>
+            <div id="htmlGrid"></div>
+        </main>
 
-    <label>期別:
-      <select id="kibetsuSelect">
-        <option value="13期">13期</option><option value="15期">15期</option>
-        <option value="チーム8">チーム8</option><option value="ドラフト2期">ドラフト2期</option>
-        <option value="16期">16期</option><option value="ドラフト3期">ドラフト3期</option>
-        <option value="17期">17期</option><option value="18期">18期</option>
-        <option value="19期">19期</option><option value="20期">20期</option>
-      </select>
-    </label>
+        <!-- 控制面板 (Mobile 在下, PC 在右) -->
+        <aside class="controls-panel panel">
+            <div class="control-group">
+                <label class="title" data-i18n="ctrl_grid">Grid 格數控制</label>
+                <div class="flex-btns">
+                    <button class="btn" onclick="setGridSize(8)" data-i18n="btn_8">8 人</button>
+                    <button class="btn" onclick="setGridSize(12)" data-i18n="btn_12">12 人</button>
+                    <button class="btn" onclick="setGridSize(16)" data-i18n="btn_16">16 人</button>
+                </div>
+                <div class="flex-btns">
+                    <button class="btn" onclick="changeGridBy(-1)"><i data-lucide="minus" size="16"></i> <span data-i18n="btn_minus">減 1 格</span></button>
+                    <button class="btn" onclick="changeGridBy(1)"><i data-lucide="plus" size="16"></i> <span data-i18n="btn_plus">加 1 格</span></button>
+                </div>
+            </div>
 
-    <label><input type="checkbox" id="showAll"> 全員</label>
-    <label><input type="checkbox" id="showKibetsu"> 期別</label>
-    <label><input type="checkbox" id="showKonmei" checked> 公演名</label>
-    <label><input type="checkbox" id="showPhoto"> 写真</label>
-    <label><input type="checkbox" id="showNickname"> ネックネーム</label>
-    <label><input type="checkbox" id="showKi"> 期</label>
-    <label><input type="checkbox" id="showColorBlock" checked> 推しカラー(色塊)</label>
-    <label><input type="checkbox" id="showColorText"> 推しカラー(文字)</label>
+            <div class="control-group">
+                <label class="title" data-i18n="ctrl_display">顯示內容設定</label>
+                <label class="toggle-label"><input type="checkbox" id="cfgPhoto" checked> <span data-i18n="cfg_photo">顯示成員圓形頭像</span></label>
+                <label class="toggle-label"><input type="checkbox" id="cfgGen" checked> <span data-i18n="cfg_gen">顯示期別</span></label>
+                <!-- Default Tick 名字, Untick 暱稱 -->
+                <label class="toggle-label"><input type="checkbox" id="cfgName" checked> <span data-i18n="cfg_name">顯示名字</span></label>
+                <label class="toggle-label"><input type="checkbox" id="cfgNick"> <span data-i18n="cfg_nick">顯示暱稱</span></label>
+            </div>
 
-    <button id="downloadButton" class="button">ダウンロード (300 DPI)</button>
-  </div>
+            <div class="control-group">
+                <label class="title" data-i18n="ctrl_color_mode">應援色呈現方式</label>
+                <label class="toggle-label"><input type="radio" name="colorMode" value="block" checked> <span data-i18n="mode_block">色塊方格 (打斜各半AB色)</span></label>
+                <label class="toggle-label"><input type="radio" name="colorMode" value="text"> <span data-i18n="mode_text">陰影色字 (單色底高對比)</span></label>
+            </div>
 
-  <canvas id="renderCanvas" width="900" height="600"></canvas>
+            <div class="control-group">
+                <label class="title" data-i18n="ctrl_sort">排列方式</label>
+                <div class="flex-btns">
+                    <button class="btn" onclick="sortByColor()"><i data-lucide="palette" size="16"></i> <span data-i18n="sort_color">按顏色</span></button>
+                    <button class="btn" onclick="sortByGen()"><i data-lucide="users" size="16"></i> <span data-i18n="sort_gen">按期數</span></button>
+                </div>
+            </div>
 
-  <div id="popup"></div>
+            <div class="control-group" style="margin-top: 32px;">
+                <button class="btn btn-primary" id="downloadBtn" style="width:100%; padding: 16px; font-size: 1.1rem; border-radius: 99px;">
+                    <i data-lucide="download"></i> <span data-i18n="btn_download">下載名單</span>
+                </button>
+            </div>
+        </aside>
+    </div>
 
-  <script src="script.js" defer></script>
+    <footer class="app-footer" data-i18n="footer_text">
+        © 2026 AKB48 應援名單生成器 (Penlight Generator). Not affiliated with AKB48 official.
+    </footer>
+
+    <!-- 隱藏的繪圖畫布 -->
+    <canvas id="exportCanvas"></canvas>
+    
+    <div id="loadingOverlay">
+        <div class="spinner"></div>
+        <div data-i18n="loading">渲染高解析度圖片中...</div>
+    </div>
+
+    <!-- 成員選擇 Modal -->
+    <div class="modal-overlay" id="memberModal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <span data-i18n="modal_title">選擇成員</span>
+                <button class="icon-btn" onclick="closeModal()"><i data-lucide="x" size="20"></i></button>
+            </div>
+            <div class="modal-body" id="modalBody"></div>
+        </div>
+    </div>
+
+    <script src="script.js" defer></script>
 </body>
 </html>
