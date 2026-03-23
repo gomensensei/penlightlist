@@ -1,7 +1,6 @@
 {
     "zh-HK": {
-        "app_title": "AKB48 成員名單及應援色", "default_title": "「手をつなぎながら」公演", "title_placeholder": "📝 點擊輸入公演名稱...",
-        "preset_placeholder": "-- 快速載入公演模板 (空白格) --", "gen_placeholder": "-- 選擇期數全體載入 --",
+        "app_title": "AKB48 成員名單及應援色", "preset_placeholder": "-- 快速載入公演模板 (空白格) --", "gen_placeholder": "-- 選擇期數全體載入 --",
         "ctrl_gen_load": "一鍵載入期生全體", "ctrl_grid": "Grid 格數控制", "btn_8": "8 人", "btn_12": "12 人", "btn_16": "16 人",
         "btn_minus": "減 1 格", "btn_plus": "加 1 格", "ctrl_display": "顯示內容設定",
         "cfg_photo": "顯示成員圓形頭像", "cfg_gen": "顯示期別", "cfg_name": "顯示名字", "cfg_nick": "顯示暱稱",
@@ -10,11 +9,12 @@
         "btn_download": "下載名單", "modal_title": "選擇成員", "loading": "渲染高解析度圖片中...",
         "copyright_notice": "希望新粉絲能進一步了解如何支持成員，現有粉絲能發掘更多推（推し増し），並就不同公演與演唱會分享應援資訊。網站僅供非商業用途使用，版權歸©AKB48及株式会社DH所有。",
         "preset_16_koko": "「ここからだ」公演", "preset_16_soko": "「そこに未来はある」公演", "preset_8_tewo": "「手をつなぎながら」公演", "preset_8_reset": "「RESET」公演",
-        "term_gen": "期生", "term_draft": "選秀生", "term_support_list": "應援名單"
+        "term_gen": "期生", "term_draft": "選秀生", "term_support_list": "應援名單",
+        "opt_koko": "「ここからだ」公演 (16人)", "opt_soko": "「そこに未来はある」公演 (16人)", "opt_tewo": "「手をつなぎながら」公演 (8人)", "opt_reset": "「RESET」公演 (8人)",
+        "title_placeholder": "📝 點擊輸入公演名稱..."
     },
     "ja": {
-        "app_title": "AKB48 出演メンバー＆サイリウムカラー", "default_title": "「手をつなぎながら」公演", "title_placeholder": "📝 公演名を入力してください...",
-        "preset_placeholder": "-- テンプレート読み込み (空枠) --", "gen_placeholder": "-- 期生で読み込み --",
+        "app_title": "AKB48 出演メンバー＆サイリウムカラー", "preset_placeholder": "-- テンプレート読み込み (空枠) --", "gen_placeholder": "-- 期生で読み込み --",
         "ctrl_gen_load": "期生で一括読み込み", "ctrl_grid": "グリッド(枠数)設定", "btn_8": "8 人", "btn_12": "12 人", "btn_16": "16 人",
         "btn_minus": "1枠 減", "btn_plus": "1枠 増", "ctrl_display": "表示設定",
         "cfg_photo": "顔写真を表示", "cfg_gen": "期生を表示", "cfg_name": "名前を表示", "cfg_nick": "ニックネームを表示",
@@ -23,11 +23,12 @@
         "btn_download": "画像をダウンロード", "modal_title": "メンバー選択", "loading": "高画質画像を生成中...",
         "copyright_notice": "新しいファンがメンバーの応援方法を理解し、既存のファンが「推し増し」をしたり、公演やコンサートの応援情報をシェアできるよう制作されました。非営利目的でのみご利用ください。権利は©AKB48および株式会社DHに帰属します。",
         "preset_16_koko": "「ここからだ」公演", "preset_16_soko": "「そこに未来はある」公演", "preset_8_tewo": "「手をつなぎながら」公演", "preset_8_reset": "「RESET」公演",
-        "term_gen": "期生", "term_draft": "ドラフト生", "term_support_list": "応援リスト"
+        "term_gen": "期生", "term_draft": "ドラフト生", "term_support_list": "応援リスト",
+        "opt_koko": "「ここからだ」公演 (16人)", "opt_soko": "「そこに未来はある」公演 (16人)", "opt_tewo": "「手をつなぎながら」公演 (8人)", "opt_reset": "「RESET」公演 (8人)",
+        "title_placeholder": "📝 公演名を入力してください..."
     },
     "en": {
-        "app_title": "AKB48 Members & Penlight Colors", "default_title": "Tewo Tsunaginagara Stage", "title_placeholder": "📝 Enter Stage/Concert Name...",
-        "preset_placeholder": "-- Load Preset (Empty Grid) --", "gen_placeholder": "-- Load by Generation --",
+        "app_title": "AKB48 Members & Penlight Colors", "preset_placeholder": "-- Load Preset (Empty Grid) --", "gen_placeholder": "-- Load by Generation --",
         "ctrl_gen_load": "Quick Load by Gen", "ctrl_grid": "Grid Size", "btn_8": "8 Ppl", "btn_12": "12 Ppl", "btn_16": "16 Ppl",
         "btn_minus": "Minus 1", "btn_plus": "Plus 1", "ctrl_display": "Display Settings",
         "cfg_photo": "Show Avatar", "cfg_gen": "Show Generation", "cfg_name": "Show Name", "cfg_nick": "Show Nickname",
@@ -36,11 +37,12 @@
         "btn_download": "Download Image", "modal_title": "Select Member", "loading": "Rendering High-Res Image...",
         "copyright_notice": "Created to help new fans learn how to support members, and for existing fans to find new Oshis and share support info. For non-commercial use only. All rights belong to ©AKB48 and DH Co., Ltd.",
         "preset_16_koko": "Koko Kara da Stage", "preset_16_soko": "Soko ni Mirai wa Aru Stage", "preset_8_tewo": "Tewo Tsunaginagara Stage", "preset_8_reset": "RESET Stage",
-        "term_gen": "th Gen", "term_draft": "Draft Member", "term_support_list": "Support List"
+        "term_gen": "th Gen", "term_draft": "Draft Member", "term_support_list": "Support List",
+        "opt_koko": "Koko Kara da Stage (16Ppl)", "opt_soko": "Soko ni Mirai wa Aru (16Ppl)", "opt_tewo": "Tewo Tsunaginagara (8Ppl)", "opt_reset": "RESET Stage (8Ppl)",
+        "title_placeholder": "📝 Enter Stage/Concert Name..."
     },
     "zh-CN": {
-        "app_title": "AKB48 成员名单及应援色", "default_title": "「手をつなぎながら」公演", "title_placeholder": "📝 点击输入公演名称...",
-        "preset_placeholder": "-- 快速载入公演模板 (空白格) --", "gen_placeholder": "-- 载入指定期生成员 --",
+        "app_title": "AKB48 成员名单及应援色", "preset_placeholder": "-- 快速载入公演模板 (空白格) --", "gen_placeholder": "-- 载入指定期生成员 --",
         "ctrl_gen_load": "一键载入期生全体", "ctrl_grid": "Grid 格数控制", "btn_8": "8 人", "btn_12": "12 人", "btn_16": "16 人",
         "btn_minus": "减 1 格", "btn_plus": "加 1 格", "ctrl_display": "显示内容设定",
         "cfg_photo": "显示成员圆形头像", "cfg_gen": "显示期别", "cfg_name": "显示名字", "cfg_nick": "显示昵称",
@@ -49,11 +51,12 @@
         "btn_download": "下载名单", "modal_title": "选择成员", "loading": "渲染高分辨率图片中...",
         "copyright_notice": "希望新粉丝能进一步了解如何支持成员，现有粉丝能发掘更多推（推し増し），并就不同公演与演唱会分享应援资讯。网站仅供非商业用途使用，版权归©AKB48及株式会社DH所有。",
         "preset_16_koko": "「ここからだ」公演", "preset_16_soko": "「そこに未来はある」公演", "preset_8_tewo": "「手をつなぎながら」公演", "preset_8_reset": "「RESET」公演",
-        "term_gen": "期生", "term_draft": "选秀生", "term_support_list": "应援名单"
+        "term_gen": "期生", "term_draft": "选秀生", "term_support_list": "应援名单",
+        "opt_koko": "「ここからだ」公演 (16人)", "opt_soko": "「そこに未来はある」公演 (16人)", "opt_tewo": "「手をつなぎながら」公演 (8人)", "opt_reset": "「RESET」公演 (8人)",
+        "title_placeholder": "📝 点击输入公演名称..."
     },
     "ko": {
-        "app_title": "AKB48 멤버 목록 및 응원색", "default_title": "「손을 잡으면서」 공연", "title_placeholder": "📝 공연/콘서트 이름 입력...",
-        "preset_placeholder": "-- 프리셋 로드 (빈 그리드) --", "gen_placeholder": "-- 기수별 로드 --",
+        "app_title": "AKB48 멤버 목록 및 응원색", "preset_placeholder": "-- 프리셋 로드 (빈 그리드) --", "gen_placeholder": "-- 기수별 로드 --",
         "ctrl_gen_load": "기수별 한 번에 로드", "ctrl_grid": "그리드 크기 설정", "btn_8": "8명", "btn_12": "12명", "btn_16": "16명",
         "btn_minus": "1칸 감소", "btn_plus": "1칸 추가", "ctrl_display": "표시 설정",
         "cfg_photo": "아바타 표시", "cfg_gen": "기수 표시", "cfg_name": "이름 표시", "cfg_nick": "닉네임 표시",
@@ -62,11 +65,12 @@
         "btn_download": "이미지 다운로드", "modal_title": "멤버 선택", "loading": "고해상도 이미지 렌더링 중...",
         "copyright_notice": "새로운 팬들이 멤버를 응원하는 방법을 더 잘 이해하고, 기존 팬들이 콘서트 응원 정보를 공유할 수 있도록 돕기 위해 제작되었습니다. 비상업적 용도로만 사용해 주세요. 저작권은 ©AKB48 및 DH 주식회사에 있습니다.",
         "preset_16_koko": "「코코카라다」 공연", "preset_16_soko": "「소코니 미라이와 아루」 공연", "preset_8_tewo": "「손을 잡으면서」 공연", "preset_8_reset": "「RESET」 공연",
-        "term_gen": "기생", "term_draft": "드래프트생", "term_support_list": "응원 목록"
+        "term_gen": "기생", "term_draft": "드래프트생", "term_support_list": "응원 목록",
+        "opt_koko": "「코코카라다」 공연 (16명)", "opt_soko": "「소코니 미라이와 아루」 (16명)", "opt_tewo": "「손을 잡으면서」 (8명)", "opt_reset": "「RESET」 공연 (8명)",
+        "title_placeholder": "📝 공연/콘서트 이름 입력..."
     },
     "th": {
-        "app_title": "รายชื่อสมาชิก AKB48 & สีปากกา", "default_title": "สเตจ Tewo Tsunaginagara", "title_placeholder": "📝 ป้อนชื่อการแสดง...",
-        "preset_placeholder": "-- โหลดพรีเซต (ช่องว่าง) --", "gen_placeholder": "-- โหลดตามรุ่น --",
+        "app_title": "รายชื่อสมาชิก AKB48 & สีปากกา", "preset_placeholder": "-- โหลดพรีเซต (ช่องว่าง) --", "gen_placeholder": "-- โหลดตามรุ่น --",
         "ctrl_gen_load": "โหลดตามรุ่นอย่างรวดเร็ว", "ctrl_grid": "การตั้งค่าขนาดกริด", "btn_8": "8 คน", "btn_12": "12 คน", "btn_16": "16 คน",
         "btn_minus": "ลด 1 ช่อง", "btn_plus": "เพิ่ม 1 ช่อง", "ctrl_display": "การตั้งค่าการแสดงผล",
         "cfg_photo": "แสดงรูปภาพ", "cfg_gen": "แสดงรุ่น", "cfg_name": "แสดงชื่อ", "cfg_nick": "แสดงชื่อเล่น",
@@ -75,11 +79,12 @@
         "btn_download": "ดาวน์โหลดรูปภาพ", "modal_title": "เลือกสมาชิก", "loading": "กำลังเรนเดอร์รูปภาพความละเอียดสูง...",
         "copyright_notice": "สร้างขึ้นเพื่อช่วยให้แฟนๆ หน้าใหม่เรียนรู้วิธีสนับสนุนสมาชิก และแบ่งปันข้อมูลการสนับสนุน สำหรับการใช้งานที่ไม่ใช่เชิงพาณิชย์เท่านั้น ลิขสิทธิ์เป็นของ ©AKB48 และ DH Co., Ltd.",
         "preset_16_koko": "สเตจ Koko Kara da", "preset_16_soko": "สเตจ Soko ni Mirai wa Aru", "preset_8_tewo": "สเตจ Tewo Tsunaginagara", "preset_8_reset": "สเตจ RESET",
-        "term_gen": " รุ่นที่ ", "term_draft": "ดราฟต์", "term_support_list": "รายชื่อสนับสนุน"
+        "term_gen": " รุ่นที่ ", "term_draft": "ดราฟต์", "term_support_list": "รายชื่อสนับสนุน",
+        "opt_koko": "สเตจ Koko Kara da (16 คน)", "opt_soko": "สเตจ Soko ni Mirai wa Aru (16 คน)", "opt_tewo": "สเตจ Tewo Tsunaginagara (8 คน)", "opt_reset": "สเตจ RESET (8 คน)",
+        "title_placeholder": "📝 ป้อนชื่อการแสดง..."
     },
     "id": {
-        "app_title": "Daftar Anggota AKB48 & Warna", "default_title": "Stage Tewo Tsunaginagara", "title_placeholder": "📝 Masukkan nama acara...",
-        "preset_placeholder": "-- Muat Preset (Grid Kosong) --", "gen_placeholder": "-- Muat berdasarkan Generasi --",
+        "app_title": "Daftar Anggota AKB48 & Warna", "preset_placeholder": "-- Muat Preset (Grid Kosong) --", "gen_placeholder": "-- Muat berdasarkan Generasi --",
         "ctrl_gen_load": "Muat Cepat Generasi", "ctrl_grid": "Kontrol Ukuran Grid", "btn_8": "8 Org", "btn_12": "12 Org", "btn_16": "16 Org",
         "btn_minus": "Kurangi 1", "btn_plus": "Tambah 1", "ctrl_display": "Pengaturan Tampilan",
         "cfg_photo": "Tampilkan Avatar", "cfg_gen": "Tampilkan Generasi", "cfg_name": "Tampilkan Nama", "cfg_nick": "Tampilkan Nama Panggilan",
@@ -88,6 +93,8 @@
         "btn_download": "Unduh Gambar", "modal_title": "Pilih Anggota", "loading": "Merender Gambar Resolusi Tinggi...",
         "copyright_notice": "Dibuat untuk membantu penggemar baru belajar cara mendukung anggota, dan berbagi informasi untuk konser. Hanya untuk penggunaan non-komersial. Hak cipta milik ©AKB48 dan DH Co., Ltd.",
         "preset_16_koko": "Stage Koko Kara da", "preset_16_soko": "Stage Soko ni Mirai wa Aru", "preset_8_tewo": "Stage Tewo Tsunaginagara", "preset_8_reset": "Stage RESET",
-        "term_gen": " Gen ", "term_draft": "Anggota Draft", "term_support_list": "Daftar Dukungan"
+        "term_gen": " Gen ", "term_draft": "Anggota Draft", "term_support_list": "Daftar Dukungan",
+        "opt_koko": "Stage Koko Kara da (16 Org)", "opt_soko": "Stage Soko ni Mirai wa Aru (16 Org)", "opt_tewo": "Stage Tewo Tsunaginagara (8 Org)", "opt_reset": "Stage RESET (8 Org)",
+        "title_placeholder": "📝 Masukkan nama acara..."
     }
 }
