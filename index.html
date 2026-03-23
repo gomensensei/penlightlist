@@ -4,7 +4,6 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title data-i18n="app_title">AKB48 成員名單及應援色</title>
-    <!-- 引入日系字體 -->
     <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@400;700;900&display=swap" rel="stylesheet">
     <script src="https://unpkg.com/lucide@latest"></script>
     <link rel="stylesheet" href="style.css">
@@ -29,7 +28,7 @@
 
     <div class="main-container">
         
-        <!-- 預覽面板 (Mobile 在上, PC 在左) -->
+        <!-- 預覽面板 -->
         <main class="preview-panel panel">
             <div class="header-edit-area">
                 <div class="title-input-wrapper">
@@ -46,13 +45,11 @@
                     </select>
                 </div>
             </div>
-            <!-- 動態 Flexbox Grid -->
             <div id="htmlGrid"></div>
         </main>
 
-        <!-- 控制面板 (Mobile 在下, PC 在右) -->
+        <!-- 控制面板 -->
         <aside class="controls-panel panel">
-            
             <div class="control-group">
                 <label class="title" data-i18n="ctrl_gen_load">一鍵載入期生全體</label>
                 <select id="genSelector" class="preset-select" style="width: 100%;">
@@ -114,10 +111,9 @@
     </div>
 
     <footer class="app-footer" data-i18n="copyright_notice">
-        希望新粉絲能進一步了解如何支持成員，現有粉絲能發掘更多推（推し増し），並就不同公演與演唱會分享應援資訊。網站僅供非商業用途使用，版權歸©AKB48及株式会社DH所有。
+        希望新粉絲能進一步了解如何支持成員，現有粉絲能推し増し，並就不同公演與演唱會分享應援資訊。網站僅供非商業用途使用，版權歸©AKB48及株式会社DH所有。
     </footer>
 
-    <!-- 隱藏畫布 -->
     <canvas id="exportCanvas"></canvas>
     
     <div id="loadingOverlay">
@@ -125,7 +121,6 @@
         <div data-i18n="loading">渲染高解析度圖片中...</div>
     </div>
 
-    <!-- Modal -->
     <div class="modal-overlay" id="memberModal">
         <div class="modal-content">
             <div class="modal-header">
