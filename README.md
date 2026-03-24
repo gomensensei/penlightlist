@@ -1,6 +1,4 @@
-from pathlib import Path
-
-content = """# 🌸 AKB48 成員名單及應援色生成器  
+# 🌸 AKB48 成員名單及應援色生成器  
 # AKB48 メンバー名簿＆応援色ジェネレーター  
 # AKB48 Member Lineup & Penlight Color Generator
 
