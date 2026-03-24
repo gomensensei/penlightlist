@@ -71,7 +71,7 @@
     },
     "th": {
         "app_title": "รายชื่อสมาชิก AKB48 & สีปากกา", "default_title": "สเตจ Tewo Tsunaginagara", "title_placeholder": "📝 ป้อนชื่อการแสดง...",
-        "preset_placeholder": "-- เลือกขนาดกริด (ช่องว่าง) --", "gen_placeholder": "-- โหลดตามรุ่น --",
+        "preset_placeholder": "-- โหลดพรีเซต (ช่องว่าง) --", "gen_placeholder": "-- โหลดตามรุ่น --",
         "ctrl_gen_load": "โหลดตามรุ่นอย่างรวดเร็ว", "ctrl_grid": "การตั้งค่าขนาดกริด", "btn_8": "8 คน", "btn_12": "12 คน", "btn_16": "16 คน",
         "btn_minus": "ลด 1 ช่อง", "btn_plus": "เพิ่ม 1 ช่อง", "ctrl_display": "การตั้งค่าการแสดงผล",
         "cfg_photo": "แสดงรูปภาพ", "cfg_gen": "แสดงรุ่น", "cfg_name": "แสดงชื่อ", "cfg_nick": "แสดงชื่อเล่น",
@@ -85,7 +85,7 @@
     },
     "id": {
         "app_title": "Daftar Anggota AKB48 & Warna", "default_title": "Stage Tewo Tsunaginagara", "title_placeholder": "📝 Masukkan nama acara...",
-        "preset_placeholder": "-- Pilih Ukuran Grid (Kosong) --", "gen_placeholder": "-- Muat berdasarkan Generasi --",
+        "preset_placeholder": "-- Muat Preset (Grid Kosong) --", "gen_placeholder": "-- Muat berdasarkan Generasi --",
         "ctrl_gen_load": "Muat Cepat Generasi", "ctrl_grid": "Kontrol Ukuran Grid", "btn_8": "8 Org", "btn_12": "12 Org", "btn_16": "16 Org",
         "btn_minus": "Kurangi 1", "btn_plus": "Tambah 1", "ctrl_display": "Pengaturan Tampilan",
         "cfg_photo": "Tampilkan Avatar", "cfg_gen": "Tampilkan Generasi", "cfg_name": "Tampilkan Nama", "cfg_nick": "Tampilkan Nama Panggilan",
