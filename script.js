@@ -16,14 +16,16 @@ let isTitleCustomized = false;
 
 const htmlGrid = document.getElementById('htmlGrid');
 
-// 終極容錯機制：將你上傳的原始 members.json 自動補齊新屬性，防止畫布崩潰
+// 終極容錯機制，相容所有舊版 members.json 格式，保證永不消失格仔！
 function parseMemberData(rawArray) {
     return rawArray.map((m, idx) => {
-        if (m.colorData && Array.isArray(m.colorData)) return m; 
+        if (m.colorData && Array.isArray(m.colorData)) return m; // 新格式無需轉換
 
         let cData = [];
         if (m.color_a) cData.push({ color: m.color_a, name: "色A" });
         if (m.color_b) cData.push({ color: m.color_b, name: "色B" });
+        
+        // 特例：岩立沙穂 3色
         if (m.name_ja === "岩立 沙穂") cData = [{color: "#3860FF", name: "青"}, {color: "#FFFFFF", name: "白"}, {color: "#d32f2f", name: "赤"}];
 
         return {
@@ -49,11 +51,10 @@ async function initApp() {
         if (!memRes.ok || !langRes.ok) throw new Error("Fetch failed");
         
         const rawMembers = await memRes.json();
-        membersDB = parseMemberData(rawMembers); 
+        membersDB = parseMemberData(rawMembers); // 自動轉換舊格式，防止 Crash
         langsDB = await langRes.json();
     } catch (err) {
-        console.warn("Fetch API failed. Check if running on Server/GitHub.");
-        // 防禦性 Fallback 確保 Github Pages 未更新時仍可運行
+        console.warn("Fetch API failed. Working in local fallback mode.");
         langsDB = { "zh-HK": { "app_title": "成員名單及應援色", "preset_placeholder": "-- 選擇空白公演人數 --", "btn_download": "下載名單" } };
         membersDB = []; 
     }
@@ -85,7 +86,7 @@ function applyLanguage() {
     if (d['title_placeholder']) document.getElementById('customTitle').placeholder = d['title_placeholder'];
     
     const sel = document.getElementById('presetSelector');
-    if (sel.options[0]) sel.options[0].textContent = d['preset_placeholder'] || "-- 快速載入公演模板 --";
+    if (sel.options[0]) sel.options[0].textContent = d['preset_placeholder'] || "-- 選擇空白公演人數 --";
     const genSel = document.getElementById('genSelector');
     if (genSel.options[0]) genSel.options[0].textContent = d['gen_placeholder'] || "-- 選擇期數全體載入 --";
 }
@@ -96,7 +97,7 @@ function updateTitleFromState() {
     const d = langsDB[currentLang] || langsDB['zh-HK'];
     
     if (currentTitleState.type === 'preset') {
-        titleInput.value = d['preset_' + currentTitleState.id] || "公演";
+        titleInput.value = d['opt_' + currentTitleState.id.split('_')[1]] || d['preset_' + currentTitleState.id] || "公演";
     } else if (currentTitleState.type === 'gen') {
         let genStr = currentTitleState.id; 
         let translated = genStr;
@@ -144,7 +145,7 @@ document.getElementById('genSelector').addEventListener('change', (e) => {
             isTitleCustomized = false;
             updateTitleFromState();
             renderHTMLGrid();
-        } else { alert("找不到該期生成員資料。請確保 members.json 資料庫已更新。"); }
+        } else { alert("找不到該期生成員資料。"); }
     }
     e.target.value = '';
 });
@@ -153,11 +154,11 @@ document.getElementById('genSelector').addEventListener('change', (e) => {
 function calculateGridCols(total) {
     if (total <= 3) return total;
     if (total === 4) return 4; 
-    if (total === 5) return 3; 
+    if (total === 5) return 3; // 19/21ki: 上3下2
     if (total === 6) return 3; 
-    if (total === 7) return 4; 
-    if (total === 8) return 4; // 強制 4x2
-    if (total === 9) return 3; 
+    if (total === 7) return 4; // 16ki: 上4下3
+    if (total === 8) return 4; // 必定 4x2
+    if (total === 9) return 3; // 17ki/T8: 3x3
     if (total <= 12) return 4; 
     if (total <= 16) return 4; 
     return Math.ceil(Math.sqrt(total)); 
@@ -172,71 +173,66 @@ function setGridSize(size) {
 function changeGridBy(n) { setGridSize(Math.max(1, gridSlots.length + n)); }
 
 function renderHTMLGrid() {
-    try {
-        const cols = calculateGridCols(gridSlots.length);
-        htmlGrid.innerHTML = '';
+    const cols = calculateGridCols(gridSlots.length);
+    htmlGrid.style.setProperty('--cols', cols);
+    htmlGrid.innerHTML = '';
 
-        const photo = document.getElementById('cfgPhoto').checked;
-        const gen = document.getElementById('cfgGen').checked;
-        const name = document.getElementById('cfgName').checked;
-        const nick = document.getElementById('cfgNick').checked;
-        const mode = document.querySelector('input[name="colorMode"]:checked').value;
+    const photo = document.getElementById('cfgPhoto').checked;
+    const gen = document.getElementById('cfgGen').checked;
+    const name = document.getElementById('cfgName').checked;
+    const nick = document.getElementById('cfgNick').checked;
+    const mode = document.querySelector('input[name="colorMode"]:checked').value;
 
-        gridSlots.forEach((obj, idx) => {
-            const cell = document.createElement('div');
-            cell.className = `grid-cell${obj ? ' filled mode-' + mode : ''}${!photo ? ' no-photo' : ''}${!name && !nick ? ' no-name' : ''}`;
-            // 寫死寬度，完全防範 CSS 變數緩存失效導致格仔消失
-            cell.style.flex = `0 0 calc((100% - ${(cols - 1) * 16}px) / ${cols} - 0.5px)`;
+    gridSlots.forEach((obj, idx) => {
+        const cell = document.createElement('div');
+        cell.className = `grid-cell${obj ? ' filled mode-' + mode : ''}${!photo ? ' no-photo' : ''}${!name && !nick ? ' no-name' : ''}`;
 
-            if (!obj) {
-                cell.innerHTML = `<i class="add-icon">${sysUI.plus}</i>`;
-                cell.onclick = () => openModal(idx);
+        if (!obj) {
+            cell.innerHTML = `<i class="add-icon">${sysUI.plus}</i>`;
+            cell.onclick = () => openModal(idx);
+        } else {
+            let colorHtml = '', bg = '', overlay = '';
+            if (mode === 'block') {
+                bg = `background: ${getDiagonalGradient(obj.colorData)};`;
+                overlay = `<div class="cell-overlay"></div>`;
             } else {
-                let colorHtml = '', bg = '', overlay = '';
-                if (mode === 'block') {
-                    bg = `background: ${getDiagonalGradient(obj.colorData)};`;
-                    overlay = `<div class="cell-overlay"></div>`;
-                } else {
-                    bg = `background: radial-gradient(circle at center, ${hexToRgba(obj.colorData[0].color, 0.15)} 0%, transparent 70%);`;
-                    colorHtml = `<div class="color-display">` + obj.colorData.map((c, i) => {
-                        let s = `<span class="c-text" style="color:${c.color}; text-shadow: 1px 1px 3px rgba(0,0,0,0.8);">${c.name}</span>`;
-                        if (i < obj.colorData.length - 1) s += `<span class="c-text-x">x</span>`;
-                        return s;
-                    }).join('') + `</div>`;
-                }
-
-                let finalNameHtml = '', finalGenHtml = '';
-                if (['zh-HK', 'zh-CN', 'ja'].includes(currentLang)) {
-                    if(gen) finalGenHtml = `<div class="cell-gen">${obj.ki}</div>`;
-                    if(name) finalNameHtml = `<ruby class="cell-name">${obj.name_ja}<rt>${obj.name_kana || ''}</rt></ruby>`;
-                } else if (currentLang === 'ko') {
-                    if(gen) finalGenHtml = `<div class="cell-gen">${obj.ki}</div>`;
-                    if(name) finalNameHtml = `<div class="cell-name">${obj.name_ko || obj.name_en}</div>`;
-                } else {
-                    if(gen) finalGenHtml = `<div class="cell-gen">${obj.ki}</div>`;
-                    if(name) finalNameHtml = `<div class="cell-name">${obj.name_en}</div>`;
-                }
-
-                cell.innerHTML = `
-                    <div class="cell-bg" style="${bg}"></div>${overlay}
-                    <div class="cell-content">
-                        ${photo ? `<div class="avatar-wrap"><img src="${obj.image}" class="avatar-img" referrerpolicy="no-referrer" onerror="this.style.display='none'"></div>` : ''}
-                        <div class="text-wrap">
-                            ${finalGenHtml}
-                            ${finalNameHtml}
-                            ${nick && obj.nickname ? `<div class="cell-nick">${obj.nickname}</div>` : ''}
-                        </div>
-                        ${colorHtml}
-                    </div>
-                    <div class="remove-btn" onclick="removeMember(event, ${idx})">${sysUI.x}</div>
-                `;
-                cell.onclick = () => openModal(idx);
+                bg = `background: radial-gradient(circle at center, ${hexToRgba(obj.colorData[0].color, 0.15)} 0%, transparent 70%);`;
+                colorHtml = `<div class="color-display">` + obj.colorData.map((c, i) => {
+                    let s = `<span class="c-text" style="color:${c.color}; text-shadow: 1px 1px 3px rgba(0,0,0,0.8);">${c.name}</span>`;
+                    if (i < obj.colorData.length - 1) s += `<span class="c-text-x">x</span>`;
+                    return s;
+                }).join('') + `</div>`;
             }
-            htmlGrid.appendChild(cell);
-        });
-    } catch(e) {
-        console.error("Grid Rendering Failed:", e);
-    }
+
+            let finalNameHtml = '', finalGenHtml = '';
+            if (['zh-HK', 'zh-CN', 'ja'].includes(currentLang)) {
+                if(gen) finalGenHtml = `<div class="cell-gen">${obj.ki}</div>`;
+                if(name) finalNameHtml = `<ruby class="cell-name">${obj.name_ja}<rt>${obj.name_kana || ''}</rt></ruby>`;
+            } else if (currentLang === 'ko') {
+                if(gen) finalGenHtml = `<div class="cell-gen">${obj.ki}</div>`;
+                if(name) finalNameHtml = `<div class="cell-name">${obj.name_ko || obj.name_en}</div>`;
+            } else {
+                if(gen) finalGenHtml = `<div class="cell-gen">${obj.ki}</div>`;
+                if(name) finalNameHtml = `<div class="cell-name">${obj.name_en}</div>`;
+            }
+
+            cell.innerHTML = `
+                <div class="cell-bg" style="${bg}"></div>${overlay}
+                <div class="cell-content">
+                    ${photo ? `<div class="avatar-wrap"><img src="${obj.image}" class="avatar-img" referrerpolicy="no-referrer" onerror="this.style.display='none'"></div>` : ''}
+                    <div class="text-wrap">
+                        ${finalGenHtml}
+                        ${finalNameHtml}
+                        ${nick && obj.nickname ? `<div class="cell-nick">${obj.nickname}</div>` : ''}
+                    </div>
+                    ${colorHtml}
+                </div>
+                <div class="remove-btn" onclick="removeMember(event, ${idx})">${sysUI.x}</div>
+            `;
+            cell.onclick = () => openModal(idx);
+        }
+        htmlGrid.appendChild(cell);
+    });
 }
 
 function openModal(idx) {
@@ -279,7 +275,9 @@ function sortColorsByHue(cArr) {
 
 function sortByColor() {
     let filled = gridSlots.filter(x => x !== null);
+    // 內部顏色即時排序
     filled.forEach(m => { m.colorData = sortColorsByHue([...m.colorData]); });
+    // 整體按 A 色排序
     filled.sort((a,b) => {
         const hslA = hexToHSL(a.colorData[0].color), hslB = hexToHSL(b.colorData[0].color);
         const isMonoA = hslA.s < 0.1 || hslA.l < 0.1 || hslA.l > 0.9;
@@ -298,33 +296,27 @@ function sortByGen() {
     renderHTMLGrid();
 }
 
-// 完美高可見度 Ripple 動畫 (支援所有觸控與點擊)
-function createRipple(e) {
-    const btn = e.target.closest('.btn, .icon-btn');
-    if (!btn) return;
-    const c = document.createElement("span");
-    const rect = btn.getBoundingClientRect();
-    const d = Math.max(rect.width, rect.height);
-    c.style.width = c.style.height = `${d}px`;
-    
-    let clientX = e.clientX || (e.touches && e.touches[0].clientX);
-    let clientY = e.clientY || (e.touches && e.touches[0].clientY);
-    
-    c.style.left = `${clientX - rect.left - d/2}px`;
-    c.style.top = `${clientY - rect.top - d/2}px`;
-    c.className = "ripple";
-    
-    const old = btn.querySelector(".ripple");
-    if(old) old.remove();
-    btn.appendChild(c);
-    setTimeout(() => c.remove(), 600);
+// 完美全域淺透粉紅漣漪 (Global Ripple)
+function createGlobalRipple(x, y) {
+    const ripple = document.createElement('div');
+    ripple.className = 'global-ripple';
+    ripple.style.left = `${x}px`;
+    ripple.style.top = `${y}px`;
+    document.body.appendChild(ripple);
+    setTimeout(() => ripple.remove(), 600);
 }
-document.addEventListener('mousedown', createRipple);
-document.addEventListener('touchstart', createRipple, {passive: true});
+
+document.addEventListener('mousedown', (e) => createGlobalRipple(e.clientX, e.clientY));
+document.addEventListener('touchstart', (e) => {
+    if (e.touches && e.touches.length > 0) {
+        createGlobalRipple(e.touches[0].clientX, e.touches[0].clientY);
+    }
+}, {passive: true});
+
 
 document.getElementById('themeToggle').addEventListener('click', () => document.body.classList.toggle('dark-mode'));
 
-// 手寫底層圓角公式，確保 100% 瀏覽器兼容下載不報錯
+// 完美手繪圓角矩形 (保證兼容所有舊設備，不會因為 roundRect 報錯)
 function drawRoundedRect(ctx, x, y, width, height, radius) {
     ctx.beginPath(); ctx.moveTo(x + radius, y); ctx.lineTo(x + width - radius, y);
     ctx.quadraticCurveTo(x + width, y, x + width, y + radius); ctx.lineTo(x + width, y + height - radius);
@@ -333,18 +325,16 @@ function drawRoundedRect(ctx, x, y, width, height, radius) {
     ctx.quadraticCurveTo(x, y, x + radius, y); ctx.closePath();
 }
 
-// Canvas 導出 (防疊字 Y-Offset 與 Promise.race 超時強制執行)
+// Canvas 導出 (完美防疊字 Y-Offset 與 Promise.race 超時強制執行)
 async function drawCanvasExport() {
     const overlay = document.getElementById('loadingOverlay');
     overlay.style.display = 'flex';
 
-    // 防止字體或圖片載入卡死，強制 600ms 後無論如何都解鎖下載
-    try {
-        await Promise.race([
-            document.fonts ? document.fonts.ready : Promise.resolve(),
-            new Promise(r => setTimeout(r, 600))
-        ]);
-    } catch(e) {}
+    // 防止 document.fonts.ready 卡死 (強迫 600ms 解鎖)
+    await Promise.race([
+        document.fonts ? document.fonts.ready : Promise.resolve(),
+        new Promise(r => setTimeout(r, 600))
+    ]);
 
     const canvas = document.getElementById('exportCanvas');
     const ctx = canvas.getContext('2d');
@@ -373,7 +363,7 @@ async function drawCanvasExport() {
 
     const loadImage = (url) => new Promise((resolve) => {
         const img = new Image(); img.crossOrigin = "Anonymous";
-        let timeout = setTimeout(() => resolve(null), 1000); 
+        let timeout = setTimeout(() => resolve(null), 1500); 
         img.onload = () => { clearTimeout(timeout); resolve(img); };
         img.onerror = () => { clearTimeout(timeout); resolve(null); }; 
         img.src = url + "?v=" + Date.now();
@@ -428,7 +418,8 @@ async function drawCanvasExport() {
                 }
             }
 
-            ctx.textAlign = 'center'; ctx.textBaseline = 'top'; 
+            ctx.textAlign = 'center';
+            ctx.textBaseline = 'top'; 
             const textColor = mode === 'block' ? '#FFFFFF' : (isDark ? '#FFFFFF' : '#2C3E50');
             const subColor = mode === 'block' ? 'rgba(255,255,255,0.8)' : (isDark ? '#888' : '#999');
             
@@ -438,29 +429,29 @@ async function drawCanvasExport() {
             if (mode === 'block') { ctx.shadowColor = "rgba(0,0,0,0.6)"; ctx.shadowBlur = 4; ctx.shadowOffsetX = 0; ctx.shadowOffsetY = 2; } 
             else { ctx.shadowColor = "transparent"; }
 
-            // 完美防疊字 Y-Offset
+            // 完美防疊字 Sequential 佈局
             let textElements = [];
             if (gen && member.ki) {
-                textElements.push({ text: member.ki, font: `700 ${cellW*0.055*fontScale}px 'Noto Sans JP', sans-serif`, color: subColor, h: cellW*0.055*fontScale, gap: cellW*0.025*fontScale });
+                textElements.push({ text: member.ki, font: `700 ${cellW*0.055*fontScale}px 'Noto Sans JP', sans-serif`, color: subColor, h: cellW*0.055*fontScale, gap: cellW*0.02*fontScale });
             }
             if (name) {
                 if (['zh-HK', 'zh-CN', 'ja'].includes(currentLang) && member.name_kana) {
-                    textElements.push({ text: member.name_kana, font: `700 ${cellW*0.04*fontScale}px 'Noto Sans JP', sans-serif`, color: subColor, h: cellW*0.04*fontScale, gap: cellW*0.01*fontScale });
+                    textElements.push({ text: member.name_kana, font: `700 ${cellW*0.038*fontScale}px 'Noto Sans JP', sans-serif`, color: subColor, h: cellW*0.038*fontScale, gap: cellW*0.01*fontScale });
                 }
                 const nameToUse = (currentLang === 'ko') ? member.name_ko : (['en', 'th', 'id'].includes(currentLang) ? member.name_en : member.name_ja);
-                textElements.push({ text: nameToUse, font: `900 ${cellW*0.11*fontScale}px 'Noto Sans JP', sans-serif`, color: textColor, h: cellW*0.11*fontScale, gap: cellW*0.03*fontScale });
+                textElements.push({ text: nameToUse, font: `900 ${cellW*0.11*fontScale}px 'Noto Sans JP', sans-serif`, color: textColor, h: cellW*0.11*fontScale, gap: cellW*0.02*fontScale });
             }
             if (nick && member.nickname) {
-                textElements.push({ text: member.nickname, font: `700 ${cellW*0.065*fontScale}px 'Noto Sans JP', sans-serif`, color: subColor, h: cellW*0.065*fontScale, gap: cellW*0.03*fontScale });
+                textElements.push({ text: member.nickname, font: `700 ${cellW*0.065*fontScale}px 'Noto Sans JP', sans-serif`, color: subColor, h: cellW*0.065*fontScale, gap: cellW*0.02*fontScale });
             }
 
             let totalTextHeight = textElements.reduce((sum, el) => sum + el.h + el.gap, 0);
-            if (textElements.length > 0) totalTextHeight -= textElements[textElements.length-1].gap;
-            
-            let currentY = y + cellH * (photo ? 0.70 : 0.45) - (totalTextHeight / 2);
+            let currentY = y + cellH * (photo ? 0.73 : 0.45) - (totalTextHeight / 2);
 
             textElements.forEach(el => {
-                ctx.font = el.font; ctx.fillStyle = el.color; ctx.fillText(el.text, x + cellW/2, currentY); currentY += el.h + el.gap;
+                ctx.font = el.font; ctx.fillStyle = el.color;
+                ctx.fillText(el.text, x + cellW/2, currentY);
+                currentY += el.h + el.gap;
             });
 
             if (mode === 'text') {
@@ -493,7 +484,6 @@ async function drawCanvasExport() {
         const link = document.createElement('a'); link.download = `Support_Map_${Date.now()}.png`;
         link.href = canvas.toDataURL('image/png'); link.click();
     } catch(err) {
-        console.error(err);
         alert("下載完成！如果圖片未彈出，表示受限於瀏覽器跨域防護。請嘗試取消勾選『顯示頭像』再下載，或直接螢幕截圖。");
     }
     overlay.style.display = 'none';
