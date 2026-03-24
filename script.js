@@ -1,30 +1,46 @@
 let langsDB = {};
 let membersDB = [];
+
+// 自動容錯機制，即使 JSON 格式舊版都會自動轉換
+async function initApp() {
+    try {
+        const [memRes, langRes] = await Promise.all([ fetch('members.json'), fetch('langs.json') ]);
+        if (!memRes.ok || !langRes.ok) throw new Error("Fetch failed");
+        const rawMembers = await memRes.json();
+        langsDB = await langRes.json();
+        
+        // 自動轉換舊版 members.json 格式
+        membersDB = rawMembers.map(m => {
+            if (m.colorData) return m; // 已是新格式
+            let colors = [];
+            if (m.color_a) colors.push({color: m.color_a, name: "色A"});
+            if (m.color_b) colors.push({color: m.color_b, name: "色B"});
+            return {
+                id: m.id || Math.random().toString(36).substring(7),
+                name_ja: m.name_ja, name_en: m.name_en, name_ko: m.name_ko, name_kana: m.name_kana,
+                nickname: m.nickname || m.name_en, ki: m.generation || m.ki,
+                genNum: parseFloat((m.generation || m.ki).replace(/[^0-9.]/g, '')) || 99,
+                colorData: colors, image: m.image
+            };
+        });
+    } catch (err) {
+        console.warn("Fetch Error. Please run on a Server or GitHub Pages.");
+        langsDB = { "zh-HK": { "app_title": "成員名單及應援色", "preset_placeholder": "-- 選擇空白公演人數 --", "btn_download": "下載名單" } };
+        membersDB = []; 
+    }
+    
+    gridSlots = new Array(8).fill(null); // 強制初始 8 格 4x2
+    applyLanguage();
+    renderHTMLGrid();
+}
+
 let currentLang = 'zh-HK';
-let gridSlots = new Array(8).fill(null); // 強制初始 8 格
+let gridSlots = [];
 let activeSlotIndex = -1;
 let currentTitleState = { type: 'preset', id: '8_tewo' }; 
 let isTitleCustomized = false;
 
 const htmlGrid = document.getElementById('htmlGrid');
-
-async function initApp() {
-    try {
-        const [memRes, langRes] = await Promise.all([ fetch('members.json'), fetch('langs.json') ]);
-        if (!memRes.ok || !langRes.ok) throw new Error("Fetch failed");
-        membersDB = await memRes.json();
-        langsDB = await langRes.json();
-    } catch (err) {
-        console.warn("Fetch API failed. Check CORS or Local Server.");
-        // 防禦性 Fallback 確保 Github Pages 未生效前仍可運行
-        langsDB = { "zh-HK": { "app_title": "成員名單及應援色", "preset_placeholder": "-- 選擇空白公演人數 --", "btn_download": "下載名單" } };
-        membersDB = []; 
-    }
-    
-    lucide.createIcons();
-    applyLanguage();
-    renderHTMLGrid();
-}
 
 document.getElementById('customTitle').addEventListener('input', () => { isTitleCustomized = true; });
 
@@ -113,15 +129,15 @@ document.getElementById('genSelector').addEventListener('change', (e) => {
     e.target.value = '';
 });
 
-// 完美 Flexbox 欄數分配
+// 強制 4x2 佈局計算
 function calculateGridCols(total) {
     if (total <= 3) return total;
     if (total === 4) return 4; 
-    if (total === 5) return 3; // 19/21ki: 上3下2
+    if (total === 5) return 3; 
     if (total === 6) return 3; 
-    if (total === 7) return 4; // 16ki: 上4下3
+    if (total === 7) return 4; 
     if (total === 8) return 4; 
-    if (total === 9) return 3; // 17ki/T8: 3x3
+    if (total === 9) return 3; 
     if (total <= 12) return 4; 
     if (total <= 16) return 4; 
     return Math.ceil(Math.sqrt(total)); 
@@ -258,7 +274,7 @@ function sortByGen() {
     renderHTMLGrid();
 }
 
-// 完美修復 Ripple 點擊動畫
+// 修復點擊漣漪
 document.addEventListener('click', function(e) {
     const btn = e.target.closest('.btn');
     if (!btn) return;
@@ -277,7 +293,7 @@ document.addEventListener('click', function(e) {
 
 document.getElementById('themeToggle').addEventListener('click', () => document.body.classList.toggle('dark-mode'));
 
-// Canvas 導出 (完美防疊字 Y-Offset)
+// Canvas 導出 (完美防疊字 Y-Offset 與字體載入)
 async function drawCanvasExport() {
     const overlay = document.getElementById('loadingOverlay');
     overlay.style.display = 'flex';
@@ -314,7 +330,7 @@ async function drawCanvasExport() {
         let timeout = setTimeout(() => resolve(null), 1500); 
         img.onload = () => { clearTimeout(timeout); resolve(img); };
         img.onerror = () => { clearTimeout(timeout); resolve(null); }; 
-        img.src = url + "?cors=1&v=" + Date.now();
+        img.src = url; 
     });
 
     for (let i = 0; i < gridSlots.length; i++) {
@@ -366,8 +382,7 @@ async function drawCanvasExport() {
                 }
             }
 
-            ctx.textAlign = 'center';
-            ctx.textBaseline = 'top'; 
+            ctx.textAlign = 'center'; ctx.textBaseline = 'top'; 
             const textColor = mode === 'block' ? '#FFFFFF' : (isDark ? '#FFFFFF' : '#2C3E50');
             const subColor = mode === 'block' ? 'rgba(255,255,255,0.8)' : (isDark ? '#888' : '#999');
             
@@ -377,11 +392,9 @@ async function drawCanvasExport() {
             if (mode === 'block') { ctx.shadowColor = "rgba(0,0,0,0.6)"; ctx.shadowBlur = 4; ctx.shadowOffsetX = 0; ctx.shadowOffsetY = 2; } 
             else { ctx.shadowColor = "transparent"; }
 
-            // 完美順序向下累加 Y 座標 (解決疊字)
+            // Sequential Text Alignment
             let textElements = [];
-            if (gen && member.ki) {
-                textElements.push({ text: member.ki, font: `700 ${cellW*0.055*fontScale}px 'Noto Sans JP', sans-serif`, color: subColor, h: cellW*0.055*fontScale, gap: cellW*0.02*fontScale });
-            }
+            if (gen && member.ki) textElements.push({ text: member.ki, font: `700 ${cellW*0.055*fontScale}px 'Noto Sans JP', sans-serif`, color: subColor, h: cellW*0.055*fontScale, gap: cellW*0.02*fontScale });
             if (name) {
                 if (['zh-HK', 'zh-CN', 'ja'].includes(currentLang) && member.name_kana) {
                     textElements.push({ text: member.name_kana, font: `700 ${cellW*0.038*fontScale}px 'Noto Sans JP', sans-serif`, color: subColor, h: cellW*0.038*fontScale, gap: cellW*0.01*fontScale });
@@ -389,22 +402,10 @@ async function drawCanvasExport() {
                 const nameToUse = (currentLang === 'ko') ? member.name_ko : (['en', 'th', 'id'].includes(currentLang) ? member.name_en : member.name_ja);
                 textElements.push({ text: nameToUse, font: `900 ${cellW*0.11*fontScale}px 'Noto Sans JP', sans-serif`, color: textColor, h: cellW*0.11*fontScale, gap: cellW*0.02*fontScale });
             }
-            if (nick && member.nickname) {
-                textElements.push({ text: member.nickname, font: `700 ${cellW*0.065*fontScale}px 'Noto Sans JP', sans-serif`, color: subColor, h: cellW*0.065*fontScale, gap: cellW*0.02*fontScale });
-            }
+            if (nick && member.nickname) textElements.push({ text: member.nickname, font: `700 ${cellW*0.065*fontScale}px 'Noto Sans JP', sans-serif`, color: subColor, h: cellW*0.065*fontScale, gap: cellW*0.02*fontScale });
 
             let totalTextHeight = textElements.reduce((sum, el) => sum + el.h + el.gap, 0);
             let currentY = y + cellH * (photo ? 0.73 : 0.45) - (totalTextHeight / 2);
 
             textElements.forEach(el => {
-                ctx.font = el.font; ctx.fillStyle = el.color;
-                ctx.fillText(el.text, x + cellW/2, currentY);
-                currentY += el.h + el.gap;
-            });
-
-            if (mode === 'text') {
-                currentY += cellW * 0.03 * fontScale; 
-                ctx.font = `900 ${cellW * 0.08 * fontScale}px 'Noto Sans JP', sans-serif`;
-                let totalW = 0;
-                member.colorData.forEach((cd, idx) => { totalW += ctx.measureText(cd.name).width; if (idx < member.colorData.length - 1) totalW += ctx.measureText(" x ").width; });
-                let textX = x
+                ctx.font
