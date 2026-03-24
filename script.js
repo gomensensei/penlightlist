@@ -51,12 +51,36 @@ async function initApp() {
         if (!memRes.ok || !langRes.ok) throw new Error("Fetch failed");
         
         const rawMembers = await memRes.json();
-        membersDB = parseMemberData(rawMembers); // 自動轉換舊格式，防止 Crash
+        membersDB = parseMemberData(rawMembers); 
         langsDB = await langRes.json();
+
+        // --- 新增：自動偵測語言邏輯 ---
+        const browserLang = navigator.language || navigator.userLanguage; 
+        const shortLang = browserLang.split('-')[0]; // 取得前綴，例如 'en', 'ja', 'zh'
+
+        if (browserLang === 'zh-CN' || browserLang === 'zh-SG') {
+            currentLang = 'zh-CN';
+        } else if (browserLang.startsWith('zh')) {
+            currentLang = 'zh-HK';
+        } else if (shortLang === 'ja') {
+            currentLang = 'ja';
+        } else if (shortLang === 'ko') {
+            currentLang = 'ko';
+        } else if (shortLang === 'th') {
+            currentLang = 'th';
+        } else if (shortLang === 'id') {
+            currentLang = 'id';
+        } else {
+            currentLang = 'en'; // 其他一律預設英文
+        }
+        
+        // 更新下拉選單的顯示值
+        document.getElementById('langSelector').value = currentLang;
+        // ----------------------------
+
     } catch (err) {
-        console.warn("Fetch API failed. Working in local fallback mode.");
-        langsDB = { "zh-HK": { "app_title": "成員名單及應援色", "preset_placeholder": "-- 選擇空白公演人數 --", "btn_download": "下載名單" } };
-        membersDB = []; 
+        console.warn("Fetch API failed.");
+        currentLang = 'en'; // 出錯時預設英文
     }
     
     applyLanguage();
