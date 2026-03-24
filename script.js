@@ -1,46 +1,59 @@
 let langsDB = {};
 let membersDB = [];
 
-// 自動容錯機制，即使 JSON 格式舊版都會自動轉換
-async function initApp() {
-    try {
-        const [memRes, langRes] = await Promise.all([ fetch('members.json'), fetch('langs.json') ]);
-        if (!memRes.ok || !langRes.ok) throw new Error("Fetch failed");
-        const rawMembers = await memRes.json();
-        langsDB = await langRes.json();
-        
-        // 自動轉換舊版 members.json 格式
-        membersDB = rawMembers.map(m => {
-            if (m.colorData) return m; // 已是新格式
-            let colors = [];
-            if (m.color_a) colors.push({color: m.color_a, name: "色A"});
-            if (m.color_b) colors.push({color: m.color_b, name: "色B"});
-            return {
-                id: m.id || Math.random().toString(36).substring(7),
-                name_ja: m.name_ja, name_en: m.name_en, name_ko: m.name_ko, name_kana: m.name_kana,
-                nickname: m.nickname || m.name_en, ki: m.generation || m.ki,
-                genNum: parseFloat((m.generation || m.ki).replace(/[^0-9.]/g, '')) || 99,
-                colorData: colors, image: m.image
-            };
-        });
-    } catch (err) {
-        console.warn("Fetch Error. Please run on a Server or GitHub Pages.");
-        langsDB = { "zh-HK": { "app_title": "成員名單及應援色", "preset_placeholder": "-- 選擇空白公演人數 --", "btn_download": "下載名單" } };
-        membersDB = []; 
-    }
-    
-    gridSlots = new Array(8).fill(null); // 強制初始 8 格 4x2
-    applyLanguage();
-    renderHTMLGrid();
-}
+// 內置純淨 SVG，確保無依賴亦可顯示
+const sysUI = {
+    plus: '<svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 5v14M5 12h14"/></svg>',
+    x: '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 6 6 18M6 6l12 12"/></svg>'
+};
 
 let currentLang = 'zh-HK';
-let gridSlots = [];
+let gridSlots = new Array(8).fill(null); // 強制初始化為 8 格
 let activeSlotIndex = -1;
 let currentTitleState = { type: 'preset', id: '8_tewo' }; 
 let isTitleCustomized = false;
 
 const htmlGrid = document.getElementById('htmlGrid');
+
+// 終極容錯機制，相容所有舊版 members.json 格式
+function parseMemberData(rawArray) {
+    return rawArray.map((m, idx) => {
+        if (m.colorData && Array.isArray(m.colorData)) return m; // 新格式無需轉換
+
+        let cData = [];
+        if (m.color_a) cData.push({ color: m.color_a, name: "色A" });
+        if (m.color_b) cData.push({ color: m.color_b, name: "色B" });
+        // 岩立沙穂 3色特例
+        if (m.name_ja === "岩立 沙穂") cData = [{color: "#3860FF", name: "青"}, {color: "#FFFFFF", name: "白"}, {color: "#d32f2f", name: "赤"}];
+
+        return {
+            id: m.id || String(idx + 1),
+            name_ja: m.name_ja, name_kana: m.name_kana || "", name_en: m.name_en || "", name_ko: m.name_ko || "",
+            nickname: m.nickname || m.name_en || m.name_ja,
+            ki: m.generation || m.ki || "",
+            genNum: parseFloat((m.generation || m.ki || "99").replace(/[^0-9.]/g, '')),
+            colorData: cData, image: m.image
+        };
+    });
+}
+
+async function initApp() {
+    try {
+        const [memRes, langRes] = await Promise.all([ fetch('members.json'), fetch('langs.json') ]);
+        if (!memRes.ok || !langRes.ok) throw new Error("Fetch failed");
+        
+        const rawMembers = await memRes.json();
+        membersDB = parseMemberData(rawMembers); // 自動轉換舊格式，防止 Crash
+        langsDB = await langRes.json();
+    } catch (err) {
+        console.warn("Fetch API failed. Working in local fallback mode.");
+        langsDB = { "zh-HK": { "app_title": "成員名單及應援色", "preset_placeholder": "-- 選擇空白公演人數 --", "btn_download": "下載名單" } };
+        membersDB = []; 
+    }
+    
+    applyLanguage();
+    renderHTMLGrid();
+}
 
 document.getElementById('customTitle').addEventListener('input', () => { isTitleCustomized = true; });
 
@@ -79,10 +92,16 @@ function updateTitleFromState() {
         titleInput.value = d['preset_' + currentTitleState.id] || "公演";
     } else if (currentTitleState.type === 'gen') {
         let genStr = currentTitleState.id; 
-        let translated = genStr;
-        if (genStr.includes('期生')) translated = genStr.replace('期生', d['term_gen'] || '期生');
-        else if (genStr === 'ドラフト生') translated = d['term_draft'] || 'ドラフト生';
-        titleInput.value = translated + " " + (d['term_support_list'] || '應援名單');
+        const numMatch = genStr.match(/\d+/);
+        let title = "";
+        if (numMatch) {
+            title = numMatch[0] + (d['term_gen'] || '期生') + " " + (d['term_support_list'] || '應援名單');
+        } else if (genStr.includes('ドラフト')) {
+            title = (d['term_draft'] || 'ドラフト生') + " " + (d['term_support_list'] || '應援名單');
+        } else {
+            title = genStr + " " + (d['term_support_list'] || '應援名單');
+        }
+        titleInput.value = title;
     }
 }
 
@@ -129,15 +148,15 @@ document.getElementById('genSelector').addEventListener('change', (e) => {
     e.target.value = '';
 });
 
-// 強制 4x2 佈局計算
+// 完美 Flexbox 佈局算法
 function calculateGridCols(total) {
     if (total <= 3) return total;
     if (total === 4) return 4; 
-    if (total === 5) return 3; 
+    if (total === 5) return 3; // 19/21ki: 上3下2
     if (total === 6) return 3; 
-    if (total === 7) return 4; 
-    if (total === 8) return 4; 
-    if (total === 9) return 3; 
+    if (total === 7) return 4; // 16ki: 上4下3
+    if (total === 8) return 4; // 必定 4x2
+    if (total === 9) return 3; // 17ki/T8: 3x3
     if (total <= 12) return 4; 
     if (total <= 16) return 4; 
     return Math.ceil(Math.sqrt(total)); 
@@ -167,7 +186,7 @@ function renderHTMLGrid() {
         cell.className = `grid-cell${obj ? ' filled mode-' + mode : ''}${!photo ? ' no-photo' : ''}${!name && !nick ? ' no-name' : ''}`;
 
         if (!obj) {
-            cell.innerHTML = `<i class="add-icon"><svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 5v14M5 12h14"/></svg></i>`;
+            cell.innerHTML = `<i class="add-icon">${sysUI.plus}</i>`;
             cell.onclick = () => openModal(idx);
         } else {
             let colorHtml = '', bg = '', overlay = '';
@@ -198,7 +217,7 @@ function renderHTMLGrid() {
             cell.innerHTML = `
                 <div class="cell-bg" style="${bg}"></div>${overlay}
                 <div class="cell-content">
-                    ${photo ? `<div class="avatar-wrap"><img src="${obj.image}" class="avatar-img" referrerpolicy="no-referrer" onerror="this.style.display='none'"></div>` : ''}
+                    ${photo ? `<div class="avatar-wrap"><img src="${obj.image}" class="avatar-img" crossorigin="anonymous" onerror="this.style.display='none'"></div>` : ''}
                     <div class="text-wrap">
                         ${finalGenHtml}
                         ${finalNameHtml}
@@ -206,13 +225,12 @@ function renderHTMLGrid() {
                     </div>
                     ${colorHtml}
                 </div>
-                <div class="remove-btn" onclick="removeMember(event, ${idx})"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 6 6 18M6 6l12 12"/></svg></div>
+                <div class="remove-btn" onclick="removeMember(event, ${idx})">${sysUI.x}</div>
             `;
             cell.onclick = () => openModal(idx);
         }
         htmlGrid.appendChild(cell);
     });
-    if (window.lucide) lucide.createIcons();
 }
 
 function openModal(idx) {
@@ -222,7 +240,7 @@ function openModal(idx) {
     membersDB.forEach(m => {
         const d = document.createElement('div'); d.className = 'member-option';
         const nameToUse = (currentLang === 'ko') ? m.name_ko : (['en', 'th', 'id'].includes(currentLang) ? m.name_en : m.name_ja);
-        d.innerHTML = `<img src="${m.image}" referrerpolicy="no-referrer"><span>${nameToUse}</span>`;
+        d.innerHTML = `<img src="${m.image}" crossorigin="anonymous"><span>${nameToUse}</span>`;
         d.onclick = () => { gridSlots[activeSlotIndex] = m; closeModal(); renderHTMLGrid(); };
         b.appendChild(d);
     });
@@ -274,7 +292,7 @@ function sortByGen() {
     renderHTMLGrid();
 }
 
-// 修復點擊漣漪
+// 點擊漣漪特效
 document.addEventListener('click', function(e) {
     const btn = e.target.closest('.btn');
     if (!btn) return;
@@ -293,7 +311,16 @@ document.addEventListener('click', function(e) {
 
 document.getElementById('themeToggle').addEventListener('click', () => document.body.classList.toggle('dark-mode'));
 
-// Canvas 導出 (完美防疊字 Y-Offset 與字體載入)
+// 支援舊版瀏覽器的自訂圓角矩形，保證下載不崩潰
+function drawRoundedRect(ctx, x, y, width, height, radius) {
+    ctx.beginPath(); ctx.moveTo(x + radius, y); ctx.lineTo(x + width - radius, y);
+    ctx.quadraticCurveTo(x + width, y, x + width, y + radius); ctx.lineTo(x + width, y + height - radius);
+    ctx.quadraticCurveTo(x + width, y + height, x + width - radius, y + height); ctx.lineTo(x + radius, y + height);
+    ctx.quadraticCurveTo(x, y + height, x, y + height - radius); ctx.lineTo(x, y + radius);
+    ctx.quadraticCurveTo(x, y, x + radius, y); ctx.closePath();
+}
+
+// Canvas 導出 (完美防疊字 Y-Offset 與終極相容)
 async function drawCanvasExport() {
     const overlay = document.getElementById('loadingOverlay');
     overlay.style.display = 'flex';
@@ -316,8 +343,8 @@ async function drawCanvasExport() {
     ctx.fillRect(0, 0, canvas.width, canvas.height);
 
     ctx.fillStyle = isDark ? '#FFFFFF' : '#2C3E50';
-    ctx.textAlign = 'center'; ctx.font = `900 60px 'Noto Sans JP', sans-serif`;
-    ctx.fillText(customTitle, canvas.width / 2, 80);
+    ctx.textAlign = 'center'; ctx.textBaseline = 'middle'; ctx.font = `900 60px 'Noto Sans JP', sans-serif`;
+    ctx.fillText(customTitle, canvas.width / 2, 60);
 
     const photo = document.getElementById('cfgPhoto').checked;
     const gen = document.getElementById('cfgGen').checked;
@@ -342,7 +369,7 @@ async function drawCanvasExport() {
         const y = headerHeight + padding + Math.floor(i / cols) * (cellH + padding);
         const member = gridSlots[i];
 
-        ctx.save(); ctx.beginPath(); ctx.roundRect(x, y, cellW, cellH, 20); ctx.clip();
+        ctx.save(); drawRoundedRect(ctx, x, y, cellW, cellH, 20); ctx.clip();
 
         if (member) {
             if (mode === 'block') {
@@ -392,20 +419,10 @@ async function drawCanvasExport() {
             if (mode === 'block') { ctx.shadowColor = "rgba(0,0,0,0.6)"; ctx.shadowBlur = 4; ctx.shadowOffsetX = 0; ctx.shadowOffsetY = 2; } 
             else { ctx.shadowColor = "transparent"; }
 
-            // Sequential Text Alignment
+            // 完美順序向下累加 Y 座標
             let textElements = [];
-            if (gen && member.ki) textElements.push({ text: member.ki, font: `700 ${cellW*0.055*fontScale}px 'Noto Sans JP', sans-serif`, color: subColor, h: cellW*0.055*fontScale, gap: cellW*0.02*fontScale });
-            if (name) {
-                if (['zh-HK', 'zh-CN', 'ja'].includes(currentLang) && member.name_kana) {
-                    textElements.push({ text: member.name_kana, font: `700 ${cellW*0.038*fontScale}px 'Noto Sans JP', sans-serif`, color: subColor, h: cellW*0.038*fontScale, gap: cellW*0.01*fontScale });
-                }
-                const nameToUse = (currentLang === 'ko') ? member.name_ko : (['en', 'th', 'id'].includes(currentLang) ? member.name_en : member.name_ja);
-                textElements.push({ text: nameToUse, font: `900 ${cellW*0.11*fontScale}px 'Noto Sans JP', sans-serif`, color: textColor, h: cellW*0.11*fontScale, gap: cellW*0.02*fontScale });
+            if (gen && member.ki) {
+                textElements.push({ text: member.ki, font: `700 ${cellW*0.055*fontScale}px 'Noto Sans JP', sans-serif`, color: subColor, h: cellW*0.055*fontScale, gap: cellW*0.02*fontScale });
             }
-            if (nick && member.nickname) textElements.push({ text: member.nickname, font: `700 ${cellW*0.065*fontScale}px 'Noto Sans JP', sans-serif`, color: subColor, h: cellW*0.065*fontScale, gap: cellW*0.02*fontScale });
-
-            let totalTextHeight = textElements.reduce((sum, el) => sum + el.h + el.gap, 0);
-            let currentY = y + cellH * (photo ? 0.73 : 0.45) - (totalTextHeight / 2);
-
-            textElements.forEach(el => {
-                ctx.font
+            if (name) {
+                if (['zh-HK', 'zh-CN', 'ja'].includes(c
