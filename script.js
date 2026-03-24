@@ -15,7 +15,7 @@ let isTitleCustomized = false;
 
 const htmlGrid = document.getElementById('htmlGrid');
 
-// 終極容錯機制，相容所有舊版 members.json 格式
+// 終極容錯機制，相容所有舊版 members.json 格式，保證永不消失格仔！
 function parseMemberData(rawArray) {
     return rawArray.map((m, idx) => {
         if (m.colorData && Array.isArray(m.colorData)) return m; // 新格式無需轉換
@@ -23,7 +23,8 @@ function parseMemberData(rawArray) {
         let cData = [];
         if (m.color_a) cData.push({ color: m.color_a, name: "色A" });
         if (m.color_b) cData.push({ color: m.color_b, name: "色B" });
-        // 岩立沙穂 3色特例
+        
+        // 特例：岩立沙穂 3色
         if (m.name_ja === "岩立 沙穂") cData = [{color: "#3860FF", name: "青"}, {color: "#FFFFFF", name: "白"}, {color: "#d32f2f", name: "赤"}];
 
         return {
@@ -31,7 +32,7 @@ function parseMemberData(rawArray) {
             name_ja: m.name_ja, name_kana: m.name_kana || "", name_en: m.name_en || "", name_ko: m.name_ko || "",
             nickname: m.nickname || m.name_en || m.name_ja,
             ki: m.generation || m.ki || "",
-            genNum: parseFloat((m.generation || m.ki || "99").replace(/[^0-9.]/g, '')),
+            genNum: parseFloat((m.generation || m.ki || "99").replace(/[^0-9.]/g, '')) || 99,
             colorData: cData, image: m.image
         };
     });
@@ -172,7 +173,6 @@ function changeGridBy(n) { setGridSize(Math.max(1, gridSlots.length + n)); }
 
 function renderHTMLGrid() {
     const cols = calculateGridCols(gridSlots.length);
-    htmlGrid.style.setProperty('--cols', cols);
     htmlGrid.innerHTML = '';
 
     const photo = document.getElementById('cfgPhoto').checked;
@@ -184,6 +184,8 @@ function renderHTMLGrid() {
     gridSlots.forEach((obj, idx) => {
         const cell = document.createElement('div');
         cell.className = `grid-cell${obj ? ' filled mode-' + mode : ''}${!photo ? ' no-photo' : ''}${!name && !nick ? ' no-name' : ''}`;
+        // 利用內聯 Style 強制寫入寬度，徹底擺脫 CSS 變數緩存失效的 BUG!
+        cell.style.width = `calc((100% - ${(cols - 1) * 16}px) / ${cols} - 0.5px)`;
 
         if (!obj) {
             cell.innerHTML = `<i class="add-icon">${sysUI.plus}</i>`;
@@ -273,7 +275,9 @@ function sortColorsByHue(cArr) {
 
 function sortByColor() {
     let filled = gridSlots.filter(x => x !== null);
+    // 內部顏色即時排序
     filled.forEach(m => { m.colorData = sortColorsByHue([...m.colorData]); });
+    // 整體按 A 色排序
     filled.sort((a,b) => {
         const hslA = hexToHSL(a.colorData[0].color), hslB = hexToHSL(b.colorData[0].color);
         const isMonoA = hslA.s < 0.1 || hslA.l < 0.1 || hslA.l > 0.9;
@@ -292,26 +296,34 @@ function sortByGen() {
     renderHTMLGrid();
 }
 
-// 點擊漣漪特效
-document.addEventListener('click', function(e) {
+// 完美 Ripple 效果 (支援 Touch 與 Mouse)
+function createRipple(e) {
     const btn = e.target.closest('.btn');
     if (!btn) return;
     const c = document.createElement("span");
     const rect = btn.getBoundingClientRect();
     const d = Math.max(rect.width, rect.height);
     c.style.width = c.style.height = `${d}px`;
-    c.style.left = `${e.clientX - rect.left - d/2}px`;
-    c.style.top = `${e.clientY - rect.top - d/2}px`;
+    
+    // 支援 Touch 坐標
+    let clientX = e.clientX || (e.touches && e.touches[0].clientX);
+    let clientY = e.clientY || (e.touches && e.touches[0].clientY);
+    
+    c.style.left = `${clientX - rect.left - d/2}px`;
+    c.style.top = `${clientY - rect.top - d/2}px`;
     c.className = "ripple";
+    
     const old = btn.querySelector(".ripple");
     if(old) old.remove();
     btn.appendChild(c);
-    setTimeout(() => c.remove(), 600);
-});
+    setTimeout(() => c.remove(), 500);
+}
+document.addEventListener('mousedown', createRipple);
+document.addEventListener('touchstart', createRipple, {passive: true});
 
 document.getElementById('themeToggle').addEventListener('click', () => document.body.classList.toggle('dark-mode'));
 
-// 支援舊版瀏覽器的自訂圓角矩形，保證下載不崩潰
+// 完美手繪圓角矩形 (保證兼容所有舊設備，不會因為 roundRect 報錯)
 function drawRoundedRect(ctx, x, y, width, height, radius) {
     ctx.beginPath(); ctx.moveTo(x + radius, y); ctx.lineTo(x + width - radius, y);
     ctx.quadraticCurveTo(x + width, y, x + width, y + radius); ctx.lineTo(x + width, y + height - radius);
@@ -320,12 +332,16 @@ function drawRoundedRect(ctx, x, y, width, height, radius) {
     ctx.quadraticCurveTo(x, y, x + radius, y); ctx.closePath();
 }
 
-// Canvas 導出 (完美防疊字 Y-Offset 與終極相容)
+// Canvas 導出 (完美 Sequential Y-Offset 與 Promise.race 超時強制執行)
 async function drawCanvasExport() {
     const overlay = document.getElementById('loadingOverlay');
     overlay.style.display = 'flex';
 
-    await document.fonts.ready; 
+    // 防止 document.fonts.ready 卡死 (強迫 600ms 解鎖)
+    await Promise.race([
+        document.fonts ? document.fonts.ready : Promise.resolve(),
+        new Promise(r => setTimeout(r, 600))
+    ]);
 
     const canvas = document.getElementById('exportCanvas');
     const ctx = canvas.getContext('2d');
@@ -343,8 +359,8 @@ async function drawCanvasExport() {
     ctx.fillRect(0, 0, canvas.width, canvas.height);
 
     ctx.fillStyle = isDark ? '#FFFFFF' : '#2C3E50';
-    ctx.textAlign = 'center'; ctx.textBaseline = 'middle'; ctx.font = `900 60px 'Noto Sans JP', sans-serif`;
-    ctx.fillText(customTitle, canvas.width / 2, 60);
+    ctx.textAlign = 'center'; ctx.font = `900 60px 'Noto Sans JP', sans-serif`;
+    ctx.fillText(customTitle, canvas.width / 2, 80);
 
     const photo = document.getElementById('cfgPhoto').checked;
     const gen = document.getElementById('cfgGen').checked;
@@ -357,7 +373,7 @@ async function drawCanvasExport() {
         let timeout = setTimeout(() => resolve(null), 1500); 
         img.onload = () => { clearTimeout(timeout); resolve(img); };
         img.onerror = () => { clearTimeout(timeout); resolve(null); }; 
-        img.src = url; 
+        img.src = url + "?v=" + Date.now();
     });
 
     for (let i = 0; i < gridSlots.length; i++) {
@@ -409,20 +425,9 @@ async function drawCanvasExport() {
                 }
             }
 
-            ctx.textAlign = 'center'; ctx.textBaseline = 'top'; 
+            ctx.textAlign = 'center';
+            ctx.textBaseline = 'top'; 
             const textColor = mode === 'block' ? '#FFFFFF' : (isDark ? '#FFFFFF' : '#2C3E50');
             const subColor = mode === 'block' ? 'rgba(255,255,255,0.8)' : (isDark ? '#888' : '#999');
             
-            let fontScale = photo ? 1 : 1.35;
-            if (!name && !nick && !gen) fontScale = 1; 
-
-            if (mode === 'block') { ctx.shadowColor = "rgba(0,0,0,0.6)"; ctx.shadowBlur = 4; ctx.shadowOffsetX = 0; ctx.shadowOffsetY = 2; } 
-            else { ctx.shadowColor = "transparent"; }
-
-            // 完美順序向下累加 Y 座標
-            let textElements = [];
-            if (gen && member.ki) {
-                textElements.push({ text: member.ki, font: `700 ${cellW*0.055*fontScale}px 'Noto Sans JP', sans-serif`, color: subColor, h: cellW*0.055*fontScale, gap: cellW*0.02*fontScale });
-            }
-            if (name) {
-                if (['zh-HK', 'zh-CN', 'ja'].includes(c
+            let fontScale = photo ? 1 : 1.35
