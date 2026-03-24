@@ -1,14 +1,14 @@
 let langsDB = {};
 let membersDB = [];
 
-// 內置純淨 SVG，確保無依賴亦可顯示
+// 內置純淨 SVG，保證任何環境下 Icon 都不會消失
 const sysUI = {
     plus: '<svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 5v14M5 12h14"/></svg>',
     x: '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 6 6 18M6 6l12 12"/></svg>'
 };
 
 let currentLang = 'zh-HK';
-let gridSlots = new Array(8).fill(null); // 強制初始化為 8 格
+let gridSlots = new Array(8).fill(null); // 強制初始化為 8 格 4x2
 let activeSlotIndex = -1;
 let currentTitleState = { type: 'preset', id: '8_tewo' }; 
 let isTitleCustomized = false;
@@ -359,8 +359,8 @@ async function drawCanvasExport() {
     ctx.fillRect(0, 0, canvas.width, canvas.height);
 
     ctx.fillStyle = isDark ? '#FFFFFF' : '#2C3E50';
-    ctx.textAlign = 'center'; ctx.font = `900 60px 'Noto Sans JP', sans-serif`;
-    ctx.fillText(customTitle, canvas.width / 2, 80);
+    ctx.textAlign = 'center'; ctx.textBaseline = 'middle'; ctx.font = `900 60px 'Noto Sans JP', sans-serif`;
+    ctx.fillText(customTitle, canvas.width / 2, 60);
 
     const photo = document.getElementById('cfgPhoto').checked;
     const gen = document.getElementById('cfgGen').checked;
@@ -425,9 +425,75 @@ async function drawCanvasExport() {
                 }
             }
 
-            ctx.textAlign = 'center';
-            ctx.textBaseline = 'top'; 
+            ctx.textAlign = 'center'; ctx.textBaseline = 'top'; 
             const textColor = mode === 'block' ? '#FFFFFF' : (isDark ? '#FFFFFF' : '#2C3E50');
             const subColor = mode === 'block' ? 'rgba(255,255,255,0.8)' : (isDark ? '#888' : '#999');
             
-            let fontScale = photo ? 1 : 1.35
+            let fontScale = photo ? 1 : 1.35;
+            if (!name && !nick && !gen) fontScale = 1; 
+
+            if (mode === 'block') { ctx.shadowColor = "rgba(0,0,0,0.6)"; ctx.shadowBlur = 4; ctx.shadowOffsetX = 0; ctx.shadowOffsetY = 2; } 
+            else { ctx.shadowColor = "transparent"; }
+
+            // 完美順序向下累加 Y 座標
+            let textElements = [];
+            if (gen && member.ki) {
+                textElements.push({ text: member.ki, font: `700 ${cellW*0.055*fontScale}px 'Noto Sans JP', sans-serif`, color: subColor, h: cellW*0.055*fontScale, gap: cellW*0.02*fontScale });
+            }
+            if (name) {
+                if (['zh-HK', 'zh-CN', 'ja'].includes(currentLang) && member.name_kana) {
+                    textElements.push({ text: member.name_kana, font: `700 ${cellW*0.038*fontScale}px 'Noto Sans JP', sans-serif`, color: subColor, h: cellW*0.038*fontScale, gap: cellW*0.01*fontScale });
+                }
+                const nameToUse = (currentLang === 'ko') ? member.name_ko : (['en', 'th', 'id'].includes(currentLang) ? member.name_en : member.name_ja);
+                textElements.push({ text: nameToUse, font: `900 ${cellW*0.11*fontScale}px 'Noto Sans JP', sans-serif`, color: textColor, h: cellW*0.11*fontScale, gap: cellW*0.02*fontScale });
+            }
+            if (nick && member.nickname) {
+                textElements.push({ text: member.nickname, font: `700 ${cellW*0.065*fontScale}px 'Noto Sans JP', sans-serif`, color: subColor, h: cellW*0.065*fontScale, gap: cellW*0.02*fontScale });
+            }
+
+            let totalTextHeight = textElements.reduce((sum, el) => sum + el.h + el.gap, 0);
+            let currentY = y + cellH * (photo ? 0.73 : 0.45) - (totalTextHeight / 2);
+
+            textElements.forEach(el => {
+                ctx.font = el.font; ctx.fillStyle = el.color;
+                ctx.fillText(el.text, x + cellW/2, currentY);
+                currentY += el.h + el.gap;
+            });
+
+            if (mode === 'text') {
+                currentY += cellW * 0.05 * fontScale; 
+                ctx.font = `900 ${cellW * 0.08 * fontScale}px 'Noto Sans JP', sans-serif`;
+                let totalW = 0;
+                member.colorData.forEach((cd, idx) => { totalW += ctx.measureText(cd.name).width; if (idx < member.colorData.length - 1) totalW += ctx.measureText(" x ").width; });
+                let textX = x + cellW/2 - totalW/2; ctx.textAlign = 'left';
+                member.colorData.forEach((cd, idx) => {
+                    ctx.fillStyle = cd.color; ctx.shadowColor = "rgba(0,0,0,0.8)"; ctx.shadowBlur = 4; ctx.shadowOffsetX = 1; ctx.shadowOffsetY = 1;
+                    ctx.fillText(cd.name, textX, currentY); textX += ctx.measureText(cd.name).width;
+                    if (idx < member.colorData.length - 1) {
+                        ctx.shadowColor = "transparent"; ctx.fillStyle = subColor; ctx.font = `bold ${cellW * 0.06 * fontScale}px 'Noto Sans JP', sans-serif`;
+                        ctx.fillText(" x ", textX, currentY + cellW*0.01*fontScale); textX += ctx.measureText(" x ").width; ctx.font = `900 ${cellW * 0.08 * fontScale}px 'Noto Sans JP', sans-serif`; 
+                    }
+                });
+                ctx.shadowColor = "transparent"; ctx.textAlign = 'center'; 
+            }
+        } else {
+            ctx.fillStyle = isDark ? 'rgba(255,255,255,0.02)' : 'rgba(0,0,0,0.02)';
+            ctx.fillRect(x, y, cellW, cellH);
+        }
+
+        ctx.restore();
+        ctx.lineWidth = 2; ctx.strokeStyle = mode === 'block' ? 'rgba(0,0,0,0.1)' : (isDark ? '#333' : '#EEE');
+        drawRoundedRect(ctx, x, y, cellW, cellH, 20); ctx.stroke();
+    }
+
+    try {
+        const link = document.createElement('a'); link.download = `Support_Map_${Date.now()}.png`;
+        link.href = canvas.toDataURL('image/png'); link.click();
+    } catch(err) {
+        alert("下載失敗：因為 CORS 安全性，無法導出包含外部圖片的畫布。請嘗試取消勾選『顯示成員圓形頭像』再下載，或直接螢幕截圖。");
+    }
+    overlay.style.display = 'none';
+}
+
+document.getElementById('downloadBtn').addEventListener('click', drawCanvasExport);
+window.addEventListener('DOMContentLoaded', initApp);
