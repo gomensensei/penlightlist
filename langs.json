@@ -1,7 +1,7 @@
 {
     "zh-HK": {
         "app_title": "AKB48 成員名單及應援色", "default_title": "「手をつなぎながら」公演", "title_placeholder": "📝 點擊輸入公演名稱...",
-        "preset_placeholder": "-- 選擇空白公演人數 --", "gen_placeholder": "-- 選擇期數全體載入 --",
+        "preset_placeholder": "-- 快速載入公演模板 (空白格) --", "gen_placeholder": "-- 選擇期數全體載入 --",
         "ctrl_gen_load": "一鍵載入期生全體", "ctrl_grid": "Grid 格數控制", "btn_8": "8 人", "btn_12": "12 人", "btn_16": "16 人",
         "btn_minus": "減 1 格", "btn_plus": "加 1 格", "ctrl_display": "顯示內容設定",
         "cfg_photo": "顯示成員圓形頭像", "cfg_gen": "顯示期別", "cfg_name": "顯示名字", "cfg_nick": "顯示暱稱",
@@ -15,7 +15,7 @@
     },
     "ja": {
         "app_title": "AKB48 出演メンバー＆サイリウムカラー", "default_title": "「手をつなぎながら」公演", "title_placeholder": "📝 公演名を入力してください...",
-        "preset_placeholder": "-- 枠数を選択 (空枠) --", "gen_placeholder": "-- 期生で読み込み --",
+        "preset_placeholder": "-- テンプレート読み込み (空枠) --", "gen_placeholder": "-- 期生で読み込み --",
         "ctrl_gen_load": "期生で一括読み込み", "ctrl_grid": "グリッド(枠数)設定", "btn_8": "8 人", "btn_12": "12 人", "btn_16": "16 人",
         "btn_minus": "1枠 減", "btn_plus": "1枠 増", "ctrl_display": "表示設定",
         "cfg_photo": "顔写真を表示", "cfg_gen": "期生を表示", "cfg_name": "名前を表示", "cfg_nick": "ニックネームを表示",
@@ -29,7 +29,7 @@
     },
     "en": {
         "app_title": "AKB48 Members & Penlight Colors", "default_title": "Tewo Tsunaginagara Stage", "title_placeholder": "📝 Enter Stage/Concert Name...",
-        "preset_placeholder": "-- Select Empty Grid Size --", "gen_placeholder": "-- Load by Generation --",
+        "preset_placeholder": "-- Load Preset (Empty Grid) --", "gen_placeholder": "-- Load by Generation --",
         "ctrl_gen_load": "Quick Load by Gen", "ctrl_grid": "Grid Size", "btn_8": "8 Ppl", "btn_12": "12 Ppl", "btn_16": "16 Ppl",
         "btn_minus": "Minus 1", "btn_plus": "Plus 1", "ctrl_display": "Display Settings",
         "cfg_photo": "Show Avatar", "cfg_gen": "Show Generation", "cfg_name": "Show Name", "cfg_nick": "Show Nickname",
@@ -43,7 +43,7 @@
     },
     "zh-CN": {
         "app_title": "AKB48 成员名单及应援色", "default_title": "「手をつなぎながら」公演", "title_placeholder": "📝 点击输入公演名称...",
-        "preset_placeholder": "-- 选择空白公演人数 --", "gen_placeholder": "-- 载入指定期生成员 --",
+        "preset_placeholder": "-- 快速载入公演模板 (空白格) --", "gen_placeholder": "-- 载入指定期生成员 --",
         "ctrl_gen_load": "一键载入期生全体", "ctrl_grid": "Grid 格数控制", "btn_8": "8 人", "btn_12": "12 人", "btn_16": "16 人",
         "btn_minus": "减 1 格", "btn_plus": "加 1 格", "ctrl_display": "显示内容设定",
         "cfg_photo": "显示成员圆形头像", "cfg_gen": "显示期别", "cfg_name": "显示名字", "cfg_nick": "显示昵称",
@@ -57,7 +57,7 @@
     },
     "ko": {
         "app_title": "AKB48 멤버 목록 및 응원색", "default_title": "「손을 잡으면서」 공연", "title_placeholder": "📝 공연/콘서트 이름 입력...",
-        "preset_placeholder": "-- 인원수 선택 (빈 그리드) --", "gen_placeholder": "-- 기수별 로드 --",
+        "preset_placeholder": "-- 프리셋 로드 (빈 그리드) --", "gen_placeholder": "-- 기수별 로드 --",
         "ctrl_gen_load": "기수별 한 번에 로드", "ctrl_grid": "그리드 크기 설정", "btn_8": "8명", "btn_12": "12명", "btn_16": "16명",
         "btn_minus": "1칸 감소", "btn_plus": "1칸 추가", "ctrl_display": "표시 설정",
         "cfg_photo": "아바타 표시", "cfg_gen": "기수 표시", "cfg_name": "이름 표시", "cfg_nick": "닉네임 표시",
