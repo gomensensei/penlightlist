@@ -1,31 +1,26 @@
 let langsDB = {};
 let membersDB = [];
 
-// 純淨 SVG，保證 Github Pages 任何環境下都不會丟失 Icon
+// 純淨 SVG
 const sysUI = {
     plus: '<svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 5v14M5 12h14"/></svg>',
     x: '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 6 6 18M6 6l12 12"/></svg>'
 };
 
-// 狀態監控
 let currentLang = 'zh-HK';
-let gridSlots = new Array(8).fill(null); // 強制初始 8 格 4x2
+let gridSlots = new Array(16).fill(null); // 配合春コン改為預設 16 格
 let activeSlotIndex = -1;
-let currentTitleState = { type: 'preset', id: '8_tewo' }; 
+let currentTitleState = { type: 'preset', id: '16_spring' }; 
 let isTitleCustomized = false;
 
 const htmlGrid = document.getElementById('htmlGrid');
 
-// 終極容錯機制，相容所有舊版 members.json 格式，保證永不消失格仔！
 function parseMemberData(rawArray) {
     return rawArray.map((m, idx) => {
-        if (m.colorData && Array.isArray(m.colorData)) return m; // 新格式無需轉換
-
+        if (m.colorData && Array.isArray(m.colorData)) return m; 
         let cData = [];
         if (m.color_a) cData.push({ color: m.color_a, name: "色A" });
         if (m.color_b) cData.push({ color: m.color_b, name: "色B" });
-        
-        // 特例：岩立沙穂 3色
         if (m.name_ja === "岩立 沙穂") cData = [{color: "#3860FF", name: "青"}, {color: "#FFFFFF", name: "白"}, {color: "#d32f2f", name: "赤"}];
 
         return {
@@ -39,11 +34,28 @@ function parseMemberData(rawArray) {
     });
 }
 
-// 攔截所有報錯，防止黑畫面
 window.onerror = function(msg, url, line) {
     console.error("System Error: ", msg, url, line);
     return true; 
 };
+
+// 核心：非同步分批下載引擎 (Batch Preloader) - 每組 5 張靜默下載
+async function preloadImagesBatch(membersArray) {
+    const batchSize = 5;
+    for (let i = 0; i < membersArray.length; i += batchSize) {
+        const batch = membersArray.slice(i, i + batchSize);
+        await Promise.all(batch.map(m => {
+            if (!m.image) return Promise.resolve();
+            return new Promise(res => {
+                const img = new Image();
+                img.crossOrigin = "Anonymous"; // 必須與 Canvas 讀取時一致，否則 CORS Cache 會錯亂
+                img.onload = img.onerror = res;
+                img.src = m.image;
+            });
+        }));
+    }
+    console.log("All member avatars preloaded to browser cache.");
+}
 
 async function initApp() {
     try {
@@ -54,14 +66,13 @@ async function initApp() {
         membersDB = parseMemberData(rawMembers); 
         langsDB = await langRes.json();
 
-        // --- 新增：自動偵測語言邏輯 ---
         const browserLang = navigator.language || navigator.userLanguage; 
-        const shortLang = browserLang.split('-')[0]; // 取得前綴，例如 'en', 'ja', 'zh'
+        const shortLang = browserLang.split('-')[0]; 
 
         if (browserLang === 'zh-CN' || browserLang === 'zh-SG') {
             currentLang = 'zh-CN';
-        } else if (browserLang.startsWith('zh')) {
-            currentLang = 'zh-HK';
+        } else if (shortLang === 'zh') {
+            currentLang = 'zh-HK'; 
         } else if (shortLang === 'ja') {
             currentLang = 'ja';
         } else if (shortLang === 'ko') {
@@ -71,20 +82,26 @@ async function initApp() {
         } else if (shortLang === 'id') {
             currentLang = 'id';
         } else {
-            currentLang = 'en'; // 其他一律預設英文
+            currentLang = 'en'; 
         }
-        
-        // 更新下拉選單的顯示值
-        document.getElementById('langSelector').value = currentLang;
-        // ----------------------------
+
+        const langSelector = document.getElementById('langSelector');
+        if (langSelector) langSelector.value = currentLang;
 
     } catch (err) {
         console.warn("Fetch API failed.");
-        currentLang = 'en'; // 出錯時預設英文
+        langsDB = { "zh-HK": { "app_title": "成員名單及應援色", "preset_placeholder": "-- 選擇空白公演人數 --", "btn_download": "下載名單" } };
+        membersDB = []; 
+        currentLang = 'en'; 
     }
     
     applyLanguage();
     renderHTMLGrid();
+
+    // 啟動背景圖片預載引擎
+    if (membersDB.length > 0) {
+        preloadImagesBatch(membersDB);
+    }
 }
 
 document.getElementById('customTitle').addEventListener('input', () => { isTitleCustomized = true; });
@@ -97,7 +114,7 @@ document.getElementById('langSelector').addEventListener('change', (e) => {
 });
 
 function applyLanguage() {
-    const d = langsDB[currentLang] || langsDB['zh-HK'];
+    const d = langsDB[currentLang] || langsDB['zh-HK'] || langsDB['en'];
     document.querySelectorAll('[data-i18n]').forEach(el => {
         const key = el.getAttribute('data-i18n');
         if(d[key]) {
@@ -118,7 +135,7 @@ function applyLanguage() {
 function updateTitleFromState() {
     if (isTitleCustomized || !currentTitleState) return;
     const titleInput = document.getElementById('customTitle');
-    const d = langsDB[currentLang] || langsDB['zh-HK'];
+    const d = langsDB[currentLang] || langsDB['zh-HK'] || langsDB['en'];
     
     if (currentTitleState.type === 'preset') {
         titleInput.value = d['opt_' + currentTitleState.id.split('_')[1]] || d['preset_' + currentTitleState.id] || "公演";
@@ -169,20 +186,20 @@ document.getElementById('genSelector').addEventListener('change', (e) => {
             isTitleCustomized = false;
             updateTitleFromState();
             renderHTMLGrid();
-        } else { alert("找不到該期生成員資料。"); }
+        } else { alert("找不到該期生成員資料。請確保 members.json 資料庫已更新。"); }
     }
     e.target.value = '';
 });
 
-// 完美 Flexbox 佈局算法
+// Flexbox 計算
 function calculateGridCols(total) {
     if (total <= 3) return total;
     if (total === 4) return 4; 
-    if (total === 5) return 3; // 19/21ki: 上3下2
+    if (total === 5) return 3; 
     if (total === 6) return 3; 
-    if (total === 7) return 4; // 16ki: 上4下3
-    if (total === 8) return 4; // 必定 4x2
-    if (total === 9) return 3; // 17ki/T8: 3x3
+    if (total === 7) return 4; 
+    if (total === 8) return 4; 
+    if (total === 9) return 3; 
     if (total <= 12) return 4; 
     if (total <= 16) return 4; 
     return Math.ceil(Math.sqrt(total)); 
@@ -197,66 +214,71 @@ function setGridSize(size) {
 function changeGridBy(n) { setGridSize(Math.max(1, gridSlots.length + n)); }
 
 function renderHTMLGrid() {
-    const cols = calculateGridCols(gridSlots.length);
-    htmlGrid.style.setProperty('--cols', cols);
-    htmlGrid.innerHTML = '';
+    try {
+        const cols = calculateGridCols(gridSlots.length);
+        htmlGrid.innerHTML = '';
 
-    const photo = document.getElementById('cfgPhoto').checked;
-    const gen = document.getElementById('cfgGen').checked;
-    const name = document.getElementById('cfgName').checked;
-    const nick = document.getElementById('cfgNick').checked;
-    const mode = document.querySelector('input[name="colorMode"]:checked').value;
+        const photo = document.getElementById('cfgPhoto').checked;
+        const gen = document.getElementById('cfgGen').checked;
+        const name = document.getElementById('cfgName').checked;
+        const nick = document.getElementById('cfgNick').checked;
+        const mode = document.querySelector('input[name="colorMode"]:checked').value;
 
-    gridSlots.forEach((obj, idx) => {
-        const cell = document.createElement('div');
-        cell.className = `grid-cell${obj ? ' filled mode-' + mode : ''}${!photo ? ' no-photo' : ''}${!name && !nick ? ' no-name' : ''}`;
+        gridSlots.forEach((obj, idx) => {
+            const cell = document.createElement('div');
+            cell.className = `grid-cell${obj ? ' filled mode-' + mode : ''}${!photo ? ' no-photo' : ''}${!name && !nick ? ' no-name' : ''}`;
+            cell.style.flex = `0 0 calc((100% - ${(cols - 1) * 16}px) / ${cols} - 0.5px)`;
 
-        if (!obj) {
-            cell.innerHTML = `<i class="add-icon">${sysUI.plus}</i>`;
-            cell.onclick = () => openModal(idx);
-        } else {
-            let colorHtml = '', bg = '', overlay = '';
-            if (mode === 'block') {
-                bg = `background: ${getDiagonalGradient(obj.colorData)};`;
-                overlay = `<div class="cell-overlay"></div>`;
+            if (!obj) {
+                cell.innerHTML = `<i class="add-icon">${sysUI.plus}</i>`;
+                cell.onclick = () => openModal(idx);
             } else {
-                bg = `background: radial-gradient(circle at center, ${hexToRgba(obj.colorData[0].color, 0.15)} 0%, transparent 70%);`;
-                colorHtml = `<div class="color-display">` + obj.colorData.map((c, i) => {
-                    let s = `<span class="c-text" style="color:${c.color}; text-shadow: 1px 1px 3px rgba(0,0,0,0.8);">${c.name}</span>`;
-                    if (i < obj.colorData.length - 1) s += `<span class="c-text-x">x</span>`;
-                    return s;
-                }).join('') + `</div>`;
-            }
+                let colorHtml = '', bg = '', overlay = '';
+                if (mode === 'block') {
+                    bg = `background: ${getDiagonalGradient(obj.colorData)};`;
+                    overlay = `<div class="cell-overlay"></div>`;
+                } else {
+                    bg = `background: radial-gradient(circle at center, ${hexToRgba(obj.colorData[0].color, 0.15)} 0%, transparent 70%);`;
+                    colorHtml = `<div class="color-display">` + obj.colorData.map((c, i) => {
+                        let s = `<span class="c-text" style="color:${c.color}; text-shadow: 1px 1px 3px rgba(0,0,0,0.8);">${c.name}</span>`;
+                        if (i < obj.colorData.length - 1) s += `<span class="c-text-x">x</span>`;
+                        return s;
+                    }).join('') + `</div>`;
+                }
 
-            let finalNameHtml = '', finalGenHtml = '';
-            if (['zh-HK', 'zh-CN', 'ja'].includes(currentLang)) {
-                if(gen) finalGenHtml = `<div class="cell-gen">${obj.ki}</div>`;
-                if(name) finalNameHtml = `<ruby class="cell-name">${obj.name_ja}<rt>${obj.name_kana || ''}</rt></ruby>`;
-            } else if (currentLang === 'ko') {
-                if(gen) finalGenHtml = `<div class="cell-gen">${obj.ki}</div>`;
-                if(name) finalNameHtml = `<div class="cell-name">${obj.name_ko || obj.name_en}</div>`;
-            } else {
-                if(gen) finalGenHtml = `<div class="cell-gen">${obj.ki}</div>`;
-                if(name) finalNameHtml = `<div class="cell-name">${obj.name_en}</div>`;
-            }
+                let finalNameHtml = '', finalGenHtml = '';
+                if (['zh-HK', 'zh-CN', 'ja'].includes(currentLang)) {
+                    if(gen) finalGenHtml = `<div class="cell-gen">${obj.ki}</div>`;
+                    if(name) finalNameHtml = `<ruby class="cell-name">${obj.name_ja}<rt>${obj.name_kana || ''}</rt></ruby>`;
+                } else if (currentLang === 'ko') {
+                    if(gen) finalGenHtml = `<div class="cell-gen">${obj.ki}</div>`;
+                    if(name) finalNameHtml = `<div class="cell-name">${obj.name_ko || obj.name_en}</div>`;
+                } else {
+                    if(gen) finalGenHtml = `<div class="cell-gen">${obj.ki}</div>`;
+                    if(name) finalNameHtml = `<div class="cell-name">${obj.name_en}</div>`;
+                }
 
-            cell.innerHTML = `
-                <div class="cell-bg" style="${bg}"></div>${overlay}
-                <div class="cell-content">
-                    ${photo ? `<div class="avatar-wrap"><img src="${obj.image}" class="avatar-img" referrerpolicy="no-referrer" onerror="this.style.display='none'"></div>` : ''}
-                    <div class="text-wrap">
-                        ${finalGenHtml}
-                        ${finalNameHtml}
-                        ${nick && obj.nickname ? `<div class="cell-nick">${obj.nickname}</div>` : ''}
+                // 必須使用 crossorigin="anonymous" 確保與 Preloader 匹配，才能利用 Browser Cache
+                cell.innerHTML = `
+                    <div class="cell-bg" style="${bg}"></div>${overlay}
+                    <div class="cell-content">
+                        ${photo ? `<div class="avatar-wrap"><img src="${obj.image}" class="avatar-img" crossorigin="anonymous" onerror="this.style.display='none'"></div>` : ''}
+                        <div class="text-wrap">
+                            ${finalGenHtml}
+                            ${finalNameHtml}
+                            ${nick && obj.nickname ? `<div class="cell-nick">${obj.nickname}</div>` : ''}
+                        </div>
+                        ${colorHtml}
                     </div>
-                    ${colorHtml}
-                </div>
-                <div class="remove-btn" onclick="removeMember(event, ${idx})">${sysUI.x}</div>
-            `;
-            cell.onclick = () => openModal(idx);
-        }
-        htmlGrid.appendChild(cell);
-    });
+                    <div class="remove-btn" onclick="removeMember(event, ${idx})">${sysUI.x}</div>
+                `;
+                cell.onclick = () => openModal(idx);
+            }
+            htmlGrid.appendChild(cell);
+        });
+    } catch(e) {
+        console.error("Grid Rendering Failed:", e);
+    }
 }
 
 function openModal(idx) {
@@ -266,7 +288,7 @@ function openModal(idx) {
     membersDB.forEach(m => {
         const d = document.createElement('div'); d.className = 'member-option';
         const nameToUse = (currentLang === 'ko') ? m.name_ko : (['en', 'th', 'id'].includes(currentLang) ? m.name_en : m.name_ja);
-        d.innerHTML = `<img src="${m.image}" referrerpolicy="no-referrer"><span>${nameToUse}</span>`;
+        d.innerHTML = `<img src="${m.image}" crossorigin="anonymous"><span>${nameToUse}</span>`;
         d.onclick = () => { gridSlots[activeSlotIndex] = m; closeModal(); renderHTMLGrid(); };
         b.appendChild(d);
     });
@@ -299,9 +321,7 @@ function sortColorsByHue(cArr) {
 
 function sortByColor() {
     let filled = gridSlots.filter(x => x !== null);
-    // 內部顏色即時排序
     filled.forEach(m => { m.colorData = sortColorsByHue([...m.colorData]); });
-    // 整體按 A 色排序
     filled.sort((a,b) => {
         const hslA = hexToHSL(a.colorData[0].color), hslB = hexToHSL(b.colorData[0].color);
         const isMonoA = hslA.s < 0.1 || hslA.l < 0.1 || hslA.l > 0.9;
@@ -320,7 +340,6 @@ function sortByGen() {
     renderHTMLGrid();
 }
 
-// 完美全域淺透粉紅漣漪 (Global Ripple)
 function createGlobalRipple(x, y) {
     const ripple = document.createElement('div');
     ripple.className = 'global-ripple';
@@ -337,10 +356,8 @@ document.addEventListener('touchstart', (e) => {
     }
 }, {passive: true});
 
-
 document.getElementById('themeToggle').addEventListener('click', () => document.body.classList.toggle('dark-mode'));
 
-// 完美手繪圓角矩形 (保證兼容所有舊設備，不會因為 roundRect 報錯)
 function drawRoundedRect(ctx, x, y, width, height, radius) {
     ctx.beginPath(); ctx.moveTo(x + radius, y); ctx.lineTo(x + width - radius, y);
     ctx.quadraticCurveTo(x + width, y, x + width, y + radius); ctx.lineTo(x + width, y + height - radius);
@@ -349,12 +366,11 @@ function drawRoundedRect(ctx, x, y, width, height, radius) {
     ctx.quadraticCurveTo(x, y, x + radius, y); ctx.closePath();
 }
 
-// Canvas 導出 (完美防疊字 Y-Offset 與 Promise.race 超時強制執行)
+// Canvas 導出 (移除快取破壞器，極速從本機 Cache 讀取！)
 async function drawCanvasExport() {
     const overlay = document.getElementById('loadingOverlay');
     overlay.style.display = 'flex';
 
-    // 防止 document.fonts.ready 卡死 (強迫 600ms 解鎖)
     await Promise.race([
         document.fonts ? document.fonts.ready : Promise.resolve(),
         new Promise(r => setTimeout(r, 600))
@@ -386,11 +402,14 @@ async function drawCanvasExport() {
     const mode = document.querySelector('input[name="colorMode"]:checked').value;
 
     const loadImage = (url) => new Promise((resolve) => {
-        const img = new Image(); img.crossOrigin = "Anonymous";
-        let timeout = setTimeout(() => resolve(null), 1500); 
+        const img = new Image(); 
+        img.crossOrigin = "Anonymous"; 
+        // 放寬 Timeout 到 3000ms
+        let timeout = setTimeout(() => resolve(null), 3000); 
         img.onload = () => { clearTimeout(timeout); resolve(img); };
         img.onerror = () => { clearTimeout(timeout); resolve(null); }; 
-        img.src = url + "?v=" + Date.now();
+        // 核心修改：移除 "?v=Date.now()"，直接使用原本 URL 令 Browser 使用 Cache！
+        img.src = url; 
     });
 
     for (let i = 0; i < gridSlots.length; i++) {
@@ -450,27 +469,25 @@ async function drawCanvasExport() {
             let fontScale = photo ? 1 : 1.35;
             if (!name && !nick && !gen) fontScale = 1; 
 
-            if (mode === 'block') { ctx.shadowColor = "rgba(0,0,0,0.6)"; ctx.shadowBlur = 4; ctx.shadowOffsetX = 0; ctx.shadowOffsetY = 2; } 
-            else { ctx.shadowColor = "transparent"; }
-
-            // 完美防疊字 Sequential 佈局
             let textElements = [];
             if (gen && member.ki) {
-                textElements.push({ text: member.ki, font: `700 ${cellW*0.055*fontScale}px 'Noto Sans JP', sans-serif`, color: subColor, h: cellW*0.055*fontScale, gap: cellW*0.02*fontScale });
+                textElements.push({ text: member.ki, font: `700 ${cellW*0.055*fontScale}px 'Noto Sans JP', sans-serif`, color: subColor, h: cellW*0.055*fontScale, gap: cellW*0.04*fontScale });
             }
             if (name) {
                 if (['zh-HK', 'zh-CN', 'ja'].includes(currentLang) && member.name_kana) {
-                    textElements.push({ text: member.name_kana, font: `700 ${cellW*0.038*fontScale}px 'Noto Sans JP', sans-serif`, color: subColor, h: cellW*0.038*fontScale, gap: cellW*0.01*fontScale });
+                    textElements.push({ text: member.name_kana, font: `700 ${cellW*0.038*fontScale}px 'Noto Sans JP', sans-serif`, color: subColor, h: cellW*0.038*fontScale, gap: cellW*0.02*fontScale });
                 }
                 const nameToUse = (currentLang === 'ko') ? member.name_ko : (['en', 'th', 'id'].includes(currentLang) ? member.name_en : member.name_ja);
-                textElements.push({ text: nameToUse, font: `900 ${cellW*0.11*fontScale}px 'Noto Sans JP', sans-serif`, color: textColor, h: cellW*0.11*fontScale, gap: cellW*0.02*fontScale });
+                textElements.push({ text: nameToUse, font: `900 ${cellW*0.11*fontScale}px 'Noto Sans JP', sans-serif`, color: textColor, h: cellW*0.11*fontScale, gap: cellW*0.03*fontScale });
             }
             if (nick && member.nickname) {
-                textElements.push({ text: member.nickname, font: `700 ${cellW*0.065*fontScale}px 'Noto Sans JP', sans-serif`, color: subColor, h: cellW*0.065*fontScale, gap: cellW*0.02*fontScale });
+                textElements.push({ text: member.nickname, font: `700 ${cellW*0.065*fontScale}px 'Noto Sans JP', sans-serif`, color: subColor, h: cellW*0.065*fontScale, gap: cellW*0.03*fontScale });
             }
 
             let totalTextHeight = textElements.reduce((sum, el) => sum + el.h + el.gap, 0);
-            let currentY = y + cellH * (photo ? 0.73 : 0.45) - (totalTextHeight / 2);
+            if (textElements.length > 0) totalTextHeight -= textElements[textElements.length-1].gap; 
+            
+            let currentY = y + cellH * (photo ? 0.72 : 0.45) - (totalTextHeight / 2);
 
             textElements.forEach(el => {
                 ctx.font = el.font; ctx.fillStyle = el.color;
@@ -508,6 +525,7 @@ async function drawCanvasExport() {
         const link = document.createElement('a'); link.download = `Support_Map_${Date.now()}.png`;
         link.href = canvas.toDataURL('image/png'); link.click();
     } catch(err) {
+        console.error(err);
         alert("下載完成！如果圖片未彈出，表示受限於瀏覽器跨域防護。請嘗試取消勾選『顯示頭像』再下載，或直接螢幕截圖。");
     }
     overlay.style.display = 'none';
