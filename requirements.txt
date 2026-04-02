@@ -1,0 +1,1 @@
+feedparser==6.0.11beautifulsoup4==4.12.3requests==2.31.0google-generativeai==0.4.1
