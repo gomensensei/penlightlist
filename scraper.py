@@ -2,7 +2,7 @@ import os
 import feedparser
 import requests
 from bs4 import BeautifulSoup
-import google.generativeai as genai
+from google import genai  # <--- 呢度就係最新版嘅魔法 Import！
 import json
 
 # 1. 從 GitHub Secrets 讀取 API Key (安全做法)
@@ -11,8 +11,8 @@ if not API_KEY:
     print("❌ 找不到 API Key，請檢查 GitHub Secrets 設定。")
     exit(1)
 
-genai.configure(api_key=API_KEY)
-model = genai.GenerativeModel('gemini-1.5-flash')
+# 啟動全新 Gemini Client
+client = genai.Client(api_key=API_KEY)
 
 # 2. 讀取 AKB48 官方 Blog RSS
 RSS_URL = "https://rssblog.ameba.jp/akihabara48/rss20.xml"
@@ -57,19 +57,27 @@ prompt = f"""
 3. "id" 欄位請用「日期_公演簡稱」的英文格式，例如 "20260415_boku"。
 4. 成員名字請統一去除中間的空格（如「岩立 沙穂」改為「岩立沙穂」），並確保使用正確的日文漢字（如 黒、恵、歩、実、内、遥、姫、奥）。
 5. 如果內文提到「休演」的成員，請不要將其列入 "members" 列表中。
+6. 如果內文提到「一部出演」，請照樣列入。
 
 Blog 內文如下：
 {blog_text}
 """
 
 try:
-    ai_response = model.generate_content(prompt)
-    result_text = ai_response.text.strip()
+    # 升級使用最新版 API 呼叫方式與 gemini-2.0-flash 模型
+    response = client.models.generate_content(
+        model='gemini-2.0-flash',
+        contents=prompt,
+    )
+    result_text = response.text.strip()
+    
+    # 清理可能殘留的 markdown 標記
     if result_text.startswith("```json"):
         result_text = result_text.replace("```json", "").replace("```", "").strip()
 
     schedule_data = json.loads(result_text)
     print("✨ 成功解析出公演資料！")
+    print(json.dumps(schedule_data, indent=2, ensure_ascii=False))
     
     # 5. 儲存並覆蓋 schedules.json
     with open('schedules.json', 'w', encoding='utf-8') as f:
