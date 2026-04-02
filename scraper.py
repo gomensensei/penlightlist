@@ -64,9 +64,9 @@ Blog 內文如下：
 """
 
 try:
-    # 升級使用最新版 API 呼叫方式與 gemini-2.0-flash 模型
+# 改用有龐大免費額度的 gemini-1.5-flash 模型
     response = client.models.generate_content(
-        model='gemini-2.0-flash',
+        model='gemini-1.5-flash',
         contents=prompt,
     )
     result_text = response.text.strip()
