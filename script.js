@@ -151,12 +151,11 @@ function hexToRgba(hex, a) {
     return `rgba(${r}, ${g}, ${b}, ${a})`;
 }
 
-// 🌟 新增分隔線渲染邏輯 (HTML 介面用)
+// 分隔線渲染邏輯 (HTML 介面用)
 function getDiagonalGradient(cd) {
     const c = cd.map(x => x.color);
     if (c.length === 1) return c[0];
     if (c.length === 2) {
-        // 加入 2px 白線與輕微陰影
         return `linear-gradient(135deg, 
             ${c[0]} 0%, 
             ${c[0]} calc(50% - 3px), 
@@ -382,7 +381,7 @@ function drawRoundedRect(ctx, x, y, width, height, radius) {
     ctx.quadraticCurveTo(x, y, x + radius, y); ctx.closePath();
 }
 
-// Canvas 導出 (包含下載版的高清分隔線渲染)
+// Canvas 導出 (全線加入 Noto Sans TC 解決繁中甩 Font 問題)
 async function drawCanvasExport() {
     const overlay = document.getElementById('loadingOverlay');
     overlay.style.display = 'flex';
@@ -408,7 +407,8 @@ async function drawCanvasExport() {
     ctx.fillRect(0, 0, canvas.width, canvas.height);
 
     ctx.fillStyle = isDark ? '#FFFFFF' : '#2C3E50';
-    ctx.textAlign = 'center'; ctx.textBaseline = 'middle'; ctx.font = `900 60px 'Noto Sans JP', sans-serif`;
+    ctx.textAlign = 'center'; ctx.textBaseline = 'middle'; 
+    ctx.font = `900 60px 'Noto Sans JP', 'Noto Sans TC', sans-serif`;
     ctx.fillText(customTitle, canvas.width / 2, 60);
 
     const photo = document.getElementById('cfgPhoto').checked;
@@ -442,7 +442,6 @@ async function drawCanvasExport() {
                 const grad = ctx.createLinearGradient(x, y, x + cellW, y + cellH);
                 const len = member.colorData.length;
                 
-                // 🌟 新增 Canvas 版的高清白線與陰影渲染
                 if (len === 1) { 
                     grad.addColorStop(0, member.colorData[0].color); 
                     grad.addColorStop(1, member.colorData[0].color); 
@@ -508,17 +507,17 @@ async function drawCanvasExport() {
 
             let textElements = [];
             if (gen && member.ki) {
-                textElements.push({ text: member.ki, font: `700 ${cellW*0.055*fontScale}px 'Noto Sans JP', sans-serif`, color: subColor, h: cellW*0.055*fontScale, gap: cellW*0.04*fontScale });
+                textElements.push({ text: member.ki, font: `700 ${cellW*0.055*fontScale}px 'Noto Sans JP', 'Noto Sans TC', sans-serif`, color: subColor, h: cellW*0.055*fontScale, gap: cellW*0.04*fontScale });
             }
             if (name) {
                 if (['zh-HK', 'zh-CN', 'ja'].includes(currentLang) && member.name_kana) {
-                    textElements.push({ text: member.name_kana, font: `700 ${cellW*0.038*fontScale}px 'Noto Sans JP', sans-serif`, color: subColor, h: cellW*0.038*fontScale, gap: cellW*0.02*fontScale });
+                    textElements.push({ text: member.name_kana, font: `700 ${cellW*0.038*fontScale}px 'Noto Sans JP', 'Noto Sans TC', sans-serif`, color: subColor, h: cellW*0.038*fontScale, gap: cellW*0.02*fontScale });
                 }
                 const nameToUse = (currentLang === 'ko') ? member.name_ko : (['en', 'th', 'id'].includes(currentLang) ? member.name_en : member.name_ja);
-                textElements.push({ text: nameToUse, font: `900 ${cellW*0.11*fontScale}px 'Noto Sans JP', sans-serif`, color: textColor, h: cellW*0.11*fontScale, gap: cellW*0.03*fontScale });
+                textElements.push({ text: nameToUse, font: `900 ${cellW*0.11*fontScale}px 'Noto Sans JP', 'Noto Sans TC', sans-serif`, color: textColor, h: cellW*0.11*fontScale, gap: cellW*0.03*fontScale });
             }
             if (nick && member.nickname) {
-                textElements.push({ text: member.nickname, font: `700 ${cellW*0.065*fontScale}px 'Noto Sans JP', sans-serif`, color: subColor, h: cellW*0.065*fontScale, gap: cellW*0.03*fontScale });
+                textElements.push({ text: member.nickname, font: `700 ${cellW*0.065*fontScale}px 'Noto Sans JP', 'Noto Sans TC', sans-serif`, color: subColor, h: cellW*0.065*fontScale, gap: cellW*0.03*fontScale });
             }
 
             let totalTextHeight = textElements.reduce((sum, el) => sum + el.h + el.gap, 0);
@@ -534,7 +533,7 @@ async function drawCanvasExport() {
 
             if (mode === 'text') {
                 currentY += cellW * 0.05 * fontScale; 
-                ctx.font = `900 ${cellW * 0.08 * fontScale}px 'Noto Sans JP', sans-serif`;
+                ctx.font = `900 ${cellW * 0.08 * fontScale}px 'Noto Sans JP', 'Noto Sans TC', sans-serif`;
                 let totalW = 0;
                 member.colorData.forEach((cd, idx) => { totalW += ctx.measureText(cd.name).width; if (idx < member.colorData.length - 1) totalW += ctx.measureText(" x ").width; });
                 let textX = x + cellW/2 - totalW/2; ctx.textAlign = 'left';
@@ -542,8 +541,8 @@ async function drawCanvasExport() {
                     ctx.fillStyle = cd.color; ctx.shadowColor = "rgba(0,0,0,0.8)"; ctx.shadowBlur = 4; ctx.shadowOffsetX = 1; ctx.shadowOffsetY = 1;
                     ctx.fillText(cd.name, textX, currentY); textX += ctx.measureText(cd.name).width;
                     if (idx < member.colorData.length - 1) {
-                        ctx.shadowColor = "transparent"; ctx.fillStyle = subColor; ctx.font = `bold ${cellW * 0.06 * fontScale}px 'Noto Sans JP', sans-serif`;
-                        ctx.fillText(" x ", textX, currentY + cellW*0.01*fontScale); textX += ctx.measureText(" x ").width; ctx.font = `900 ${cellW * 0.08 * fontScale}px 'Noto Sans JP', sans-serif`; 
+                        ctx.shadowColor = "transparent"; ctx.fillStyle = subColor; ctx.font = `bold ${cellW * 0.06 * fontScale}px 'Noto Sans JP', 'Noto Sans TC', sans-serif`;
+                        ctx.fillText(" x ", textX, currentY + cellW*0.01*fontScale); textX += ctx.measureText(" x ").width; ctx.font = `900 ${cellW * 0.08 * fontScale}px 'Noto Sans JP', 'Noto Sans TC', sans-serif`; 
                     }
                 });
                 ctx.shadowColor = "transparent"; ctx.textAlign = 'center'; 
