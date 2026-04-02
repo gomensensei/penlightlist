@@ -8,7 +8,7 @@ const sysUI = {
 };
 
 let currentLang = 'zh-HK';
-let gridSlots = new Array(16).fill(null); // 配合春コン改為預設 16 格
+let gridSlots = new Array(16).fill(null); 
 let activeSlotIndex = -1;
 let currentTitleState = { type: 'preset', id: '16_spring' }; 
 let isTitleCustomized = false;
@@ -39,7 +39,7 @@ window.onerror = function(msg, url, line) {
     return true; 
 };
 
-// 核心：非同步分批下載引擎 (Batch Preloader) - 每組 5 張靜默下載
+// 核心：非同步分批下載引擎 (Batch Preloader)
 async function preloadImagesBatch(membersArray) {
     const batchSize = 5;
     for (let i = 0; i < membersArray.length; i += batchSize) {
@@ -48,13 +48,12 @@ async function preloadImagesBatch(membersArray) {
             if (!m.image) return Promise.resolve();
             return new Promise(res => {
                 const img = new Image();
-                img.crossOrigin = "Anonymous"; // 必須與 Canvas 讀取時一致，否則 CORS Cache 會錯亂
+                img.crossOrigin = "Anonymous"; 
                 img.onload = img.onerror = res;
                 img.src = m.image;
             });
         }));
     }
-    console.log("All member avatars preloaded to browser cache.");
 }
 
 async function initApp() {
@@ -98,7 +97,6 @@ async function initApp() {
     applyLanguage();
     renderHTMLGrid();
 
-    // 啟動背景圖片預載引擎
     if (membersDB.length > 0) {
         preloadImagesBatch(membersDB);
     }
@@ -153,11 +151,30 @@ function hexToRgba(hex, a) {
     return `rgba(${r}, ${g}, ${b}, ${a})`;
 }
 
+// 🌟 新增分隔線渲染邏輯 (HTML 介面用)
 function getDiagonalGradient(cd) {
     const c = cd.map(x => x.color);
     if (c.length === 1) return c[0];
-    if (c.length === 2) return `linear-gradient(135deg, ${c[0]} 0%, ${c[0]} 50%, ${c[1]} 50%, ${c[1]} 100%)`;
-    return `linear-gradient(135deg, ${c[0]} 0%, ${c[0]} 33.33%, ${c[1]} 33.33%, ${c[1]} 66.66%, ${c[2]} 66.66%, ${c[2]} 100%)`;
+    if (c.length === 2) {
+        // 加入 2px 白線與輕微陰影
+        return `linear-gradient(135deg, 
+            ${c[0]} 0%, 
+            ${c[0]} calc(50% - 3px), 
+            rgba(0,0,0,0.1) calc(50% - 2px), 
+            #FFF calc(50% - 1px), 
+            #FFF calc(50% + 1px), 
+            rgba(0,0,0,0.1) calc(50% + 2px), 
+            ${c[1]} calc(50% + 3px), 
+            ${c[1]} 100%)`;
+    }
+    if (c.length === 3) {
+        return `linear-gradient(135deg, 
+            ${c[0]} 0%, 
+            ${c[0]} calc(33.33% - 3px), rgba(0,0,0,0.1) calc(33.33% - 2px), #FFF calc(33.33% - 1px), #FFF calc(33.33% + 1px), rgba(0,0,0,0.1) calc(33.33% + 2px), ${c[1]} calc(33.33% + 3px), 
+            ${c[1]} calc(66.66% - 3px), rgba(0,0,0,0.1) calc(66.66% - 2px), #FFF calc(66.66% - 1px), #FFF calc(66.66% + 1px), rgba(0,0,0,0.1) calc(66.66% + 2px), ${c[2]} calc(66.66% + 3px), 
+            ${c[2]} 100%)`;
+    }
+    return c[0];
 }
 
 ['cfgPhoto', 'cfgGen', 'cfgName', 'cfgNick'].forEach(id => document.getElementById(id).addEventListener('change', renderHTMLGrid));
@@ -258,7 +275,6 @@ function renderHTMLGrid() {
                     if(name) finalNameHtml = `<div class="cell-name">${obj.name_en}</div>`;
                 }
 
-                // 必須使用 crossorigin="anonymous" 確保與 Preloader 匹配，才能利用 Browser Cache
                 cell.innerHTML = `
                     <div class="cell-bg" style="${bg}"></div>${overlay}
                     <div class="cell-content">
@@ -366,7 +382,7 @@ function drawRoundedRect(ctx, x, y, width, height, radius) {
     ctx.quadraticCurveTo(x, y, x + radius, y); ctx.closePath();
 }
 
-// Canvas 導出 (移除快取破壞器，極速從本機 Cache 讀取！)
+// Canvas 導出 (包含下載版的高清分隔線渲染)
 async function drawCanvasExport() {
     const overlay = document.getElementById('loadingOverlay');
     overlay.style.display = 'flex';
@@ -404,11 +420,9 @@ async function drawCanvasExport() {
     const loadImage = (url) => new Promise((resolve) => {
         const img = new Image(); 
         img.crossOrigin = "Anonymous"; 
-        // 放寬 Timeout 到 3000ms
         let timeout = setTimeout(() => resolve(null), 3000); 
         img.onload = () => { clearTimeout(timeout); resolve(img); };
         img.onerror = () => { clearTimeout(timeout); resolve(null); }; 
-        // 核心修改：移除 "?v=Date.now()"，直接使用原本 URL 令 Browser 使用 Cache！
         img.src = url; 
     });
 
@@ -427,15 +441,38 @@ async function drawCanvasExport() {
             if (mode === 'block') {
                 const grad = ctx.createLinearGradient(x, y, x + cellW, y + cellH);
                 const len = member.colorData.length;
-                if (len === 1) { grad.addColorStop(0, member.colorData[0].color); grad.addColorStop(1, member.colorData[0].color); } 
-                else if (len === 2) {
-                    grad.addColorStop(0, member.colorData[0].color); grad.addColorStop(0.5, member.colorData[0].color);
-                    grad.addColorStop(0.5, member.colorData[1].color); grad.addColorStop(1, member.colorData[1].color);
+                
+                // 🌟 新增 Canvas 版的高清白線與陰影渲染
+                if (len === 1) { 
+                    grad.addColorStop(0, member.colorData[0].color); 
+                    grad.addColorStop(1, member.colorData[0].color); 
+                } else if (len === 2) {
+                    grad.addColorStop(0, member.colorData[0].color); 
+                    grad.addColorStop(0.492, member.colorData[0].color);
+                    grad.addColorStop(0.494, 'rgba(0,0,0,0.1)');
+                    grad.addColorStop(0.496, '#FFFFFF');
+                    grad.addColorStop(0.504, '#FFFFFF');
+                    grad.addColorStop(0.506, 'rgba(0,0,0,0.1)');
+                    grad.addColorStop(0.508, member.colorData[1].color); 
+                    grad.addColorStop(1, member.colorData[1].color);
                 } else if (len >= 3) {
-                    grad.addColorStop(0, member.colorData[0].color); grad.addColorStop(0.333, member.colorData[0].color);
-                    grad.addColorStop(0.333, member.colorData[1].color); grad.addColorStop(0.666, member.colorData[1].color);
-                    grad.addColorStop(0.666, member.colorData[2].color); grad.addColorStop(1, member.colorData[2].color);
+                    grad.addColorStop(0, member.colorData[0].color); 
+                    grad.addColorStop(0.327, member.colorData[0].color);
+                    grad.addColorStop(0.329, 'rgba(0,0,0,0.1)');
+                    grad.addColorStop(0.331, '#FFFFFF');
+                    grad.addColorStop(0.335, '#FFFFFF');
+                    grad.addColorStop(0.337, 'rgba(0,0,0,0.1)');
+                    grad.addColorStop(0.339, member.colorData[1].color); 
+                    
+                    grad.addColorStop(0.661, member.colorData[1].color);
+                    grad.addColorStop(0.663, 'rgba(0,0,0,0.1)');
+                    grad.addColorStop(0.665, '#FFFFFF');
+                    grad.addColorStop(0.669, '#FFFFFF');
+                    grad.addColorStop(0.671, 'rgba(0,0,0,0.1)');
+                    grad.addColorStop(0.673, member.colorData[2].color); 
+                    grad.addColorStop(1, member.colorData[2].color);
                 }
+                
                 ctx.fillStyle = grad; ctx.fillRect(x, y, cellW, cellH);
                 const overlayGrad = ctx.createLinearGradient(x, y + cellH - 220, x, y + cellH);
                 overlayGrad.addColorStop(0, 'rgba(0,0,0,0)'); overlayGrad.addColorStop(1, 'rgba(0,0,0,0.85)');
