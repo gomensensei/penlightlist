@@ -1,0 +1,41 @@
+name: AKB48 Blog Auto Scraper
+
+on:
+  # 設定每日定時執行 (UTC 時間)
+  # 00:00 UTC = 早上 8:00 HKT
+  # 12:00 UTC = 晚上 8:00 HKT
+  schedule:
+    - cron: '0 0,12 * * *'
+  # 允許手動觸發
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  scrape-and-update:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.10'
+
+      - name: Install dependencies
+        run: pip install -r requirements.txt
+
+      - name: Run Scraper Script
+        env:
+          GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
+        run: python scraper.py
+
+      - name: Commit and Push changes
+        run: |
+          git config --local user.email "action@github.com"
+          git config --local user.name "GitHub Action Bot"
+          git add schedules.json
+          # 如果有更動才 commit
+          git diff --quiet && git diff --staged --quiet || (git commit -m "🤖 Auto-update: Latest AKB48 Schedules" && git push)
