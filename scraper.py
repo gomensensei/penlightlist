@@ -64,9 +64,9 @@ Blog 內文如下：
 """
 
 try:
-# 改用有龐大免費額度的 gemini-1.5-flash 模型
+# 使用你搵到嘅免費 Lite 預覽版模型，無需信用卡！
     response = client.models.generate_content(
-        model='gemini-1.5-flash',
+        model='gemini-3.1-flash-lite-preview',
         contents=prompt,
     )
     result_text = response.text.strip()
