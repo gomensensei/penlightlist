@@ -2,7 +2,10 @@ name: AKB48 Blog Auto Scraper
 
 on:
   schedule:
-    - cron: '0 0,12 * * *'
+    # 08:00 UTC = 17:00 JST (下午五點)
+    - cron: '0 8 * * *'
+    # 13:05 UTC = 22:05 JST (晚上十點零五分)
+    - cron: '5 13 * * *'
   workflow_dispatch: {}
 
 permissions:
