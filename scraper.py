@@ -28,20 +28,18 @@ for e in feed.entries:
     if any(k in clean_title(e.title) for k in keywords):
         target_urls.append({"link": e.link, "title": e.title})
 
-# 🌟 特殊救援機制：強制補回跌出 RSS 的歷史文章 (重建資料庫用)
+# 🌟 救援名單 (如果你覺得無需要可以留空 list)
 rescue_list = [
-    # 舊文章放前面，新文章放後面
     {"link": "https://ameblo.jp/akihabara48/entry-12962469245.html", "title": "【救援】原本大名單"},
     {"link": "https://ameblo.jp/akihabara48/entry-12962706641.html", "title": "【救援】變更通知"}
 ]
 
-# 將救援文章加入掃描清單 (避免重複)
 existing_links = [t["link"] for t in target_urls]
 for r in rescue_list:
     if r["link"] not in existing_links:
         target_urls.append(r)
 
-# 🌟 由舊至新處理 (非常重要：先建大名單，後做變更加減)
+# 由舊至新處理
 target_urls.reverse()
 
 # 3. 讀取現有資料
@@ -82,22 +80,23 @@ else:
         
         if article_body:
             blog_text = article_body.get_text(separator="\n", strip=True)
+            
+            # 🌟 關鍵修改：廢除「變更留空」指令，改為「見到全體就抄」
             prompt = f"""
             這是一篇AKB48公演名單。請提取資訊，輸出純 JSON Array，每個 Object 包含以下 Key：
-            "id": "YYYYMMDD_HHMM" (例如 20260417_1830)
+            "id": "YYYYMMDD_HHMM" (例如 20260418_1300)
             "date": "MM月DD日(星期) HH:MM"
             "title": "公演名稱"
-            "is_change": true (如果是休演/代打變更通知) 或 false (如果是公佈完整名單)
-            "full_members": ["成員1", "成員2"] (如果是完整名單，列出所有人。變更請留空 [])
-            "added_members": ["代役成員"] (如果是變更通知中的「出演/代打」成員)
-            "removed_members": ["休演成員"] (如果是變更通知中的「休演」成員)
+            "full_members": ["成員1", "成員2"] (🚨無論是否為變更通知，只要文章底部有完整列出「出演メンバー」全體名單，就必須全部提取。若文章內真的沒有全體名單，才留空 [])
+            "added_members": ["代役成員"] (若有「出演/代打」成員)
+            "removed_members": ["休演成員"] (若有「休演」成員)
 
             🚨【極度重要規則】：
-            1. 如果文章包含多天公演，必須為「每一場」建立獨立 Object。
+            1. 如果文章包含同一天的日夜兩場(如13:00和17:30)，必須為「每一場」建立獨立 Object。
             2. 尋找「【休演】」字眼，將其成員放入 "removed_members"。
             3. 尋找「【出演】」字眼(且伴隨休演出現的代打)，將其放入 "added_members"。
             4. 名字必須去除空格，轉為日文漢字。
-            5. 【標題強制統一】：無論原文寫法為何，"title" 必須強制統一為「XXX」公演 的格式。例如原文寫「僕の太陽」或「僕の太陽公演」，都必須輸出為「僕の太陽」公演。如果本身已經有「」，請勿重複添加。
+            5. 【標題強制統一】：無論原文寫法為何，"title" 必須強制統一為「XXX」公演 的格式。
 
             內容：
             {blog_text}
@@ -119,40 +118,40 @@ else:
                         new_full = item.get('full_members', [])
                         added = item.get('added_members', [])
                         removed = item.get('removed_members', [])
-                        is_change = item.get('is_change', False)
                         
                         if sched_id not in all_data_map:
+                            # 🌟 如果是全新遇到，有大名單就用大名單，無就用加減名單
                             all_data_map[sched_id] = {
                                 "id": sched_id,
                                 "date": item.get('date', ''),
                                 "title": item.get('title', ''),
-                                "members": new_full if new_full else added,
+                                "members": new_full if len(new_full) >= 4 else list(set(added + new_full)),
                                 "sources": [link]
                             }
                         else:
                             existing_members = all_data_map[sched_id].get('members', [])
                             
-                            # 防呆：如果 AI 偷懶將代打當成完整名單
-                            if len(new_full) > 0 and len(new_full) <= 3 and len(existing_members) >= 4:
-                                is_change = True
-                                added.extend(new_full)
-                                new_full = []
-                                
-                            if is_change or added or removed:
+                            # 🌟 最強防呆與「有大食大」邏輯
+                            # 如果 AI 成功抓到 >=4 人的名單 (代表文章底部有 official full list)，直接相信官方名單！
+                            if len(new_full) >= 4:
+                                all_data_map[sched_id]['members'] = new_full
+                            else:
+                                # 否則乖乖做加減數
                                 curr_members = set(existing_members)
                                 for rm in removed:
                                     curr_members.discard(rm)
                                 for am in added:
                                     curr_members.add(am)
+                                for am in new_full: # 防呆：如果 AI 偷懶將 1-3 個代打放入了 full_members
+                                    curr_members.add(am)
                                 all_data_map[sched_id]['members'] = list(curr_members)
-                            elif new_full:
-                                all_data_map[sched_id]['members'] = new_full
                                 
-                            if 'sources' not in all_data_map[sched_id]:
-                                all_data_map[sched_id]['sources'] = []
-                            if link not in all_data_map[sched_id]['sources']:
-                                all_data_map[sched_id]['sources'].append(link)
-                                
+                        # 記錄 URL 來源
+                        if 'sources' not in all_data_map[sched_id]:
+                            all_data_map[sched_id]['sources'] = []
+                        if link not in all_data_map[sched_id]['sources']:
+                            all_data_map[sched_id]['sources'].append(link)
+                            
                         print(f"✅ 更新成功：{sched_id} (目前人數: {len(all_data_map[sched_id]['members'])})")
             except Exception as e:
                 print(f"⚠️ 解析文章失敗: {e}")
