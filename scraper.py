@@ -39,6 +39,8 @@ if os.path.exists('schedules.json'):
     except:
         existing_schedules = []
 
+# 🌟 認人機制：提取現有 JSON 中的 URL，防重複爬取
+processed_urls = {item.get('url') for item in existing_schedules if item.get('url')}
 all_data_map = {item['id']: item for item in existing_schedules}
 
 # 4. 逐篇解析
@@ -46,6 +48,11 @@ if not target_entries:
     print("ℹ️ 最近 5 篇文章都無目標關鍵字。")
 else:
     for entry in target_entries:
+        # 🌟 核心防禦：如果呢篇 Blog 嘅 URL 已經喺 JSON 度，直接飛走！
+        if entry.link in processed_urls:
+            print(f"⏩ 已經處理過，跳過：{entry.title}")
+            continue
+
         print(f"🎯 發現目標標題：{entry.title}")
         response = requests.get(entry.link)
         response.encoding = response.apparent_encoding
@@ -54,14 +61,15 @@ else:
         
         if article_body:
             blog_text = article_body.get_text(separator="\n", strip=True)
-            # 強制要求 JSON Key 格式，防止出 undefined
+            # 強制要求 JSON Key 格式，防止出 undefined，並強制寫入 URL 同 HHMM ID
             prompt = f"""
             你是一個專業的資料擷取機器人。請從以下 AKB48 Blog 內容中提取公演資訊。
             必須輸出一個純 JSON Array，每個 Object 必須包含以下 Key：
-            "id": "YYYYMMDD_簡稱" (例如 20260413_boku)
+            "id": "YYYYMMDD_HHMM" (例如 20260413_1830，使用公演日期與時間)
             "date": "MM月DD日(星期) HH:MM"
             "title": "公演名稱"
             "members": ["名字1", "名字2"...] (名字去除空格，轉為日文漢字)
+            "url": "{entry.link}"
 
             內容如下：
             {blog_text}
