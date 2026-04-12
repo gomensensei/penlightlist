@@ -118,26 +118,27 @@ async function initApp() {
 }
 
 // 新增：動態生成下拉選單
+// script.js
 function populateScheduleDropdown() {
     const sel = document.getElementById('scheduleSelector');
     if (!sel) return;
 
-    // 先清空，保留第一行翻譯字
-    const firstOptionText = langsDB[currentLang]?.opt_schedule || '-- 讀取最新公演名單 --';
+    // 清空舊選項，保留第一行
+    const firstOptionText = (langsDB[currentLang] && langsDB[currentLang].opt_schedule) 
+                            ? langsDB[currentLang].opt_schedule 
+                            : '-- 讀取最新公演名單 --';
     sel.innerHTML = `<option value="">${firstOptionText}</option>`;
     
-    if (schedulesDB.length === 0) {
-        console.log("No schedules available.");
-        return;
-    }
+    if (schedulesDB.length === 0) return;
     
     schedulesDB.forEach(sched => {
         const opt = document.createElement('option');
         opt.value = sched.id;
         
-        // 🌟 容錯：AI 有時會自動翻譯 Key，我哋通通都試下抓
-        const displayTitle = sched.title || sched.公演名 || sched.name || "未知公演";
-        const displayDate = sched.date || sched.日付 || sched.time || "";
+        // 🌟 核心修正：多重對接邏輯
+        // 優先讀 title，搵唔到就讀 performance，再搵唔到就讀 公演名
+        const displayTitle = sched.title || sched.performance || sched.公演名 || sched.name || "未知公演";
+        const displayDate = sched.date || sched.日付 || "";
         
         opt.textContent = `📅 ${displayDate} - ${displayTitle}`;
         sel.appendChild(opt);
