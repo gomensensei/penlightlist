@@ -20,15 +20,16 @@ RSS_URL = "https://rssblog.ameba.jp/akihabara48/rss20.xml"
 print("🔍 正在掃描 AKB48 官方 Blog...")
 feed = feedparser.parse(RSS_URL)
 
-# 設定關鍵字（唔需要理空格）
 keywords = ["公演スケジュール", "メンバー変更", "出演メンバー", "公演受付開始"]
+clean_title = lambda t: t.replace(" ", "").replace("　", "")
 
 target_entries = []
 for e in feed.entries[:5]:
-    # 🌟 核心修正：將標題入面所有半角同全角空格整走先
-    clean_title = e.title.replace(" ", "").replace("　", "")
-    if any(k in clean_title for k in keywords):
+    if any(k in clean_title(e.title) for k in keywords):
         target_entries.append(e)
+
+# 🌟 關鍵改動 1：將文章順序反轉！舊文章先處理，新文章(變更)後處理
+target_entries.reverse()
 
 # 3. 讀取現有資料
 existing_schedules = []
@@ -39,8 +40,14 @@ if os.path.exists('schedules.json'):
     except:
         existing_schedules = []
 
-# 🌟 認人機制：提取現有 JSON 中的 URL，防重複爬取
-processed_urls = {item.get('url') for item in existing_schedules if item.get('url')}
+# 🌟 關鍵改動 2：支援一場公演有多個 URL 來源 (防止重複處理)
+processed_urls = set()
+for item in existing_schedules:
+    if 'sources' in item:
+        processed_urls.update(item['sources'])
+    elif 'url' in item:
+        processed_urls.add(item['url'])
+
 all_data_map = {item['id']: item for item in existing_schedules}
 
 # 4. 逐篇解析
@@ -48,12 +55,11 @@ if not target_entries:
     print("ℹ️ 最近 5 篇文章都無目標關鍵字。")
 else:
     for entry in target_entries:
-        # 🌟 核心防禦：如果呢篇 Blog 嘅 URL 已經喺 JSON 度，直接飛走！
         if entry.link in processed_urls:
             print(f"⏩ 已經處理過，跳過：{entry.title}")
             continue
 
-        print(f"🎯 發現目標標題：{entry.title}")
+        print(f"🎯 處理新文章：{entry.title}")
         response = requests.get(entry.link)
         response.encoding = response.apparent_encoding
         soup = BeautifulSoup(response.text, 'html.parser')
@@ -61,16 +67,19 @@ else:
         
         if article_body:
             blog_text = article_body.get_text(separator="\n", strip=True)
-            # 強制要求 JSON Key 格式，防止出 undefined，並強制寫入 URL 同 HHMM ID
+            # 🌟 關鍵改動 3：教 AI 分辨完整名單同變更名單，並分類輸出
             prompt = f"""
-            你是一個專業的資料擷取機器人。請從以下 AKB48 Blog 內容中提取公演資訊。
-            必須輸出一個純 JSON Array，每個 Object 必須包含以下 Key：
-            "id": "YYYYMMDD_HHMM" (例如 20260413_1830，使用公演日期與時間)
+            你是一個專業的資料擷取機器人。請從以下 AKB48 Blog 中提取公演資訊。
+            必須輸出一個純 JSON Array，每個 Object 包含以下 Key：
+            "id": "YYYYMMDD_HHMM" (例如 20260417_1830)
             "date": "MM月DD日(星期) HH:MM"
             "title": "公演名稱"
-            "members": ["名字1", "名字2"...] (名字去除空格，轉為日文漢字)
-            "url": "{entry.link}"
+            "is_full_list": true (如果是公佈完整名單) 或 false (如果是宣佈休演/代役變更)
+            "members": ["成員1"] (若 is_full_list 為 true，列出全體名字)
+            "added_members": ["成員1"] (若 is_full_list 為 false，列出新增/代役的成員)
+            "removed_members": ["成員1"] (若 is_full_list 為 false，列出休演的成員)
 
+            注意：所有成員名字必須去除空格，並使用日文漢字。
             內容如下：
             {blog_text}
             """
@@ -87,15 +96,44 @@ else:
                 new_data = json.loads(result_text)
                 if isinstance(new_data, list):
                     for item in new_data:
-                        all_data_map[item['id']] = item
-                        print(f"✅ 成功提取：{item.get('date')} {item.get('title')}")
+                        sched_id = item['id']
+                        
+                        # 如果是全新公演
+                        if sched_id not in all_data_map:
+                            all_data_map[sched_id] = {
+                                "id": sched_id,
+                                "date": item.get('date', ''),
+                                "title": item.get('title', ''),
+                                "members": item.get('members', []) if item.get('is_full_list') else item.get('added_members', []),
+                                "sources": [entry.link]
+                            }
+                        # 如果是已存在的公演，執行「加減數」
+                        else:
+                            if item.get('is_full_list'):
+                                # 新文章再次公佈完整名單，直接覆蓋
+                                all_data_map[sched_id]['members'] = item.get('members', [])
+                            else:
+                                # 新文章是變更通知，進行名單加減
+                                curr_members = set(all_data_map[sched_id].get('members', []))
+                                for rm in item.get('removed_members', []):
+                                    curr_members.discard(rm) # 踢走休演
+                                for am in item.get('added_members', []):
+                                    curr_members.add(am)     # 加入代役
+                                all_data_map[sched_id]['members'] = list(curr_members)
+                            
+                            # 紀錄呢篇文已經睇過
+                            if 'sources' not in all_data_map[sched_id]:
+                                all_data_map[sched_id]['sources'] = []
+                            if entry.link not in all_data_map[sched_id]['sources']:
+                                all_data_map[sched_id]['sources'].append(entry.link)
+                                
+                        print(f"✅ 成功更新：{sched_id} (目前人數: {len(all_data_map[sched_id]['members'])})")
             except Exception as e:
                 print(f"⚠️ 解析文章失敗: {e}")
 
 # 5. 清理過期公演 (JST 東京時間)
 jst = pytz.timezone('Asia/Tokyo')
 today_str = datetime.now(jst).strftime('%Y%m%d')
-# 只保留今日或之後嘅公演
 filtered_schedules = [v for k, v in all_data_map.items() if k[:8] >= today_str]
 filtered_schedules.sort(key=lambda x: x['id'])
 
