@@ -1,5 +1,6 @@
 let langsDB = {};
 let membersDB = [];
+let schedulesDB = []; // 新增：用於儲存最新公演名單
 
 // 純淨 SVG
 const sysUI = {
@@ -58,12 +59,26 @@ async function preloadImagesBatch(membersArray) {
 
 async function initApp() {
     try {
-        const [memRes, langRes] = await Promise.all([ fetch('members.json'), fetch('langs.json') ]);
+        // 更新：同時抓取 schedules.json
+        const [memRes, langRes, schedRes] = await Promise.all([ 
+            fetch('members.json'), 
+            fetch('langs.json'),
+            fetch('schedules.json').catch(() => ({ ok: false })) 
+        ]);
+        
         if (!memRes.ok || !langRes.ok) throw new Error("Fetch failed");
         
         const rawMembers = await memRes.json();
         membersDB = parseMemberData(rawMembers); 
         langsDB = await langRes.json();
+
+        // 更新：讀取爬蟲抓返嚟嘅最新公演
+        if (schedRes.ok) {
+            try {
+                schedulesDB = await schedRes.json();
+                populateScheduleDropdown(); 
+            } catch(e) { console.warn("讀取 schedules.json 失敗"); }
+        }
 
         const browserLang = navigator.language || navigator.userLanguage; 
         const shortLang = browserLang.split('-')[0]; 
@@ -88,7 +103,7 @@ async function initApp() {
         if (langSelector) langSelector.value = currentLang;
 
     } catch (err) {
-        console.warn("Fetch API failed.");
+        console.warn("System Init failed.");
         langsDB = { "zh-HK": { "app_title": "成員名單及應援色", "preset_placeholder": "-- 選擇空白公演人數 --", "btn_download": "下載名單" } };
         membersDB = []; 
         currentLang = 'en'; 
@@ -100,6 +115,19 @@ async function initApp() {
     if (membersDB.length > 0) {
         preloadImagesBatch(membersDB);
     }
+}
+
+// 新增：動態生成下拉選單
+function populateScheduleDropdown() {
+    const sel = document.getElementById('scheduleSelector');
+    if (!sel || schedulesDB.length === 0) return;
+    
+    schedulesDB.forEach(sched => {
+        const opt = document.createElement('option');
+        opt.value = sched.id;
+        opt.textContent = `📅 ${sched.date} - ${sched.title}`;
+        sel.appendChild(opt);
+    });
 }
 
 document.getElementById('customTitle').addEventListener('input', () => { isTitleCustomized = true; });
@@ -125,9 +153,14 @@ function applyLanguage() {
     if (d['title_placeholder']) document.getElementById('customTitle').placeholder = d['title_placeholder'];
     
     const sel = document.getElementById('presetSelector');
-    if (sel.options[0]) sel.options[0].textContent = d['preset_placeholder'] || "-- 選擇空白公演人數 --";
+    if (sel && sel.options[0]) sel.options[0].textContent = d['preset_placeholder'] || "-- 選擇空白公演人數 --";
+    
     const genSel = document.getElementById('genSelector');
-    if (genSel.options[0]) genSel.options[0].textContent = d['gen_placeholder'] || "-- 選擇期數全體載入 --";
+    if (genSel && genSel.options[0]) genSel.options[0].textContent = d['gen_placeholder'] || "-- 選擇期數全體載入 --";
+
+    // 新增：更新最新公演選單的第一行語言
+    const schedSel = document.getElementById('scheduleSelector');
+    if (schedSel && schedSel.options[0]) schedSel.options[0].textContent = d['opt_schedule'] || "-- 讀取最新公演名單 --";
 }
 
 function updateTitleFromState() {
@@ -178,6 +211,43 @@ function getDiagonalGradient(cd) {
 
 ['cfgPhoto', 'cfgGen', 'cfgName', 'cfgNick'].forEach(id => document.getElementById(id).addEventListener('change', renderHTMLGrid));
 document.querySelectorAll('input[name="colorMode"]').forEach(r => r.addEventListener('change', renderHTMLGrid));
+
+// 新增：監聽「最新公演選單」
+document.getElementById('scheduleSelector').addEventListener('change', (e) => {
+    const selectedId = e.target.value;
+    if (selectedId) {
+        const schedule = schedulesDB.find(s => s.id === selectedId);
+        if (schedule) {
+            // 除空白函數：因為 AI 俾嘅名同 members.json 嘅名可能有空格差異
+            const normalizeName = (name) => name.replace(/\s+/g, '');
+            
+            // 去 Database 搵返真實成員出嚟
+            const matchedMembers = schedule.members.map(schedName => {
+                const normSchedName = normalizeName(schedName);
+                return membersDB.find(m => normalizeName(m.name_ja) === normSchedName) || null;
+            });
+
+            // 確保有足夠的格數顯示所有成員
+            let targetSize = matchedMembers.length;
+            if (targetSize < 8) targetSize = 8;
+            else if (targetSize > 8 && targetSize <= 12) targetSize = 12;
+            else if (targetSize > 12) targetSize = 16;
+
+            const newGrid = new Array(targetSize).fill(null);
+            matchedMembers.forEach((m, idx) => { if(idx < targetSize) newGrid[idx] = m; });
+
+            // 將格仔塞滿
+            gridSlots = newGrid;
+            currentTitleState = { type: 'custom', id: selectedId };
+            
+            // 將標題自動改做公演日期同名！
+            document.getElementById('customTitle').value = `${schedule.date} ${schedule.title}`;
+            
+            renderHTMLGrid();
+        }
+    }
+    e.target.value = ''; // 選完還原
+});
 
 document.getElementById('presetSelector').addEventListener('change', (e) => {
     const val = e.target.value; 
@@ -381,7 +451,7 @@ function drawRoundedRect(ctx, x, y, width, height, radius) {
     ctx.quadraticCurveTo(x, y, x + radius, y); ctx.closePath();
 }
 
-// Canvas 導出 (全線加入 Noto Sans TC 解決繁中甩 Font 問題)
+// Canvas 導出
 async function drawCanvasExport() {
     const overlay = document.getElementById('loadingOverlay');
     overlay.style.display = 'flex';
