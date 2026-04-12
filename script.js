@@ -120,12 +120,26 @@ async function initApp() {
 // 新增：動態生成下拉選單
 function populateScheduleDropdown() {
     const sel = document.getElementById('scheduleSelector');
-    if (!sel || schedulesDB.length === 0) return;
+    if (!sel) return;
+
+    // 先清空，保留第一行翻譯字
+    const firstOptionText = langsDB[currentLang]?.opt_schedule || '-- 讀取最新公演名單 --';
+    sel.innerHTML = `<option value="">${firstOptionText}</option>`;
+    
+    if (schedulesDB.length === 0) {
+        console.log("No schedules available.");
+        return;
+    }
     
     schedulesDB.forEach(sched => {
         const opt = document.createElement('option');
         opt.value = sched.id;
-        opt.textContent = `📅 ${sched.date} - ${sched.title}`;
+        
+        // 🌟 容錯：AI 有時會自動翻譯 Key，我哋通通都試下抓
+        const displayTitle = sched.title || sched.公演名 || sched.name || "未知公演";
+        const displayDate = sched.date || sched.日付 || sched.time || "";
+        
+        opt.textContent = `📅 ${displayDate} - ${displayTitle}`;
         sel.appendChild(opt);
     });
 }
