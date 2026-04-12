@@ -53,22 +53,21 @@
     <div class="main-container">
         
         <main class="preview-panel panel">
-            <div class="header-edit-area">
+<div class="header-edit-area">
                 <div class="title-input-wrapper">
                     <svg class="blinking-pen" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.12 2.12 0 0 1 3 3L12 15l-4 1 1-4Z"/></svg>
-                    <input type="text" id="customTitle" class="custom-title-input" value="AKB48 春コンサート2026" placeholder="📝 點擊輸入公演名稱...">
+                    <input type="text" id="customTitle" class="custom-title-input" value="「ここからだ」公演" placeholder="📝 點擊輸入公演名稱...">
                 </div>
                 
                 <div class="controls-row" style="display: flex; gap: 10px; flex-wrap: wrap;">
                     <div class="select-group" style="flex: 1;">
-                        <select id="scheduleSelector" class="preset-select" style="width: 100%;">
+                        <select id="scheduleSelector" class="preset-select breathing-select" style="width: 100%;">
                             <option value="" data-i18n="opt_schedule">-- 讀取最新公演名單 --</option>
-                            </select>
+                        </select>
                     </div>
                     <div class="select-group" style="flex: 1;">
-                        <select id="presetSelector" class="preset-select" style="width: 100%;">
+                        <select id="presetSelector" class="preset-select breathing-select" style="width: 100%;">
                             <option value="" data-i18n="preset_placeholder">-- 快速載入公演模板 (空白格) --</option>
-                            <option value="16_spring" data-i18n="opt_spring">AKB48 春コンサート2026</option>
                             <option value="16_koko" data-i18n="opt_koko">「ここからだ」公演 (16人)</option>
                             <option value="16_soko" data-i18n="opt_soko">「そこに未来はある」公演 (16人)</option>
                             <option value="8_tewo" data-i18n="opt_tewo">「手をつなぎながら」公演 (8人)</option>
