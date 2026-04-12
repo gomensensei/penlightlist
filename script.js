@@ -59,7 +59,6 @@ async function preloadImagesBatch(membersArray) {
 
 async function initApp() {
     try {
-        // 更新：同時抓取 schedules.json
         const [memRes, langRes, schedRes] = await Promise.all([ 
             fetch('members.json'), 
             fetch('langs.json'),
@@ -72,7 +71,6 @@ async function initApp() {
         membersDB = parseMemberData(rawMembers); 
         langsDB = await langRes.json();
 
-        // 更新：讀取爬蟲抓返嚟嘅最新公演
         if (schedRes.ok) {
             try {
                 schedulesDB = await schedRes.json();
@@ -83,30 +81,54 @@ async function initApp() {
         const browserLang = navigator.language || navigator.userLanguage; 
         const shortLang = browserLang.split('-')[0]; 
 
-        if (browserLang === 'zh-CN' || browserLang === 'zh-SG') {
-            currentLang = 'zh-CN';
-        } else if (shortLang === 'zh') {
-            currentLang = 'zh-HK'; 
-        } else if (shortLang === 'ja') {
-            currentLang = 'ja';
-        } else if (shortLang === 'ko') {
-            currentLang = 'ko';
-        } else if (shortLang === 'th') {
-            currentLang = 'th';
-        } else if (shortLang === 'id') {
-            currentLang = 'id';
-        } else {
-            currentLang = 'en'; 
-        }
+        if (browserLang === 'zh-CN' || browserLang === 'zh-SG') { currentLang = 'zh-CN'; } 
+        else if (shortLang === 'zh') { currentLang = 'zh-HK'; } 
+        else if (shortLang === 'ja') { currentLang = 'ja'; } 
+        else if (shortLang === 'ko') { currentLang = 'ko'; } 
+        else if (shortLang === 'th') { currentLang = 'th'; } 
+        else if (shortLang === 'id') { currentLang = 'id'; } 
+        else { currentLang = 'en'; }
 
         const langSelector = document.getElementById('langSelector');
         if (langSelector) langSelector.value = currentLang;
+
+        // 🌟 核心新功能：自動載入最新一場公演
+        if (schedulesDB && schedulesDB.length > 0) {
+            const latestSchedule = schedulesDB[0]; // 讀取第一場 (最近期)
+            const normalizeName = (name) => name.replace(/\s+/g, '');
+            const matchedMembers = latestSchedule.members.map(schedName => {
+                const normSchedName = normalizeName(schedName);
+                return membersDB.find(m => normalizeName(m.name_ja) === normSchedName) || null;
+            });
+            
+            let targetSize = matchedMembers.length;
+            if (targetSize < 8) targetSize = 8;
+            else if (targetSize > 8 && targetSize <= 12) targetSize = 12;
+            else if (targetSize > 12) targetSize = 16;
+
+            gridSlots = new Array(targetSize).fill(null);
+            matchedMembers.forEach((m, idx) => { if(idx < targetSize) gridSlots[idx] = m; });
+            
+            currentTitleState = { type: 'custom', id: latestSchedule.id };
+            document.getElementById('customTitle').value = `${latestSchedule.date} ${latestSchedule.title}`;
+            
+            const sel = document.getElementById('scheduleSelector');
+            if (sel) sel.value = latestSchedule.id; // 將選單同步設為該公演
+            
+        } else {
+            // 如果剛好無最新公演，Fallback 載入 16 人空白格
+            gridSlots = new Array(16).fill(null);
+            currentTitleState = { type: 'preset', id: '16_koko' }; 
+            document.getElementById('customTitle').value = "「ここからだ」公演";
+        }
 
     } catch (err) {
         console.warn("System Init failed.");
         langsDB = { "zh-HK": { "app_title": "成員名單及應援色", "preset_placeholder": "-- 選擇空白公演人數 --", "btn_download": "下載名單" } };
         membersDB = []; 
         currentLang = 'en'; 
+        gridSlots = new Array(16).fill(null);
+        currentTitleState = { type: 'preset', id: '16_koko' };
     }
     
     applyLanguage();
@@ -651,6 +673,15 @@ async function drawCanvasExport() {
     }
     overlay.style.display = 'none';
 }
+
+// 🌟 移除選單提示呼吸框 (點擊或更改後自動取消)
+['scheduleSelector', 'presetSelector'].forEach(id => {
+    const el = document.getElementById(id);
+    if(el) {
+        el.addEventListener('change', () => el.classList.remove('breathing-select'));
+        el.addEventListener('click', () => el.classList.remove('breathing-select'));
+    }
+});
 
 document.getElementById('downloadBtn').addEventListener('click', drawCanvasExport);
 window.addEventListener('DOMContentLoaded', initApp);
