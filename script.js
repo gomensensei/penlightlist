@@ -664,12 +664,64 @@ async function drawCanvasExport() {
         drawRoundedRect(ctx, x, y, cellW, cellH, 20); ctx.stroke();
     }
 
-    try {
-        const link = document.createElement('a'); link.download = `Support_Map_${Date.now()}.png`;
-        link.href = canvas.toDataURL('image/png'); link.click();
+try {
+        const dataUrl = canvas.toDataURL('image/png');
+        
+        // 偵測是否為手機或平板裝置 (iOS / Android)
+        const isMobile = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent);
+
+        if (isMobile) {
+            // 手機版：彈出預覽圖，讓用家長按儲存 (利用 Gomensensei Core 架構)
+            const existing = document.getElementById('mobileResultOverlay');
+            if (existing) existing.remove();
+
+            const div = document.createElement('div');
+            div.id = 'mobileResultOverlay';
+            div.style.cssText = 'position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.85); z-index:3000; display:flex; flex-direction:column; align-items:center; justify-content:center; padding:20px; box-sizing:border-box; backdrop-filter:blur(8px); opacity:0; transition:opacity 0.3s;';
+            
+            // 多國語言提示字
+            const hint = document.createElement('div');
+            const hintText = (currentLang === 'ja') ? '画像を長押しして「写真に追加」' : 
+                             (currentLang === 'zh-CN') ? '长按图片，选择「保存到相册」' : 
+                             (currentLang === 'en') ? 'Long press image to Save to Photos' : 
+                             (currentLang === 'ko') ? '이미지를 길게 눌러 사진 앱에 저장' :
+                             '請長按圖片，選擇「儲存影像」';
+            
+            hint.innerHTML = `<div style="color:white; font-size:1.1rem; font-weight:bold; margin-bottom:20px; text-align:center; background:var(--primary); padding:10px 20px; border-radius:30px; box-shadow:0 4px 15px rgba(255,64,129,0.5); animation: float 3s ease-in-out infinite;">👇 ${hintText} 👇</div>`;
+            
+            // 生成圖片並加入 allow-save 類別 (解除 iOS 長按封鎖)
+            const img = document.createElement('img');
+            img.src = dataUrl;
+            img.style.cssText = 'max-width:100%; max-height:70vh; border-radius:16px; box-shadow:0 10px 40px rgba(0,0,0,0.6); object-fit:contain;';
+            img.classList.add('allow-save'); 
+            
+            // 關閉按鈕
+            const closeBtn = document.createElement('button');
+            closeBtn.innerHTML = '<svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 6 6 18M6 6l12 12"/></svg>';
+            closeBtn.style.cssText = 'position:absolute; top:24px; right:24px; background:rgba(255,255,255,0.15); border:none; color:white; width:44px; height:44px; border-radius:50%; display:flex; justify-content:center; align-items:center; cursor:pointer; backdrop-filter:blur(4px);';
+            closeBtn.onclick = () => {
+                div.style.opacity = '0';
+                setTimeout(() => div.remove(), 300);
+            };
+
+            div.appendChild(hint);
+            div.appendChild(img);
+            div.appendChild(closeBtn);
+            document.body.appendChild(div);
+
+            // 觸發漸顯動畫
+            requestAnimationFrame(() => div.style.opacity = '1');
+
+        } else {
+            // 電腦版：維持原本的直接下載行為
+            const link = document.createElement('a'); 
+            link.download = `Support_Map_${Date.now()}.png`;
+            link.href = dataUrl; 
+            link.click();
+        }
     } catch(err) {
         console.error(err);
-        alert("下載完成！如果圖片未彈出，表示受限於瀏覽器跨域防護。請嘗試取消勾選『顯示頭像』再下載，或直接螢幕截圖。");
+        alert("圖片生成失敗！請嘗試取消勾選『顯示頭像』再試，或直接螢幕截圖。");
     }
     overlay.style.display = 'none';
 }
