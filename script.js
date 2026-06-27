@@ -64,9 +64,11 @@ function runNextImageLoad() {
     }
 }
 
-function enqueueImageLoad(task) {
+function enqueueImageLoad(task, priority = false) {
     return new Promise(resolve => {
-        imageLoadQueue.push(() => task().then(resolve, () => resolve(null)));
+        const queuedTask = () => task().then(resolve, () => resolve(null));
+        if (priority) imageLoadQueue.unshift(queuedTask);
+        else imageLoadQueue.push(queuedTask);
         runNextImageLoad();
     });
 }
@@ -122,15 +124,27 @@ function setQueuedImageSrc(imgEl, url, options = {}) {
     imgEl.loading = "lazy";
     imgEl.dataset.pendingSrc = url;
 
-    loadImageQueued(url).then(img => {
-        if (imgEl.dataset.pendingSrc !== url) return;
-        if (img) {
-            imgEl.src = url;
-            imgEl.style.display = '';
-        } else if (options.hideOnError !== false) {
-            imgEl.style.display = 'none';
+    enqueueImageLoad(() => new Promise(resolve => {
+        if (imgEl.dataset.pendingSrc !== url) {
+            resolve(null);
+            return;
         }
-    });
+
+        let settled = false;
+        const finish = (ok) => {
+            if (settled) return;
+            settled = true;
+            clearTimeout(timeout);
+            if (!ok && options.hideOnError !== false) imgEl.style.display = 'none';
+            resolve(ok ? imgEl : null);
+        };
+
+        const timeout = setTimeout(() => finish(false), IMAGE_LOAD_TIMEOUT_MS);
+        imgEl.onload = () => finish(true);
+        imgEl.onerror = () => finish(false);
+        imgEl.src = url;
+        imgEl.style.display = '';
+    }), true);
 }
 
 function hydrateQueuedImages(root) {
