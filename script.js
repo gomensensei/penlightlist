@@ -41,18 +41,115 @@ window.onerror = function(msg, url, line) {
 };
 
 // 核心：非同步分批下載引擎 (Batch Preloader)
-async function preloadImagesBatch(membersArray) {
-    const batchSize = 5;
-    for (let i = 0; i < membersArray.length; i += batchSize) {
-        const batch = membersArray.slice(i, i + batchSize);
-        await Promise.all(batch.map(m => {
-            if (!m.image) return Promise.resolve();
-            return new Promise(res => {
-                const img = new Image();
-                img.crossOrigin = "Anonymous"; 
-                img.onload = img.onerror = res;
-                img.src = m.image;
-            });
+const IMAGE_BATCH_SIZE = 5;
+const IMAGE_QUEUE_DELAY_MS = 90;
+const IMAGE_LOAD_TIMEOUT_MS = 5000;
+let activeImageLoads = 0;
+const imageLoadQueue = [];
+const imageLoadCache = new Map();
+
+function delay(ms) {
+    return new Promise(resolve => setTimeout(resolve, ms));
+}
+
+function runNextImageLoad() {
+    while (activeImageLoads < IMAGE_BATCH_SIZE && imageLoadQueue.length > 0) {
+        const next = imageLoadQueue.shift();
+        activeImageLoads++;
+        next().finally(async () => {
+            await delay(IMAGE_QUEUE_DELAY_MS);
+            activeImageLoads--;
+            runNextImageLoad();
+        });
+    }
+}
+
+function enqueueImageLoad(task) {
+    return new Promise(resolve => {
+        imageLoadQueue.push(() => task().then(resolve, () => resolve(null)));
+        runNextImageLoad();
+    });
+}
+
+function loadImageQueued(url, options = {}) {
+    if (!url) return Promise.resolve(null);
+    const cacheKey = `${options.cors ? 'cors' : 'plain'}:${url}`;
+    if (imageLoadCache.has(cacheKey)) return imageLoadCache.get(cacheKey);
+
+    const request = enqueueImageLoad(() => new Promise(resolve => {
+        const img = new Image();
+        if (options.cors) img.crossOrigin = "Anonymous";
+        img.decoding = "async";
+
+        let settled = false;
+        const finish = (loadedImg) => {
+            if (settled) return;
+            settled = true;
+            clearTimeout(timeout);
+            resolve(loadedImg);
+        };
+
+        const timeout = setTimeout(() => finish(null), IMAGE_LOAD_TIMEOUT_MS);
+        img.onload = () => finish(img);
+        img.onerror = () => finish(null);
+        img.src = url;
+    })).then(img => {
+        if (!img) imageLoadCache.delete(cacheKey);
+        return img;
+    });
+
+    imageLoadCache.set(cacheKey, request);
+    return request;
+}
+
+function escapeAttr(value) {
+    return String(value || '')
+        .replace(/&/g, '&amp;')
+        .replace(/"/g, '&quot;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;');
+}
+
+function setQueuedImageSrc(imgEl, url, options = {}) {
+    if (!imgEl || !url) {
+        if (imgEl && options.hideOnError !== false) imgEl.style.display = 'none';
+        return;
+    }
+
+    imgEl.removeAttribute('src');
+    imgEl.removeAttribute('crossorigin');
+    imgEl.decoding = "async";
+    imgEl.loading = "lazy";
+    imgEl.dataset.pendingSrc = url;
+
+    loadImageQueued(url).then(img => {
+        if (imgEl.dataset.pendingSrc !== url) return;
+        if (img) {
+            imgEl.src = url;
+            imgEl.style.display = '';
+        } else if (options.hideOnError !== false) {
+            imgEl.style.display = 'none';
+        }
+    });
+}
+
+function hydrateQueuedImages(root) {
+    root.querySelectorAll('img[data-img-src]').forEach(img => {
+        setQueuedImageSrc(img, img.getAttribute('data-img-src'));
+    });
+}
+
+async function preloadImagesBatch(membersArray, onProgress) {
+    const membersWithImages = membersArray.filter(m => m.image);
+    const total = membersWithImages.length;
+    let loaded = 0;
+
+    for (let i = 0; i < total; i += IMAGE_BATCH_SIZE) {
+        const batch = membersWithImages.slice(i, i + IMAGE_BATCH_SIZE);
+        await Promise.all(batch.map(async m => {
+            await loadImageQueued(m.image);
+            loaded++;
+            if (onProgress) onProgress(loaded, total, m);
         }));
     }
 }
@@ -135,7 +232,7 @@ async function initApp() {
     renderHTMLGrid();
 
     if (membersDB.length > 0) {
-        preloadImagesBatch(membersDB);
+        preloadImagesBatch(membersDB).catch(err => console.warn("Image preload failed:", err));
     }
 }
 
@@ -384,7 +481,7 @@ function renderHTMLGrid() {
                 cell.innerHTML = `
                     <div class="cell-bg" style="${bg}"></div>${overlay}
                     <div class="cell-content">
-                        ${photo ? `<div class="avatar-wrap"><img src="${obj.image}" class="avatar-img" crossorigin="anonymous" onerror="this.style.display='none'"></div>` : ''}
+                        ${photo ? `<div class="avatar-wrap"><img data-img-src="${escapeAttr(obj.image)}" class="avatar-img" onerror="this.style.display='none'"></div>` : ''}
                         <div class="text-wrap">
                             ${finalGenHtml}
                             ${finalNameHtml}
@@ -394,6 +491,7 @@ function renderHTMLGrid() {
                     </div>
                     <div class="remove-btn" onclick="removeMember(event, ${idx})">${sysUI.x}</div>
                 `;
+                hydrateQueuedImages(cell);
                 cell.onclick = () => openModal(idx);
             }
             htmlGrid.appendChild(cell);
@@ -410,7 +508,8 @@ function openModal(idx) {
     membersDB.forEach(m => {
         const d = document.createElement('div'); d.className = 'member-option';
         const nameToUse = (currentLang === 'ko') ? m.name_ko : (['en', 'th', 'id'].includes(currentLang) ? m.name_en : m.name_ja);
-        d.innerHTML = `<img src="${m.image}" crossorigin="anonymous"><span>${nameToUse}</span>`;
+        d.innerHTML = `<img data-img-src="${escapeAttr(m.image)}"><span>${nameToUse}</span>`;
+        hydrateQueuedImages(d);
         d.onclick = () => { gridSlots[activeSlotIndex] = m; closeModal(); renderHTMLGrid(); };
         b.appendChild(d);
     });
@@ -524,15 +623,6 @@ async function drawCanvasExport() {
     const nick = document.getElementById('cfgNick').checked;
     const mode = document.querySelector('input[name="colorMode"]:checked').value;
 
-    const loadImage = (url) => new Promise((resolve) => {
-        const img = new Image(); 
-        img.crossOrigin = "Anonymous"; 
-        let timeout = setTimeout(() => resolve(null), 3000); 
-        img.onload = () => { clearTimeout(timeout); resolve(img); };
-        img.onerror = () => { clearTimeout(timeout); resolve(null); }; 
-        img.src = url; 
-    });
-
     for (let i = 0; i < gridSlots.length; i++) {
         let cellsInThisRow = cols;
         if (Math.floor(i / cols) === rows - 1) cellsInThisRow = gridSlots.length % cols || cols;
@@ -592,7 +682,7 @@ async function drawCanvasExport() {
             }
 
             if (photo && member.image) {
-                const img = await loadImage(member.image);
+                const img = await loadImageQueued(member.image, { cors: true });
                 if (img) {
                     const avatarRadius = cellW * 0.22, cx = x + cellW / 2, cy = y + cellH * 0.33; 
                     ctx.beginPath(); ctx.arc(cx, cy, avatarRadius + 6, 0, Math.PI * 2); 
