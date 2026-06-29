@@ -28,6 +28,7 @@ const PERFORMANCE_ID_BY_PRESET = {
 };
 
 const PENLIGHT_SAVE_FALLBACK_I18N = {
+    accountNavGuest: 'Account',
     cloud_local_only: 'Local only',
     cloud_available: 'Cloud save available',
     cloud_synced: 'Synced',
@@ -85,9 +86,11 @@ function tr(key, replacements = {}) {
 }
 
 function setCloudMessage(keyOrText, replacements = {}) {
-    const node = document.getElementById('cloudMessage');
-    if (!node) return;
-    node.textContent = keyOrText ? tr(keyOrText, replacements) : '';
+    const text = keyOrText ? tr(keyOrText, replacements) : '';
+    ['cloudMessage', 'cloudSaveMessage'].forEach(id => {
+        const node = document.getElementById(id);
+        if (node) node.textContent = text;
+    });
 }
 
 function getCloudUserName() {
@@ -302,18 +305,23 @@ function renderTool48Cloud() {
     const cloudReady = Boolean(tool48Cloud.client);
     const selectedList = tool48Cloud.lists.find(list => list.id === tool48Cloud.selectedListId) || null;
 
-    const status = document.getElementById('cloudModeStatus');
-    if (status) {
-        const key = !cloudReady
-            ? 'cloud_unavailable'
-            : !loggedIn
-                ? 'cloud_local_only'
-                : tool48Cloud.dirty
-                    ? 'cloud_unsaved'
-                    : selectedList
-                        ? 'cloud_synced'
-                        : 'cloud_available';
-        status.textContent = tr(key);
+    const key = !cloudReady
+        ? 'cloud_unavailable'
+        : !loggedIn
+            ? 'cloud_local_only'
+            : tool48Cloud.dirty
+                ? 'cloud_unsaved'
+                : selectedList
+                    ? 'cloud_synced'
+                    : 'cloud_available';
+    ['cloudModeStatus', 'cloudStatus'].forEach(id => {
+        const status = document.getElementById(id);
+        if (status) status.textContent = tr(key);
+    });
+
+    const toggle = document.getElementById('accountToggleBtn');
+    if (toggle) {
+        toggle.textContent = loggedIn ? getCloudUserName() : tr('accountNavGuest');
     }
 
     const loggedOut = document.getElementById('cloudLoggedOut');
@@ -324,9 +332,6 @@ function renderTool48Cloud() {
     const userLabel = document.getElementById('cloudUserLabel');
     if (userLabel) userLabel.textContent = loggedIn ? getCloudUserName() : '';
 
-    const titleInput = document.getElementById('cloudListTitleInput');
-    if (titleInput && !titleInput.value) titleInput.value = document.getElementById('customTitle')?.value || '';
-
     renderCloudListOptions();
 
     const defaultCheckbox = document.getElementById('cloudDefaultCheckbox');
@@ -335,7 +340,7 @@ function renderTool48Cloud() {
     }
 
     const cloudDisabled = !cloudReady || !loggedIn || tool48Cloud.busy;
-    ['cloudListTitleInput', 'cloudListSelect', 'cloudDefaultCheckbox', 'cloudRefreshBtn',
+    ['cloudListSelect', 'cloudDefaultCheckbox', 'cloudRefreshBtn',
      'cloudFollowPerformanceBtn', 'cloudSaveNewBtn', 'cloudLoadBtn', 'cloudUpdateBtn',
      'cloudDeleteBtn', 'cloudLogoutBtn'].forEach(id => {
         const node = document.getElementById(id);
@@ -458,7 +463,7 @@ async function saveCurrentListToCloud() {
     setTool48CloudBusy(true);
     try {
         const payload = createPenlightPayload();
-        const title = document.getElementById('cloudListTitleInput')?.value.trim() || payload.title || 'Penlight List';
+        const title = payload.title || 'Penlight List';
         const isDefault = document.getElementById('cloudDefaultCheckbox')?.checked || false;
         await maybeUnsetExistingDefault();
 
@@ -498,7 +503,7 @@ async function updateSelectedCloudList() {
     setTool48CloudBusy(true);
     try {
         const payload = createPenlightPayload();
-        const title = document.getElementById('cloudListTitleInput')?.value.trim() || payload.title || selected.title;
+        const title = payload.title || selected.title || 'Penlight List';
         const isDefault = document.getElementById('cloudDefaultCheckbox')?.checked || false;
         await maybeUnsetExistingDefault();
 
@@ -561,7 +566,6 @@ async function loadSelectedCloudList() {
         }
 
         applyPenlightPayload(payload, { markDirty: false });
-        document.getElementById('cloudListTitleInput').value = selected.title || payload.title || '';
         const defaultCheckbox = document.getElementById('cloudDefaultCheckbox');
         if (defaultCheckbox) defaultCheckbox.checked = Boolean(selected.is_default);
         tool48Cloud.dirty = false;
@@ -670,6 +674,7 @@ async function signInTool48() {
     setCloudMessage('cloud_signed_in');
     await loadCloudLists().catch(err => setCloudMessage('cloud_action_failed', { message: err.message || err }));
     if (getLocalSaveEnvelope()) setCloudMessage('cloud_local_import_offer');
+    closeAccountPopover();
     renderTool48Cloud();
 }
 
@@ -705,6 +710,7 @@ async function signUpTool48() {
     tool48Cloud.user = data.session?.user || tool48Cloud.user;
     setCloudMessage(tool48Cloud.user ? 'cloud_signed_in' : 'cloud_signup_needs_confirm');
     if (tool48Cloud.user) await loadCloudLists().catch(err => setCloudMessage('cloud_action_failed', { message: err.message || err }));
+    if (tool48Cloud.user) closeAccountPopover();
     renderTool48Cloud();
 }
 
@@ -721,14 +727,40 @@ async function signOutTool48() {
     renderTool48Cloud();
 }
 
+function closeAccountPopover() {
+    const popover = document.getElementById('accountPopover');
+    if (popover) popover.hidden = true;
+}
+
 function bindPenlightSaveEvents() {
+    const popover = document.getElementById('accountPopover');
+    const toggle = document.getElementById('accountToggleBtn');
+    toggle?.addEventListener('click', () => {
+        if (popover) popover.hidden = !popover.hidden;
+    });
+    document.addEventListener('click', event => {
+        if (!popover || popover.hidden) return;
+        if (popover.contains(event.target) || toggle?.contains(event.target)) return;
+        popover.hidden = true;
+    });
+    document.addEventListener('keydown', event => {
+        if (event.key === 'Escape') closeAccountPopover();
+    });
+
     document.getElementById('localSaveBtn')?.addEventListener('click', saveCurrentListLocally);
     document.getElementById('localLoadBtn')?.addEventListener('click', loadLocalPenlightList);
-    document.getElementById('cloudListTitleInput')?.addEventListener('input', event => {
-        event.target.dataset.touched = 'true';
+    document.getElementById('scheduleRailPrev')?.addEventListener('click', () => {
+        document.getElementById('scheduleRail')?.scrollBy({ left: -260, behavior: 'smooth' });
     });
-    document.getElementById('cloudSignInBtn')?.addEventListener('click', signInTool48);
-    document.getElementById('cloudSignUpBtn')?.addEventListener('click', signUpTool48);
+    document.getElementById('scheduleRailNext')?.addEventListener('click', () => {
+        document.getElementById('scheduleRail')?.scrollBy({ left: 260, behavior: 'smooth' });
+    });
+    document.getElementById('cloudLoggedOut')?.addEventListener('submit', event => {
+        event.preventDefault();
+        const action = event.submitter?.dataset.authAction === 'signup' ? 'signup' : 'signin';
+        if (action === 'signup') signUpTool48();
+        else signInTool48();
+    });
     document.getElementById('cloudLogoutBtn')?.addEventListener('click', signOutTool48);
     document.getElementById('cloudRefreshBtn')?.addEventListener('click', () => {
         loadCloudLists(true).catch(error => setCloudMessage('cloud_action_failed', { message: error.message || error }));
@@ -741,8 +773,6 @@ function bindPenlightSaveEvents() {
     document.getElementById('cloudListSelect')?.addEventListener('change', event => {
         tool48Cloud.selectedListId = event.target.value;
         const selected = getSelectedCloudList();
-        const titleInput = document.getElementById('cloudListTitleInput');
-        if (titleInput && selected) titleInput.value = selected.title || '';
         const defaultCheckbox = document.getElementById('cloudDefaultCheckbox');
         if (defaultCheckbox && selected) defaultCheckbox.checked = Boolean(selected.is_default);
         renderTool48Cloud();
@@ -1002,6 +1032,7 @@ async function initApp() {
             
             const sel = document.getElementById('scheduleSelector');
             if (sel) sel.value = latestSchedule.id; // 將選單同步設為該公演
+            markActiveScheduleChip();
             
         } else {
             // 如果剛好無最新公演，Fallback 載入 16 人空白格
@@ -1030,7 +1061,7 @@ async function initApp() {
 
 // 新增：動態生成下拉選單
 // script.js
-function populateScheduleDropdown() {
+function populateScheduleSelectLegacy() {
     const sel = document.getElementById('scheduleSelector');
     if (!sel) return;
 
@@ -1056,10 +1087,81 @@ function populateScheduleDropdown() {
     });
 }
 
+function getScheduleLabel(schedule) {
+    const displayTitle = schedule.title || schedule.performance || schedule.name || 'Stage';
+    const displayDate = schedule.date || '';
+    return `${displayDate} ${displayTitle}`.trim();
+}
+
+function markActiveScheduleChip() {
+    const rail = document.getElementById('scheduleRail');
+    if (!rail) return;
+    rail.querySelectorAll('.schedule-chip').forEach(button => {
+        button.classList.toggle('is-active', button.dataset.scheduleId === currentTitleState?.id);
+    });
+}
+
+function populateScheduleDropdown() {
+    const rail = document.getElementById('scheduleRail');
+    if (!rail) return;
+    rail.innerHTML = '';
+
+    if (!schedulesDB.length) {
+        const empty = document.createElement('button');
+        empty.className = 'schedule-chip';
+        empty.type = 'button';
+        empty.disabled = true;
+        empty.textContent = tr('opt_schedule');
+        rail.appendChild(empty);
+        return;
+    }
+
+    schedulesDB.forEach(schedule => {
+        const button = document.createElement('button');
+        button.className = 'schedule-chip';
+        button.type = 'button';
+        button.dataset.scheduleId = schedule.id;
+        button.textContent = getScheduleLabel(schedule);
+        button.title = getScheduleLabel(schedule);
+        button.addEventListener('click', () => loadScheduleById(schedule.id));
+        rail.appendChild(button);
+    });
+    markActiveScheduleChip();
+}
+
+function loadScheduleById(selectedId) {
+    const schedule = schedulesDB.find(s => s.id === selectedId);
+    if (!schedule) return false;
+
+    const normalizeName = (name) => String(name || '').replace(/\s+/g, '');
+    const matchedMembers = schedule.members.map(schedName => {
+        const normSchedName = normalizeName(schedName);
+        return membersDB.find(m => normalizeName(m.name_ja) === normSchedName) || null;
+    });
+
+    let targetSize = matchedMembers.length;
+    if (targetSize < 8) targetSize = 8;
+    else if (targetSize > 8 && targetSize <= 12) targetSize = 12;
+    else if (targetSize > 12) targetSize = 16;
+
+    const newGrid = new Array(targetSize).fill(null);
+    matchedMembers.forEach((member, idx) => { if (idx < targetSize) newGrid[idx] = member; });
+
+    gridSlots = newGrid;
+    currentTitleState = { type: 'custom', id: selectedId };
+    document.getElementById('customTitle').value = getScheduleLabel(schedule);
+    renderHTMLGrid();
+    setPenlightDirty();
+    markActiveScheduleChip();
+
+    const activeChip = [...document.querySelectorAll('.schedule-chip')]
+        .find(button => button.dataset.scheduleId === selectedId);
+    activeChip?.scrollIntoView({ behavior: 'smooth', block: 'nearest', inline: 'center' });
+    return true;
+}
+
 document.getElementById('customTitle').addEventListener('input', () => {
     isTitleCustomized = true;
-    const cloudTitleInput = document.getElementById('cloudListTitleInput');
-    if (cloudTitleInput && !cloudTitleInput.dataset.touched) cloudTitleInput.value = document.getElementById('customTitle').value;
     setPenlightDirty();
 });
 
@@ -1157,7 +1259,7 @@ document.querySelectorAll('input[name="colorMode"]').forEach(r => r.addEventList
 }));
 
 // 新增：監聽「最新公演選單」
-document.getElementById('scheduleSelector').addEventListener('change', (e) => {
+document.getElementById('scheduleSelector')?.addEventListener('change', (e) => {
     const selectedId = e.target.value;
     if (selectedId) {
         const schedule = schedulesDB.find(s => s.id === selectedId);

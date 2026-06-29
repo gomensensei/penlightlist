@@ -47,6 +47,28 @@
             <button id="themeToggle" class="icon-btn">
                 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3a6 6 0 0 0 9 9 9 9 0 1 1-9-9Z"/></svg>
             </button>
+            <div class="account-wrap">
+                <button class="account-toggle" id="accountToggleBtn" type="button" data-i18n="accountNavGuest">Account</button>
+                <div class="account-popover" id="accountPopover" hidden>
+                    <p class="cloud-helper" id="cloudStatus" data-i18n="cloud_local_only">Local only</p>
+                    <form class="cloud-login-form" id="cloudLoggedOut">
+                        <input id="cloudNicknameInput" class="cloud-input" type="text" autocomplete="nickname" data-i18n-placeholder="cloud_nickname_placeholder" placeholder="nickname">
+                        <input id="cloudEmailInput" class="cloud-input" type="email" inputmode="email" autocomplete="email" data-i18n-placeholder="cloud_email_placeholder" placeholder="Tool48 Account email">
+                        <input id="cloudPasswordInput" class="cloud-input" type="password" autocomplete="current-password" minlength="6" data-i18n-placeholder="cloud_password_placeholder" placeholder="6+ characters">
+                        <div class="account-button-row">
+                            <button class="btn" id="cloudSignInBtn" type="submit" data-auth-action="signin" data-i18n="cloud_sign_in">Sign in</button>
+                            <button class="btn" id="cloudSignUpBtn" type="submit" data-auth-action="signup" data-i18n="cloud_create_account">Create account</button>
+                        </div>
+                    </form>
+                    <div class="cloud-user-section" id="cloudLoggedIn" hidden>
+                        <div class="cloud-user-row">
+                            <span class="cloud-user-pill" id="cloudUserLabel"></span>
+                            <button class="btn" id="cloudLogoutBtn" type="button" data-i18n="cloud_sign_out">Sign out</button>
+                        </div>
+                    </div>
+                    <p class="cloud-helper" id="cloudMessage"></p>
+                </div>
+            </div>
         </div>
     </header>
 
@@ -58,13 +80,13 @@
                     <svg class="blinking-pen" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.12 2.12 0 0 1 3 3L12 15l-4 1 1-4Z"/></svg>
                     <input type="text" id="customTitle" class="custom-title-input" value="「ここからだ」公演" placeholder="📝 點擊輸入公演名稱...">
                 </div>
+                <div class="schedule-rail-row" aria-label="Latest performances">
+                    <button class="schedule-rail-arrow" id="scheduleRailPrev" type="button" aria-label="Previous performances">&lsaquo;</button>
+                    <div class="schedule-rail" id="scheduleRail" tabindex="0"></div>
+                    <button class="schedule-rail-arrow" id="scheduleRailNext" type="button" aria-label="Next performances">&rsaquo;</button>
+                </div>
                 
                 <div class="controls-row" style="display: flex; gap: 10px; flex-wrap: wrap;">
-                    <div class="select-group" style="flex: 1;">
-                        <select id="scheduleSelector" class="preset-select breathing-select" style="width: 100%;">
-                            <option value="" data-i18n="opt_schedule">-- 讀取最新公演名單 --</option>
-                        </select>
-                    </div>
                     <div class="select-group" style="flex: 1;">
                         <select id="presetSelector" class="preset-select breathing-select" style="width: 100%;">
                             <option value="" data-i18n="preset_placeholder">-- 快速載入公演模板 (空白格) --</option>
@@ -158,27 +180,8 @@
                     <p class="cloud-helper" id="localSaveMeta"></p>
                 </div>
 
-                <div class="save-section cloud-auth-section" id="cloudLoggedOut">
-                    <div class="save-section-title" data-i18n="cloud_account_title">Tool48 Account</div>
-                    <input id="cloudNicknameInput" class="cloud-input" type="text" autocomplete="nickname" data-i18n-placeholder="cloud_nickname_placeholder" placeholder="nickname">
-                    <input id="cloudEmailInput" class="cloud-input" type="email" inputmode="email" autocomplete="email" data-i18n-placeholder="cloud_email_placeholder" placeholder="Tool48 Account email">
-                    <input id="cloudPasswordInput" class="cloud-input" type="password" autocomplete="current-password" minlength="6" data-i18n-placeholder="cloud_password_placeholder" placeholder="6+ characters">
-                    <div class="flex-btns">
-                        <button class="btn" id="cloudSignInBtn" type="button" data-i18n="cloud_sign_in">Sign in</button>
-                        <button class="btn" id="cloudSignUpBtn" type="button" data-i18n="cloud_create_account">Create account</button>
-                    </div>
-                </div>
-
-                <div class="save-section cloud-user-section" id="cloudLoggedIn" hidden>
-                    <div class="cloud-user-row">
-                        <span class="cloud-user-pill" id="cloudUserLabel"></span>
-                        <button class="btn" id="cloudLogoutBtn" type="button" data-i18n="cloud_sign_out">Sign out</button>
-                    </div>
-                </div>
-
                 <div class="save-section cloud-save-section">
                     <div class="save-section-title" data-i18n="cloud_save_title">Cloud save</div>
-                    <input id="cloudListTitleInput" class="cloud-input" type="text" data-i18n-placeholder="cloud_list_title_placeholder" placeholder="Cloud list title">
                     <select id="cloudListSelect" class="preset-select">
                         <option value="" data-i18n="cloud_list_placeholder">-- Select cloud list --</option>
                     </select>
@@ -197,7 +200,7 @@
                     <div class="flex-btns">
                         <button class="btn cloud-danger-btn" id="cloudDeleteBtn" type="button" data-i18n="cloud_delete_btn">Delete selected</button>
                     </div>
-                    <p class="cloud-helper" id="cloudMessage"></p>
+                    <p class="cloud-helper" id="cloudSaveMessage"></p>
                 </div>
             </div>
 

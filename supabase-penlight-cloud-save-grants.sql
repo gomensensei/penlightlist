@@ -6,10 +6,18 @@ grant usage on schema public to anon, authenticated;
 
 grant select on table public.members to anon, authenticated;
 grant select on table public.performances to anon, authenticated;
+grant references on table public.members to authenticated;
+grant references on table public.performances to authenticated;
+
+revoke all on table public.user_followed_performances from anon;
+revoke all on table public.penlight_lists from anon;
+revoke all on table public.penlight_list_items from anon;
 
 grant select, insert, update, delete on table public.user_followed_performances to authenticated;
 grant select, insert, update, delete on table public.penlight_lists to authenticated;
 grant select, insert, update, delete on table public.penlight_list_items to authenticated;
+grant references on table public.penlight_lists to authenticated;
+grant usage, select on all sequences in schema public to authenticated;
 
 alter table public.members enable row level security;
 alter table public.performances enable row level security;
