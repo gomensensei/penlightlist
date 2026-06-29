@@ -80,10 +80,54 @@
                     <svg class="blinking-pen" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.12 2.12 0 0 1 3 3L12 15l-4 1 1-4Z"/></svg>
                     <input type="text" id="customTitle" class="custom-title-input" value="「ここからだ」公演" placeholder="📝 點擊輸入公演名稱...">
                 </div>
-                <div class="schedule-rail-row" aria-label="Latest performances">
+                <div class="quick-save-row" id="quickSaveRow">
+                    <div class="save-popover-wrap">
+                        <button class="save-dock-btn" id="localSaveToggleBtn" type="button">
+                            <span data-i18n="local_save_title">Local save</span>
+                            <span class="save-dock-sub" id="localSaveMeta"></span>
+                        </button>
+                        <div class="save-popover local-save-popover" id="localSavePopover" hidden>
+                            <div class="save-popover-title" data-i18n="local_save_title">Local save</div>
+                            <div class="flex-btns">
+                                <button class="btn" id="localSaveBtn" type="button" data-i18n="local_save_btn">Save locally</button>
+                                <button class="btn" id="localLoadBtn" type="button" data-i18n="local_load_btn">Load local save</button>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="save-popover-wrap cloud-save-dock" id="cloudSaveDock" hidden>
+                        <button class="save-dock-btn cloud-save-toggle" id="cloudSaveToggleBtn" type="button">
+                            <span data-i18n="cloud_save_title">Cloud save</span>
+                            <span class="save-dock-sub" id="cloudModeStatus" data-i18n="cloud_local_only">Local only</span>
+                        </button>
+                        <div class="save-popover cloud-save-popover" id="cloudSavePopover" hidden>
+                            <div class="save-popover-title" data-i18n="cloud_save_title">Cloud save</div>
+                            <select id="cloudListSelect" class="preset-select">
+                                <option value="" data-i18n="cloud_list_placeholder">-- Select cloud list --</option>
+                            </select>
+                            <label class="toggle-label compact-toggle"><input type="checkbox" id="cloudDefaultCheckbox"> <span data-i18n="cloud_mark_default">Mark as default</span></label>
+                            <div class="flex-btns">
+                                <button class="btn" id="cloudRefreshBtn" type="button" data-i18n="cloud_refresh_btn">Refresh</button>
+                                <button class="btn" id="cloudFollowPerformanceBtn" type="button" data-i18n="cloud_follow_performance_btn">Save performance</button>
+                            </div>
+                            <div class="flex-btns">
+                                <button class="btn btn-primary" id="cloudSaveNewBtn" type="button" data-i18n="cloud_save_new_btn">Save current list to cloud</button>
+                            </div>
+                            <div class="flex-btns">
+                                <button class="btn" id="cloudLoadBtn" type="button" data-i18n="cloud_load_btn">Load cloud list</button>
+                                <button class="btn" id="cloudUpdateBtn" type="button" data-i18n="cloud_update_btn">Update selected</button>
+                            </div>
+                            <div class="flex-btns">
+                                <button class="btn cloud-danger-btn" id="cloudDeleteBtn" type="button" data-i18n="cloud_delete_btn">Delete selected</button>
+                            </div>
+                            <p class="cloud-helper" id="cloudSaveMessage"></p>
+                        </div>
+                    </div>
+                </div>
+                <div class="schedule-rail-row" id="scheduleRailRow" aria-label="Latest performances">
                     <button class="schedule-rail-arrow" id="scheduleRailPrev" type="button" aria-label="Previous performances">&lsaquo;</button>
                     <div class="schedule-rail" id="scheduleRail" tabindex="0"></div>
                     <button class="schedule-rail-arrow" id="scheduleRailNext" type="button" aria-label="Next performances">&rsaquo;</button>
+                    <button class="schedule-rail-expand" id="scheduleRailExpandBtn" type="button" aria-expanded="false" data-i18n="schedule_expand_btn">Expand</button>
                 </div>
                 
                 <div class="controls-row" style="display: flex; gap: 10px; flex-wrap: wrap;">
@@ -164,43 +208,6 @@
                         <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
                         <span data-i18n="sort_gen">按期數</span>
                     </button>
-                </div>
-            </div>
-
-            <div class="control-group tool48-save-panel" id="tool48CloudPanel">
-                <label class="title" data-i18n="cloud_panel_title">Tool48 Account / Cloud Save</label>
-                <p class="cloud-status-pill" id="cloudModeStatus" data-i18n="cloud_local_only">Local only</p>
-
-                <div class="save-section">
-                    <div class="save-section-title" data-i18n="local_save_title">Local save</div>
-                    <div class="flex-btns">
-                        <button class="btn" id="localSaveBtn" type="button" data-i18n="local_save_btn">Save locally</button>
-                        <button class="btn" id="localLoadBtn" type="button" data-i18n="local_load_btn">Load local save</button>
-                    </div>
-                    <p class="cloud-helper" id="localSaveMeta"></p>
-                </div>
-
-                <div class="save-section cloud-save-section">
-                    <div class="save-section-title" data-i18n="cloud_save_title">Cloud save</div>
-                    <select id="cloudListSelect" class="preset-select">
-                        <option value="" data-i18n="cloud_list_placeholder">-- Select cloud list --</option>
-                    </select>
-                    <label class="toggle-label compact-toggle"><input type="checkbox" id="cloudDefaultCheckbox"> <span data-i18n="cloud_mark_default">Mark as default</span></label>
-                    <div class="flex-btns">
-                        <button class="btn" id="cloudRefreshBtn" type="button" data-i18n="cloud_refresh_btn">Refresh</button>
-                        <button class="btn" id="cloudFollowPerformanceBtn" type="button" data-i18n="cloud_follow_performance_btn">Save performance</button>
-                    </div>
-                    <div class="flex-btns">
-                        <button class="btn btn-primary" id="cloudSaveNewBtn" type="button" data-i18n="cloud_save_new_btn">Save current list to cloud</button>
-                    </div>
-                    <div class="flex-btns">
-                        <button class="btn" id="cloudLoadBtn" type="button" data-i18n="cloud_load_btn">Load cloud list</button>
-                        <button class="btn" id="cloudUpdateBtn" type="button" data-i18n="cloud_update_btn">Update selected</button>
-                    </div>
-                    <div class="flex-btns">
-                        <button class="btn cloud-danger-btn" id="cloudDeleteBtn" type="button" data-i18n="cloud_delete_btn">Delete selected</button>
-                    </div>
-                    <p class="cloud-helper" id="cloudSaveMessage"></p>
                 </div>
             </div>
 

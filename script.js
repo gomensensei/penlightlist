@@ -13,6 +13,7 @@ let gridSlots = new Array(16).fill(null);
 let activeSlotIndex = -1;
 let currentTitleState = { type: 'preset', id: '16_spring' }; 
 let isTitleCustomized = false;
+let scheduleRailExpanded = false;
 
 const htmlGrid = document.getElementById('htmlGrid');
 
@@ -64,7 +65,9 @@ const PENLIGHT_SAVE_FALLBACK_I18N = {
     cloud_confirm_delete: 'Delete the selected cloud list?',
     cloud_action_failed: 'Cloud action failed: {message}',
     cloud_permission_fix_needed: 'Database permission is missing. Run supabase-penlight-cloud-save-grants.sql in Supabase SQL Editor, then try again.',
-    cloud_local_import_offer: 'Local save found. You can save the current list to cloud.'
+    cloud_local_import_offer: 'Local save found. You can save the current list to cloud.',
+    schedule_expand_btn: 'Expand',
+    schedule_collapse_btn: 'Collapse'
 };
 
 const tool48Cloud = {
@@ -340,6 +343,15 @@ function renderTool48Cloud() {
 
     const userLabel = document.getElementById('cloudUserLabel');
     if (userLabel) userLabel.textContent = loggedIn ? getCloudUserName() : '';
+
+    const cloudDock = document.getElementById('cloudSaveDock');
+    if (cloudDock) cloudDock.hidden = !loggedIn;
+    if (!loggedIn) {
+        const cloudPopover = document.getElementById('cloudSavePopover');
+        if (cloudPopover) cloudPopover.hidden = true;
+        const cloudToggle = document.getElementById('cloudSaveToggleBtn');
+        if (cloudToggle) cloudToggle.setAttribute('aria-expanded', 'false');
+    }
 
     renderCloudListOptions();
 
@@ -741,10 +753,33 @@ function closeAccountPopover() {
     if (popover) popover.hidden = true;
 }
 
+function closeSavePopovers(exceptId = '') {
+    ['localSavePopover', 'cloudSavePopover'].forEach(id => {
+        if (id === exceptId) return;
+        const popover = document.getElementById(id);
+        if (popover) popover.hidden = true;
+        const toggleId = id === 'localSavePopover' ? 'localSaveToggleBtn' : 'cloudSaveToggleBtn';
+        const toggle = document.getElementById(toggleId);
+        if (toggle) toggle.setAttribute('aria-expanded', 'false');
+    });
+}
+
+function toggleSavePopover(popoverId, toggleId) {
+    const popover = document.getElementById(popoverId);
+    const toggle = document.getElementById(toggleId);
+    if (!popover || !toggle) return;
+    const willOpen = popover.hidden;
+    closeAccountPopover();
+    closeSavePopovers(popoverId);
+    popover.hidden = !willOpen;
+    toggle.setAttribute('aria-expanded', String(willOpen));
+}
+
 function bindPenlightSaveEvents() {
     const popover = document.getElementById('accountPopover');
     const toggle = document.getElementById('accountToggleBtn');
     toggle?.addEventListener('click', () => {
+        closeSavePopovers();
         if (popover) popover.hidden = !popover.hidden;
     });
     document.addEventListener('click', event => {
@@ -753,7 +788,23 @@ function bindPenlightSaveEvents() {
         popover.hidden = true;
     });
     document.addEventListener('keydown', event => {
-        if (event.key === 'Escape') closeAccountPopover();
+        if (event.key === 'Escape') {
+            closeAccountPopover();
+            closeSavePopovers();
+        }
+    });
+
+    document.getElementById('localSaveToggleBtn')?.addEventListener('click', event => {
+        event.stopPropagation();
+        toggleSavePopover('localSavePopover', 'localSaveToggleBtn');
+    });
+    document.getElementById('cloudSaveToggleBtn')?.addEventListener('click', event => {
+        event.stopPropagation();
+        toggleSavePopover('cloudSavePopover', 'cloudSaveToggleBtn');
+    });
+    document.addEventListener('click', event => {
+        if (event.target.closest?.('.save-popover-wrap')) return;
+        closeSavePopovers();
     });
 
     document.getElementById('localSaveBtn')?.addEventListener('click', saveCurrentListLocally);
@@ -763,6 +814,9 @@ function bindPenlightSaveEvents() {
     });
     document.getElementById('scheduleRailNext')?.addEventListener('click', () => {
         document.getElementById('scheduleRail')?.scrollBy({ left: 260, behavior: 'smooth' });
+    });
+    document.getElementById('scheduleRailExpandBtn')?.addEventListener('click', () => {
+        setScheduleRailExpanded(!scheduleRailExpanded);
     });
     document.getElementById('cloudLoggedOut')?.addEventListener('submit', event => {
         event.preventDefault();
@@ -1096,6 +1150,26 @@ function populateScheduleSelectLegacy() {
     });
 }
 
+function updateScheduleExpandButton() {
+    const button = document.getElementById('scheduleRailExpandBtn');
+    if (!button) return;
+    button.textContent = tr(scheduleRailExpanded ? 'schedule_collapse_btn' : 'schedule_expand_btn');
+    button.setAttribute('aria-expanded', String(scheduleRailExpanded));
+}
+
+function setScheduleRailExpanded(expanded) {
+    scheduleRailExpanded = Boolean(expanded);
+    const row = document.getElementById('scheduleRailRow');
+    if (row) row.classList.toggle('is-expanded', scheduleRailExpanded);
+    updateScheduleExpandButton();
+
+    if (!scheduleRailExpanded) {
+        const activeChip = [...document.querySelectorAll('.schedule-chip')]
+            .find(button => button.dataset.scheduleId === currentTitleState?.id);
+        activeChip?.scrollIntoView({ behavior: 'smooth', block: 'nearest', inline: 'center' });
+    }
+}
+
 function getScheduleLabel(schedule) {
     const displayTitle = schedule.title || schedule.performance || schedule.name || 'Stage';
     const displayDate = schedule.date || '';
@@ -1136,6 +1210,7 @@ function populateScheduleDropdown() {
         rail.appendChild(button);
     });
     markActiveScheduleChip();
+    setScheduleRailExpanded(scheduleRailExpanded);
 }
 
 function loadScheduleById(selectedId) {
@@ -1209,6 +1284,7 @@ function applyLanguage() {
     // 新增：更新最新公演選單的第一行語言
     const schedSel = document.getElementById('scheduleSelector');
     if (schedSel && schedSel.options[0]) schedSel.options[0].textContent = d['opt_schedule'] || "-- 讀取最新公演名單 --";
+    updateScheduleExpandButton();
     renderTool48Cloud();
 }
 

@@ -69,7 +69,8 @@ body {
     gap: 10px;
 }
 body.dark-mode .account-popover { background: rgba(30,30,30,0.96); border-color: rgba(255,255,255,0.08); }
-.account-popover[hidden], .cloud-login-form[hidden], .cloud-user-section[hidden] { display: none !important; }
+.account-popover[hidden], .cloud-login-form[hidden], .cloud-user-section[hidden],
+.save-popover[hidden], .cloud-save-dock[hidden] { display: none !important; }
 .cloud-login-form { display: grid; gap: 8px; min-width: 0; }
 .account-button-row { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
 
@@ -152,9 +153,80 @@ body.dark-mode .title-input-wrapper { background: rgba(255,255,255,0.02); }
 .custom-title-input:focus { border-bottom-color: var(--primary); }
 
 .select-group { display: flex; gap: 10px; flex-wrap: wrap; flex-direction: column; margin-top: 8px;}
+.quick-save-row {
+    display: flex;
+    align-items: flex-start;
+    gap: 8px;
+    flex-wrap: wrap;
+    position: relative;
+    z-index: 30;
+}
+.save-popover-wrap {
+    position: relative;
+    display: flex;
+    min-width: min(220px, 100%);
+}
+.save-dock-btn {
+    width: 100%;
+    min-height: 44px;
+    padding: 8px 14px;
+    border-radius: var(--radius-sm);
+    border: 1px solid rgba(255,255,255,0.72);
+    background: rgba(255,255,255,0.72);
+    color: var(--text-main);
+    box-shadow: 0 4px 16px rgba(0,0,0,0.08);
+    cursor: pointer;
+    display: grid;
+    gap: 2px;
+    text-align: left;
+    font: inherit;
+    font-weight: 900;
+}
+.save-dock-btn:hover,
+.save-dock-btn[aria-expanded="true"] {
+    border-color: rgba(255,64,129,0.48);
+    box-shadow: 0 8px 24px rgba(255,64,129,0.16);
+}
+.cloud-save-toggle {
+    background: rgba(255,64,129,0.12);
+    border-color: rgba(255,64,129,0.22);
+}
+.save-dock-sub {
+    min-height: 1.2em;
+    color: var(--text-sec);
+    font-size: 0.72rem;
+    font-weight: 700;
+    line-height: 1.2;
+}
+.save-popover {
+    position: absolute;
+    top: calc(100% + 8px);
+    left: 0;
+    width: min(380px, calc(100vw - 24px));
+    padding: 14px;
+    border-radius: var(--radius-md);
+    background: rgba(255,255,255,0.96);
+    border: 1px solid rgba(255,255,255,0.78);
+    box-shadow: 0 22px 60px rgba(27,35,48,0.20);
+    display: grid;
+    gap: 10px;
+}
+.cloud-save-popover {
+    width: min(430px, calc(100vw - 24px));
+}
+.save-popover-title {
+    color: var(--text-main);
+    font-size: 0.9rem;
+    font-weight: 900;
+}
+body.dark-mode .save-dock-btn,
+body.dark-mode .save-popover {
+    background: rgba(30,30,30,0.96);
+    border-color: rgba(255,255,255,0.08);
+}
 .schedule-rail-row {
     display: grid;
-    grid-template-columns: 36px minmax(0, 1fr) 36px;
+    grid-template-columns: 36px minmax(0, 1fr) 36px auto;
     align-items: center;
     gap: 8px;
     padding: 8px;
@@ -189,6 +261,20 @@ body.dark-mode .schedule-rail-row { background: rgba(255,255,255,0.045); }
     line-height: 1;
 }
 body.dark-mode .schedule-rail-arrow { background: rgba(255,255,255,0.08); }
+.schedule-rail-expand {
+    min-width: 74px;
+    min-height: 36px;
+    padding: 7px 10px;
+    border-radius: 999px;
+    border: 1px solid var(--glass-border);
+    background: var(--surface-light);
+    color: var(--text-main);
+    cursor: pointer;
+    font: inherit;
+    font-size: 0.76rem;
+    font-weight: 900;
+}
+body.dark-mode .schedule-rail-expand { background: rgba(255,255,255,0.08); }
 .schedule-chip {
     flex: 0 0 auto;
     max-width: min(280px, 72vw);
@@ -213,6 +299,26 @@ body.dark-mode .schedule-rail-arrow { background: rgba(255,255,255,0.08); }
     box-shadow: 0 8px 20px rgba(255,64,129,0.24);
 }
 body.dark-mode .schedule-chip { background: rgba(255,255,255,0.08); }
+.schedule-rail-row.is-expanded {
+    align-items: start;
+}
+.schedule-rail-row.is-expanded .schedule-rail {
+    flex-wrap: wrap;
+    overflow-x: hidden;
+    overflow-y: auto;
+    max-height: min(42vh, 360px);
+    padding-right: 4px;
+    scrollbar-width: thin;
+}
+.schedule-rail-row.is-expanded .schedule-chip {
+    flex: 1 1 180px;
+    max-width: none;
+    justify-content: center;
+}
+.schedule-rail-row.is-expanded .schedule-rail-arrow {
+    opacity: 0.35;
+    pointer-events: none;
+}
 
 /* 完美強制 4x2 佈局 (-0.5px 防捨入誤差) */
 #htmlGrid { display: flex; flex-wrap: wrap; justify-content: center; gap: 16px; width: 100%; transition: all 0.3s ease; }
@@ -369,6 +475,9 @@ body.dark-mode .cloud-user-pill { background: rgba(255,255,255,0.08); }
 .tool48-save-panel button[disabled],
 .tool48-save-panel input[disabled],
 .tool48-save-panel select[disabled],
+.save-popover button[disabled],
+.save-popover input[disabled],
+.save-popover select[disabled],
 .account-popover button[disabled],
 .account-popover input[disabled] {
     cursor: not-allowed;
@@ -395,8 +504,28 @@ body.dark-mode .cloud-danger-btn {
         right: 0;
         width: calc(100vw - 16px);
     }
+    .quick-save-row {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 6px;
+    }
+    .save-popover-wrap {
+        min-width: 0;
+        width: 100%;
+    }
+    .save-dock-btn {
+        min-height: 42px;
+        padding: 7px 10px;
+    }
+    .save-popover {
+        width: calc(100vw - 24px);
+    }
+    .quick-save-row .save-popover-wrap:nth-child(2) .save-popover {
+        left: auto;
+        right: 0;
+    }
     .schedule-rail-row {
-        grid-template-columns: 32px minmax(0, 1fr) 32px;
+        grid-template-columns: 32px minmax(0, 1fr) 32px auto;
         gap: 6px;
         padding: 6px;
     }
@@ -408,5 +537,13 @@ body.dark-mode .cloud-danger-btn {
         max-width: 76vw;
         min-height: 36px;
         padding-inline: 10px;
+    }
+    .schedule-rail-expand {
+        min-width: 58px;
+        min-height: 32px;
+        padding-inline: 8px;
+    }
+    .schedule-rail-row.is-expanded .schedule-chip {
+        flex-basis: 132px;
     }
 }

@@ -70,7 +70,9 @@
         "cloud_confirm_delete": "刪除已選雲端名單？",
         "cloud_action_failed": "雲端操作失敗：{message}",
         "cloud_permission_fix_needed": "資料庫權限未開好。請在 Supabase SQL Editor 執行 supabase-penlight-cloud-save-grants.sql，然後再試。",
-        "cloud_local_import_offer": "偵測到本機儲存，可將目前名單儲存到雲端。"
+        "cloud_local_import_offer": "偵測到本機儲存，可將目前名單儲存到雲端。",
+        "schedule_expand_btn": "展開日曆",
+        "schedule_collapse_btn": "收起日曆"
     },
     "ja": {
         "app_title": "AKB48 出演メンバー＆サイリウムカラー", "default_title": "「手をつなぎながら」公演", "title_placeholder": "📝 公演名を入力してください...",
@@ -143,7 +145,9 @@
         "cloud_confirm_delete": "選択中のクラウドリストを削除しますか？",
         "cloud_action_failed": "クラウド操作に失敗しました：{message}",
         "cloud_permission_fix_needed": "データベース権限が不足しています。Supabase SQL Editor で supabase-penlight-cloud-save-grants.sql を実行してから再試行してください。",
-        "cloud_local_import_offer": "ローカル保存があります。現在のリストをクラウドに保存できます。"
+        "cloud_local_import_offer": "ローカル保存があります。現在のリストをクラウドに保存できます。",
+        "schedule_expand_btn": "一覧表示",
+        "schedule_collapse_btn": "閉じる"
     },
     "en": {
         "app_title": "AKB48 Members & Penlight Colors", "default_title": "Tewo Tsunaginagara Stage", "title_placeholder": "📝 Enter Stage/Concert Name...",
@@ -216,7 +220,9 @@
         "cloud_confirm_delete": "Delete the selected cloud list?",
         "cloud_action_failed": "Cloud action failed: {message}",
         "cloud_permission_fix_needed": "Database permission is missing. Run supabase-penlight-cloud-save-grants.sql in Supabase SQL Editor, then try again.",
-        "cloud_local_import_offer": "Local save found. You can save the current list to cloud."
+        "cloud_local_import_offer": "Local save found. You can save the current list to cloud.",
+        "schedule_expand_btn": "Expand",
+        "schedule_collapse_btn": "Collapse"
     },
     "zh-CN": {
         "app_title": "AKB48 成员名单及应援色", "default_title": "「手をつなぎながら」公演", "title_placeholder": "📝 点击输入公演名称...",
@@ -289,7 +295,9 @@
         "cloud_confirm_delete": "删除已选云端名单？",
         "cloud_action_failed": "云端操作失败：{message}",
         "cloud_permission_fix_needed": "数据库权限未开好。请在 Supabase SQL Editor 执行 supabase-penlight-cloud-save-grants.sql，然后重试。",
-        "cloud_local_import_offer": "检测到本机保存，可将当前名单保存到云端。"
+        "cloud_local_import_offer": "检测到本机保存，可将当前名单保存到云端。",
+        "schedule_expand_btn": "展开日历",
+        "schedule_collapse_btn": "收起日历"
     },
     "ko": {
         "app_title": "AKB48 멤버 목록 및 응원색", "default_title": "「손을 잡으면서」 공연", "title_placeholder": "📝 공연/콘서트 이름 입력...",
@@ -362,7 +370,9 @@
         "cloud_confirm_delete": "선택한 클라우드 리스트를 삭제할까요?",
         "cloud_action_failed": "클라우드 작업 실패: {message}",
         "cloud_permission_fix_needed": "데이터베이스 권한이 부족합니다. Supabase SQL Editor에서 supabase-penlight-cloud-save-grants.sql을 실행한 뒤 다시 시도하세요.",
-        "cloud_local_import_offer": "로컬 저장이 있습니다. 현재 리스트를 클라우드에 저장할 수 있습니다."
+        "cloud_local_import_offer": "로컬 저장이 있습니다. 현재 리스트를 클라우드에 저장할 수 있습니다.",
+        "schedule_expand_btn": "전체 보기",
+        "schedule_collapse_btn": "접기"
     },
     "th": {
         "app_title": "รายชื่อสมาชิก AKB48 & สีปากกา", "default_title": "สเตจ Tewo Tsunaginagara", "title_placeholder": "📝 ป้อนชื่อการแสดง...",
@@ -435,7 +445,9 @@
         "cloud_confirm_delete": "ลบรายการคลาวด์ที่เลือกหรือไม่?",
         "cloud_action_failed": "การทำงานบนคลาวด์ล้มเหลว: {message}",
         "cloud_permission_fix_needed": "สิทธิ์ฐานข้อมูลยังไม่พร้อม โปรดรัน supabase-penlight-cloud-save-grants.sql ใน Supabase SQL Editor แล้วลองอีกครั้ง",
-        "cloud_local_import_offer": "พบบันทึกในเครื่อง สามารถบันทึกรายการปัจจุบันไปคลาวด์ได้"
+        "cloud_local_import_offer": "พบบันทึกในเครื่อง สามารถบันทึกรายการปัจจุบันไปคลาวด์ได้",
+        "schedule_expand_btn": "ดูทั้งหมด",
+        "schedule_collapse_btn": "ย่อ"
     },
     "id": {
         "app_title": "Daftar Anggota AKB48 & Warna", "default_title": "Stage Tewo Tsunaginagara", "title_placeholder": "📝 Masukkan nama acara...",
@@ -508,6 +520,8 @@
         "cloud_confirm_delete": "Hapus daftar cloud yang dipilih?",
         "cloud_action_failed": "Aksi cloud gagal: {message}",
         "cloud_permission_fix_needed": "Izin database belum lengkap. Jalankan supabase-penlight-cloud-save-grants.sql di Supabase SQL Editor, lalu coba lagi.",
-        "cloud_local_import_offer": "Simpanan lokal ditemukan. Daftar saat ini bisa disimpan ke cloud."
+        "cloud_local_import_offer": "Simpanan lokal ditemukan. Daftar saat ini bisa disimpan ke cloud.",
+        "schedule_expand_btn": "Lihat semua",
+        "schedule_collapse_btn": "Tutup"
     }
 }
