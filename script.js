@@ -63,6 +63,7 @@ const PENLIGHT_SAVE_FALLBACK_I18N = {
     cloud_confirm_update: 'Update the selected cloud list?',
     cloud_confirm_delete: 'Delete the selected cloud list?',
     cloud_action_failed: 'Cloud action failed: {message}',
+    cloud_permission_fix_needed: 'Database permission is missing. Run supabase-penlight-cloud-save-grants.sql in Supabase SQL Editor, then try again.',
     cloud_local_import_offer: 'Local save found. You can save the current list to cloud.'
 };
 
@@ -91,6 +92,14 @@ function setCloudMessage(keyOrText, replacements = {}) {
         const node = document.getElementById(id);
         if (node) node.textContent = text;
     });
+}
+
+function getCloudErrorMessage(error) {
+    const message = error?.message || String(error || '');
+    if (/permission denied for table penlight_lists/i.test(message)) {
+        return tr('cloud_permission_fix_needed');
+    }
+    return message;
 }
 
 function getCloudUserName() {
@@ -486,7 +495,7 @@ async function saveCurrentListToCloud() {
         await loadCloudLists();
         setCloudMessage('cloud_saved');
     } catch (error) {
-        setCloudMessage('cloud_action_failed', { message: error.message || error });
+        setCloudMessage('cloud_action_failed', { message: getCloudErrorMessage(error) });
     } finally {
         setTool48CloudBusy(false);
     }
@@ -524,7 +533,7 @@ async function updateSelectedCloudList() {
         await loadCloudLists();
         setCloudMessage('cloud_updated');
     } catch (error) {
-        setCloudMessage('cloud_action_failed', { message: error.message || error });
+        setCloudMessage('cloud_action_failed', { message: getCloudErrorMessage(error) });
     } finally {
         setTool48CloudBusy(false);
     }
@@ -572,7 +581,7 @@ async function loadSelectedCloudList() {
         renderTool48Cloud();
         setCloudMessage('cloud_loaded');
     } catch (error) {
-        setCloudMessage('cloud_action_failed', { message: error.message || error });
+        setCloudMessage('cloud_action_failed', { message: getCloudErrorMessage(error) });
     } finally {
         setTool48CloudBusy(false);
     }
@@ -607,7 +616,7 @@ async function deleteSelectedCloudList() {
         renderTool48Cloud();
         setCloudMessage('cloud_deleted');
     } catch (error) {
-        setCloudMessage('cloud_action_failed', { message: error.message || error });
+        setCloudMessage('cloud_action_failed', { message: getCloudErrorMessage(error) });
     } finally {
         setTool48CloudBusy(false);
     }
@@ -644,7 +653,7 @@ async function saveFollowedPerformance() {
         if (result.error) throw result.error;
         setCloudMessage('cloud_followed');
     } catch (error) {
-        setCloudMessage('cloud_action_failed', { message: error.message || error });
+        setCloudMessage('cloud_action_failed', { message: getCloudErrorMessage(error) });
     } finally {
         setTool48CloudBusy(false);
     }
@@ -667,12 +676,12 @@ async function signInTool48() {
     const { data, error } = await tool48Cloud.client.auth.signInWithPassword({ email, password });
     setTool48CloudBusy(false);
     if (error) {
-        setCloudMessage('cloud_action_failed', { message: error.message });
+        setCloudMessage('cloud_action_failed', { message: getCloudErrorMessage(error) });
         return;
     }
     tool48Cloud.user = data.session?.user || null;
     setCloudMessage('cloud_signed_in');
-    await loadCloudLists().catch(err => setCloudMessage('cloud_action_failed', { message: err.message || err }));
+    await loadCloudLists().catch(err => setCloudMessage('cloud_action_failed', { message: getCloudErrorMessage(err) }));
     if (getLocalSaveEnvelope()) setCloudMessage('cloud_local_import_offer');
     closeAccountPopover();
     renderTool48Cloud();
@@ -703,13 +712,13 @@ async function signUpTool48() {
     });
     setTool48CloudBusy(false);
     if (error) {
-        setCloudMessage('cloud_action_failed', { message: error.message });
+        setCloudMessage('cloud_action_failed', { message: getCloudErrorMessage(error) });
         return;
     }
 
     tool48Cloud.user = data.session?.user || tool48Cloud.user;
     setCloudMessage(tool48Cloud.user ? 'cloud_signed_in' : 'cloud_signup_needs_confirm');
-    if (tool48Cloud.user) await loadCloudLists().catch(err => setCloudMessage('cloud_action_failed', { message: err.message || err }));
+    if (tool48Cloud.user) await loadCloudLists().catch(err => setCloudMessage('cloud_action_failed', { message: getCloudErrorMessage(err) }));
     if (tool48Cloud.user) closeAccountPopover();
     renderTool48Cloud();
 }
@@ -763,7 +772,7 @@ function bindPenlightSaveEvents() {
     });
     document.getElementById('cloudLogoutBtn')?.addEventListener('click', signOutTool48);
     document.getElementById('cloudRefreshBtn')?.addEventListener('click', () => {
-        loadCloudLists(true).catch(error => setCloudMessage('cloud_action_failed', { message: error.message || error }));
+        loadCloudLists(true).catch(error => setCloudMessage('cloud_action_failed', { message: getCloudErrorMessage(error) }));
     });
     document.getElementById('cloudFollowPerformanceBtn')?.addEventListener('click', saveFollowedPerformance);
     document.getElementById('cloudSaveNewBtn')?.addEventListener('click', saveCurrentListToCloud);
@@ -805,7 +814,7 @@ async function initPenlightSaveEnhancement() {
         tool48Cloud.client.auth.onAuthStateChange((_event, session) => {
             tool48Cloud.user = session?.user || null;
             if (tool48Cloud.user) {
-                loadCloudLists().catch(error => setCloudMessage('cloud_action_failed', { message: error.message || error }));
+                loadCloudLists().catch(error => setCloudMessage('cloud_action_failed', { message: getCloudErrorMessage(error) }));
                 if (getLocalSaveEnvelope()) setCloudMessage('cloud_local_import_offer');
             } else {
                 tool48Cloud.lists = [];
@@ -814,11 +823,11 @@ async function initPenlightSaveEnhancement() {
             renderTool48Cloud();
         });
         if (tool48Cloud.user) {
-            await loadCloudLists().catch(error => setCloudMessage('cloud_action_failed', { message: error.message || error }));
+            await loadCloudLists().catch(error => setCloudMessage('cloud_action_failed', { message: getCloudErrorMessage(error) }));
             if (getLocalSaveEnvelope()) setCloudMessage('cloud_local_import_offer');
         }
     } catch (error) {
-        setCloudMessage('cloud_action_failed', { message: error.message || error });
+        setCloudMessage('cloud_action_failed', { message: getCloudErrorMessage(error) });
     }
     renderTool48Cloud();
 }
