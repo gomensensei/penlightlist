@@ -145,6 +145,62 @@
                 </div>
             </div>
 
+            <div class="control-group tool48-save-panel" id="tool48CloudPanel">
+                <label class="title" data-i18n="cloud_panel_title">Tool48 Account / Cloud Save</label>
+                <p class="cloud-status-pill" id="cloudModeStatus" data-i18n="cloud_local_only">Local only</p>
+
+                <div class="save-section">
+                    <div class="save-section-title" data-i18n="local_save_title">Local save</div>
+                    <div class="flex-btns">
+                        <button class="btn" id="localSaveBtn" type="button" data-i18n="local_save_btn">Save locally</button>
+                        <button class="btn" id="localLoadBtn" type="button" data-i18n="local_load_btn">Load local save</button>
+                    </div>
+                    <p class="cloud-helper" id="localSaveMeta"></p>
+                </div>
+
+                <div class="save-section cloud-auth-section" id="cloudLoggedOut">
+                    <div class="save-section-title" data-i18n="cloud_account_title">Tool48 Account</div>
+                    <input id="cloudNicknameInput" class="cloud-input" type="text" autocomplete="nickname" data-i18n-placeholder="cloud_nickname_placeholder" placeholder="nickname">
+                    <input id="cloudEmailInput" class="cloud-input" type="email" inputmode="email" autocomplete="email" data-i18n-placeholder="cloud_email_placeholder" placeholder="Tool48 Account email">
+                    <input id="cloudPasswordInput" class="cloud-input" type="password" autocomplete="current-password" minlength="6" data-i18n-placeholder="cloud_password_placeholder" placeholder="6+ characters">
+                    <div class="flex-btns">
+                        <button class="btn" id="cloudSignInBtn" type="button" data-i18n="cloud_sign_in">Sign in</button>
+                        <button class="btn" id="cloudSignUpBtn" type="button" data-i18n="cloud_create_account">Create account</button>
+                    </div>
+                </div>
+
+                <div class="save-section cloud-user-section" id="cloudLoggedIn" hidden>
+                    <div class="cloud-user-row">
+                        <span class="cloud-user-pill" id="cloudUserLabel"></span>
+                        <button class="btn" id="cloudLogoutBtn" type="button" data-i18n="cloud_sign_out">Sign out</button>
+                    </div>
+                </div>
+
+                <div class="save-section cloud-save-section">
+                    <div class="save-section-title" data-i18n="cloud_save_title">Cloud save</div>
+                    <input id="cloudListTitleInput" class="cloud-input" type="text" data-i18n-placeholder="cloud_list_title_placeholder" placeholder="Cloud list title">
+                    <select id="cloudListSelect" class="preset-select">
+                        <option value="" data-i18n="cloud_list_placeholder">-- Select cloud list --</option>
+                    </select>
+                    <label class="toggle-label compact-toggle"><input type="checkbox" id="cloudDefaultCheckbox"> <span data-i18n="cloud_mark_default">Mark as default</span></label>
+                    <div class="flex-btns">
+                        <button class="btn" id="cloudRefreshBtn" type="button" data-i18n="cloud_refresh_btn">Refresh</button>
+                        <button class="btn" id="cloudFollowPerformanceBtn" type="button" data-i18n="cloud_follow_performance_btn">Save performance</button>
+                    </div>
+                    <div class="flex-btns">
+                        <button class="btn btn-primary" id="cloudSaveNewBtn" type="button" data-i18n="cloud_save_new_btn">Save current list to cloud</button>
+                    </div>
+                    <div class="flex-btns">
+                        <button class="btn" id="cloudLoadBtn" type="button" data-i18n="cloud_load_btn">Load cloud list</button>
+                        <button class="btn" id="cloudUpdateBtn" type="button" data-i18n="cloud_update_btn">Update selected</button>
+                    </div>
+                    <div class="flex-btns">
+                        <button class="btn cloud-danger-btn" id="cloudDeleteBtn" type="button" data-i18n="cloud_delete_btn">Delete selected</button>
+                    </div>
+                    <p class="cloud-helper" id="cloudMessage"></p>
+                </div>
+            </div>
+
             <div class="control-group" style="margin-top: 32px;">
                 <button class="btn btn-primary" id="downloadBtn" style="width:100%; padding: 16px; font-size: 1.1rem; border-radius: 99px;">
                     <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" x2="12" y1="15" y2="3"/></svg>
@@ -175,6 +231,7 @@
         </div>
     </div>
 
-    <script src="script.js?v=20260628-imgqueue" defer></script>
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2" defer></script>
+    <script src="script.js?v=20260629-cloudsave" defer></script>
 </body>
 </html>

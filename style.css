@@ -192,3 +192,93 @@ rt { font-size: 4cqw; color: var(--text-sec); font-weight: 700; opacity: 0.9; ma
     animation: borderPulse 3s infinite alternate;
     transition: border 0.3s, box-shadow 0.3s;
 }
+
+.tool48-save-panel {
+    padding: 14px;
+    border-radius: var(--radius-md);
+    background: rgba(255,255,255,0.42);
+    border: 1px solid var(--glass-border);
+}
+body.dark-mode .tool48-save-panel { background: rgba(255,255,255,0.04); }
+.cloud-status-pill,
+.cloud-helper {
+    margin: 0;
+    color: var(--text-sec);
+    font-size: 0.78rem;
+    font-weight: 700;
+    line-height: 1.5;
+}
+.cloud-status-pill {
+    display: inline-flex;
+    align-items: center;
+    min-height: 28px;
+    padding: 4px 10px;
+    border-radius: 999px;
+    color: var(--primary);
+    background: rgba(255,64,129,0.10);
+}
+.save-section {
+    display: grid;
+    gap: 8px;
+    margin-top: 12px;
+    min-width: 0;
+}
+.save-section-title {
+    color: var(--text-main);
+    font-size: 0.82rem;
+    font-weight: 900;
+}
+.cloud-input {
+    width: 100%;
+    min-height: 40px;
+    box-sizing: border-box;
+    padding: 9px 12px;
+    border-radius: var(--radius-sm);
+    border: 1px solid var(--glass-border);
+    background: var(--surface-light);
+    color: var(--text-main);
+    font: inherit;
+    font-weight: 700;
+    outline: none;
+}
+.cloud-input:focus {
+    border-color: var(--primary);
+    box-shadow: 0 0 0 3px rgba(255,64,129,0.12);
+}
+body.dark-mode .cloud-input { background: #222; border-color: #444; }
+.cloud-user-row {
+    display: flex;
+    gap: 8px;
+    align-items: center;
+    min-width: 0;
+}
+.cloud-user-pill {
+    min-width: 0;
+    flex: 1;
+    padding: 9px 10px;
+    border-radius: 999px;
+    background: rgba(255,255,255,0.66);
+    color: var(--text-main);
+    font-size: 0.78rem;
+    font-weight: 900;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+body.dark-mode .cloud-user-pill { background: rgba(255,255,255,0.08); }
+.compact-toggle {
+    margin: 0;
+    padding: 8px 10px;
+}
+.tool48-save-panel button[disabled],
+.tool48-save-panel input[disabled],
+.tool48-save-panel select[disabled] {
+    cursor: not-allowed;
+    opacity: 0.55;
+}
+.cloud-danger-btn {
+    color: #D32F2F !important;
+}
+body.dark-mode .cloud-danger-btn {
+    color: #FF8A80 !important;
+}

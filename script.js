@@ -16,6 +16,783 @@ let isTitleCustomized = false;
 
 const htmlGrid = document.getElementById('htmlGrid');
 
+const TOOL48_SUPABASE_URL = 'https://jappifgnjssqxvjodgiv.supabase.co';
+const TOOL48_SUPABASE_PUBLISHABLE_KEY = 'sb_publishable_oXfJyHkRtn1BHBw-9ictBQ__01qBCZg';
+const PENLIGHT_LOCAL_SAVE_KEY = 'tool48.penlightlist.localState.v1';
+
+const PERFORMANCE_ID_BY_PRESET = {
+    '16_koko': 'kokokarada',
+    '16_soko': 'sokonimirai',
+    '8_tewo': 'tewotsunaginagara',
+    '8_reset': 'reset'
+};
+
+const PENLIGHT_SAVE_FALLBACK_I18N = {
+    cloud_local_only: 'Local only',
+    cloud_available: 'Cloud save available',
+    cloud_synced: 'Synced',
+    cloud_unsaved: 'Unsaved changes',
+    cloud_unavailable: 'Cloud save unavailable',
+    cloud_list_placeholder: '-- Select cloud list --',
+    cloud_no_local_save: 'No local save yet.',
+    cloud_local_saved_at: 'Local save: {time}',
+    cloud_local_saved: 'Saved locally.',
+    cloud_local_loaded: 'Local save loaded.',
+    cloud_local_missing: 'No local save found.',
+    cloud_login_required: 'Sign in to use cloud save.',
+    cloud_missing_email_password: 'Please enter email and password.',
+    cloud_missing_signup: 'Please enter nickname, email, and password.',
+    cloud_signing_in: 'Signing in...',
+    cloud_signing_up: 'Creating account...',
+    cloud_signed_in: 'Signed in.',
+    cloud_signup_needs_confirm: 'Account created. Please confirm your email before signing in.',
+    cloud_signed_out: 'Signed out.',
+    cloud_loading_lists: 'Loading cloud lists...',
+    cloud_lists_loaded: 'Cloud lists loaded.',
+    cloud_no_lists: 'No cloud lists yet.',
+    cloud_saved: 'Saved to cloud.',
+    cloud_loaded: 'Cloud list loaded.',
+    cloud_updated: 'Cloud list updated.',
+    cloud_deleted: 'Cloud list deleted.',
+    cloud_followed: 'Performance saved.',
+    cloud_already_followed: 'Performance already saved.',
+    cloud_performance_unavailable: 'No performance id available for this list.',
+    cloud_select_list_first: 'Select a cloud list first.',
+    cloud_confirm_load: 'Load this cloud list and replace the current screen?',
+    cloud_confirm_update: 'Update the selected cloud list?',
+    cloud_confirm_delete: 'Delete the selected cloud list?',
+    cloud_action_failed: 'Cloud action failed: {message}',
+    cloud_local_import_offer: 'Local save found. You can save the current list to cloud.'
+};
+
+const tool48Cloud = {
+    client: null,
+    user: null,
+    lists: [],
+    selectedListId: '',
+    busy: false,
+    dirty: false,
+    initialized: false
+};
+
+function tr(key, replacements = {}) {
+    const dict = langsDB[currentLang] || langsDB['zh-HK'] || langsDB.en || {};
+    let text = dict[key] || PENLIGHT_SAVE_FALLBACK_I18N[key] || key;
+    Object.entries(replacements).forEach(([name, value]) => {
+        text = text.split(`{${name}}`).join(value == null ? '' : String(value));
+    });
+    return text;
+}
+
+function setCloudMessage(keyOrText, replacements = {}) {
+    const node = document.getElementById('cloudMessage');
+    if (!node) return;
+    node.textContent = keyOrText ? tr(keyOrText, replacements) : '';
+}
+
+function getCloudUserName() {
+    return tool48Cloud.user?.user_metadata?.display_name || tool48Cloud.user?.email || 'Tool48 Account';
+}
+
+function setTool48CloudBusy(busy) {
+    tool48Cloud.busy = busy;
+    renderTool48Cloud();
+}
+
+function formatSavedTime(isoString) {
+    if (!isoString) return '';
+    try {
+        return new Intl.DateTimeFormat(currentLang || 'en', {
+            dateStyle: 'short',
+            timeStyle: 'short'
+        }).format(new Date(isoString));
+    } catch (_err) {
+        return new Date(isoString).toLocaleString();
+    }
+}
+
+function getLocalSaveEnvelope() {
+    try {
+        const raw = localStorage.getItem(PENLIGHT_LOCAL_SAVE_KEY);
+        return raw ? JSON.parse(raw) : null;
+    } catch (_err) {
+        return null;
+    }
+}
+
+function setPenlightDirty(isDirty = true) {
+    if (!tool48Cloud.initialized && isDirty) return;
+    tool48Cloud.dirty = isDirty;
+    renderTool48Cloud();
+}
+
+function getCurrentSchedule() {
+    return schedulesDB.find(schedule => schedule.id === currentTitleState?.id) || null;
+}
+
+function inferPerformanceId() {
+    if (currentTitleState?.type === 'preset' && PERFORMANCE_ID_BY_PRESET[currentTitleState.id]) {
+        return PERFORMANCE_ID_BY_PRESET[currentTitleState.id];
+    }
+
+    const schedule = getCurrentSchedule();
+    const title = `${schedule?.title || ''} ${document.getElementById('customTitle')?.value || ''}`;
+    if (/reset|ＲＥＳＥＴ/i.test(title)) return 'reset';
+    if (/ここからだ|koko\s*kara/i.test(title)) return 'kokokarada';
+    if (/手をつなぎながら|tewo|te\s*wo/i.test(title)) return 'tewotsunaginagara';
+    if (/そこに未来|soko\s*ni\s*mirai/i.test(title)) return 'sokonimirai';
+    return null;
+}
+
+function getDisplaySettings() {
+    return {
+        showPhoto: document.getElementById('cfgPhoto')?.checked ?? true,
+        showGeneration: document.getElementById('cfgGen')?.checked ?? true,
+        showName: document.getElementById('cfgName')?.checked ?? true,
+        showNickname: document.getElementById('cfgNick')?.checked ?? false,
+        colorMode: document.querySelector('input[name="colorMode"]:checked')?.value || 'block',
+        darkMode: document.body.classList.contains('dark-mode'),
+        language: currentLang
+    };
+}
+
+function getMemberDisplayName(member) {
+    if (!member) return '';
+    if (currentLang === 'ko') return member.name_ko || member.name_en || member.name_ja || member.nickname || '';
+    if (['en', 'th', 'id'].includes(currentLang)) return member.name_en || member.name_ja || member.nickname || '';
+    return member.name_ja || member.name_en || member.nickname || '';
+}
+
+function compactMemberForPayload(member) {
+    if (!member) return null;
+    return {
+        id: member.id || null,
+        name_ja: member.name_ja || '',
+        name_kana: member.name_kana || '',
+        name_en: member.name_en || '',
+        name_ko: member.name_ko || '',
+        nickname: member.nickname || '',
+        ki: member.ki || '',
+        genNum: member.genNum || null,
+        colorData: Array.isArray(member.colorData) ? member.colorData : [],
+        image: member.image || ''
+    };
+}
+
+function createPenlightPayload() {
+    const schedule = getCurrentSchedule();
+    const title = document.getElementById('customTitle')?.value || '';
+    return {
+        version: 1,
+        tool: 'penlightlist',
+        savedAt: new Date().toISOString(),
+        title,
+        schedule_id: schedule?.id || (currentTitleState?.type === 'custom' ? currentTitleState.id : null),
+        schedule,
+        performance_id: inferPerformanceId(),
+        currentTitleState: currentTitleState ? { ...currentTitleState } : null,
+        isTitleCustomized,
+        display: getDisplaySettings(),
+        gridSize: gridSlots.length,
+        slots: gridSlots.map(compactMemberForPayload)
+    };
+}
+
+function resolveMemberFromPayload(savedMember) {
+    if (!savedMember) return null;
+    const savedId = savedMember.id == null ? '' : String(savedMember.id);
+    const byId = savedId ? membersDB.find(member => String(member.id) === savedId) : null;
+    if (byId) return byId;
+
+    const normalizeName = value => String(value || '').replace(/\s+/g, '');
+    const savedNames = [savedMember.name_ja, savedMember.name_en, savedMember.name_ko, savedMember.nickname]
+        .map(normalizeName)
+        .filter(Boolean);
+    const byName = membersDB.find(member => {
+        return [member.name_ja, member.name_en, member.name_ko, member.nickname]
+            .map(normalizeName)
+            .some(name => savedNames.includes(name));
+    });
+    return byName || savedMember;
+}
+
+function applyPenlightPayload(payload, options = {}) {
+    if (!payload || !Array.isArray(payload.slots)) throw new Error('Invalid penlight payload');
+
+    const restoredSlots = payload.slots.map(resolveMemberFromPayload);
+    const targetSize = Math.max(payload.gridSize || restoredSlots.length || 1, restoredSlots.length);
+    gridSlots = new Array(targetSize).fill(null);
+    restoredSlots.forEach((member, index) => {
+        if (index < gridSlots.length) gridSlots[index] = member;
+    });
+
+    currentTitleState = payload.currentTitleState || {
+        type: payload.schedule_id ? 'custom' : 'preset',
+        id: payload.schedule_id || '16_koko'
+    };
+    isTitleCustomized = payload.isTitleCustomized ?? true;
+
+    const titleInput = document.getElementById('customTitle');
+    if (titleInput) titleInput.value = payload.title || '';
+
+    const display = payload.display || {};
+    const cfgPhoto = document.getElementById('cfgPhoto');
+    const cfgGen = document.getElementById('cfgGen');
+    const cfgName = document.getElementById('cfgName');
+    const cfgNick = document.getElementById('cfgNick');
+    if (cfgPhoto) cfgPhoto.checked = display.showPhoto ?? true;
+    if (cfgGen) cfgGen.checked = display.showGeneration ?? true;
+    if (cfgName) cfgName.checked = display.showName ?? true;
+    if (cfgNick) cfgNick.checked = display.showNickname ?? false;
+
+    const mode = display.colorMode || 'block';
+    const modeInput = document.querySelector(`input[name="colorMode"][value="${mode}"]`);
+    if (modeInput) modeInput.checked = true;
+    document.body.classList.toggle('dark-mode', Boolean(display.darkMode));
+
+    if (display.language && langsDB[display.language]) {
+        currentLang = display.language;
+        const langSelector = document.getElementById('langSelector');
+        if (langSelector) langSelector.value = currentLang;
+        applyLanguage();
+    }
+
+    renderHTMLGrid();
+    setPenlightDirty(options.markDirty ?? true);
+}
+
+function updateLocalSaveMeta() {
+    const localMeta = document.getElementById('localSaveMeta');
+    if (!localMeta) return;
+    const envelope = getLocalSaveEnvelope();
+    localMeta.textContent = envelope?.savedAt
+        ? tr('cloud_local_saved_at', { time: formatSavedTime(envelope.savedAt) })
+        : tr('cloud_no_local_save');
+}
+
+function renderCloudListOptions() {
+    const select = document.getElementById('cloudListSelect');
+    if (!select) return;
+    const selectedId = tool48Cloud.selectedListId || select.value;
+    select.innerHTML = '';
+
+    const placeholder = document.createElement('option');
+    placeholder.value = '';
+    placeholder.textContent = tr('cloud_list_placeholder');
+    select.appendChild(placeholder);
+
+    tool48Cloud.lists.forEach(list => {
+        const option = document.createElement('option');
+        option.value = list.id;
+        option.textContent = `${list.is_default ? '* ' : ''}${list.title || 'Untitled'}`;
+        select.appendChild(option);
+    });
+
+    if (tool48Cloud.lists.some(list => list.id === selectedId)) {
+        select.value = selectedId;
+        tool48Cloud.selectedListId = selectedId;
+    } else {
+        select.value = '';
+        tool48Cloud.selectedListId = '';
+    }
+}
+
+function renderTool48Cloud() {
+    const loggedIn = Boolean(tool48Cloud.user);
+    const cloudReady = Boolean(tool48Cloud.client);
+    const selectedList = tool48Cloud.lists.find(list => list.id === tool48Cloud.selectedListId) || null;
+
+    const status = document.getElementById('cloudModeStatus');
+    if (status) {
+        const key = !cloudReady
+            ? 'cloud_unavailable'
+            : !loggedIn
+                ? 'cloud_local_only'
+                : tool48Cloud.dirty
+                    ? 'cloud_unsaved'
+                    : selectedList
+                        ? 'cloud_synced'
+                        : 'cloud_available';
+        status.textContent = tr(key);
+    }
+
+    const loggedOut = document.getElementById('cloudLoggedOut');
+    const loggedInBox = document.getElementById('cloudLoggedIn');
+    if (loggedOut) loggedOut.hidden = loggedIn;
+    if (loggedInBox) loggedInBox.hidden = !loggedIn;
+
+    const userLabel = document.getElementById('cloudUserLabel');
+    if (userLabel) userLabel.textContent = loggedIn ? getCloudUserName() : '';
+
+    const titleInput = document.getElementById('cloudListTitleInput');
+    if (titleInput && !titleInput.value) titleInput.value = document.getElementById('customTitle')?.value || '';
+
+    renderCloudListOptions();
+
+    const defaultCheckbox = document.getElementById('cloudDefaultCheckbox');
+    if (defaultCheckbox && selectedList && document.activeElement !== defaultCheckbox) {
+        defaultCheckbox.checked = Boolean(selectedList.is_default);
+    }
+
+    const cloudDisabled = !cloudReady || !loggedIn || tool48Cloud.busy;
+    ['cloudListTitleInput', 'cloudListSelect', 'cloudDefaultCheckbox', 'cloudRefreshBtn',
+     'cloudFollowPerformanceBtn', 'cloudSaveNewBtn', 'cloudLoadBtn', 'cloudUpdateBtn',
+     'cloudDeleteBtn', 'cloudLogoutBtn'].forEach(id => {
+        const node = document.getElementById(id);
+        if (node) node.disabled = cloudDisabled;
+    });
+
+    ['cloudNicknameInput', 'cloudEmailInput', 'cloudPasswordInput', 'cloudSignInBtn', 'cloudSignUpBtn'].forEach(id => {
+        const node = document.getElementById(id);
+        if (node) node.disabled = !cloudReady || loggedIn || tool48Cloud.busy;
+    });
+
+    const localLoad = document.getElementById('localLoadBtn');
+    if (localLoad) localLoad.disabled = tool48Cloud.busy || !getLocalSaveEnvelope();
+    const localSave = document.getElementById('localSaveBtn');
+    if (localSave) localSave.disabled = tool48Cloud.busy;
+
+    const needsSelection = !selectedList || cloudDisabled;
+    ['cloudLoadBtn', 'cloudUpdateBtn', 'cloudDeleteBtn'].forEach(id => {
+        const node = document.getElementById(id);
+        if (node) node.disabled = needsSelection;
+    });
+
+    const followBtn = document.getElementById('cloudFollowPerformanceBtn');
+    if (followBtn) followBtn.disabled = cloudDisabled || !inferPerformanceId();
+
+    updateLocalSaveMeta();
+}
+
+function saveCurrentListLocally() {
+    const payload = createPenlightPayload();
+    const envelope = { savedAt: payload.savedAt, payload };
+    localStorage.setItem(PENLIGHT_LOCAL_SAVE_KEY, JSON.stringify(envelope));
+    updateLocalSaveMeta();
+    setCloudMessage('cloud_local_saved');
+}
+
+function loadLocalPenlightList() {
+    const envelope = getLocalSaveEnvelope();
+    if (!envelope?.payload) {
+        setCloudMessage('cloud_local_missing');
+        renderTool48Cloud();
+        return;
+    }
+    applyPenlightPayload(envelope.payload, { markDirty: Boolean(tool48Cloud.user) });
+    setCloudMessage('cloud_local_loaded');
+}
+
+function buildPenlightItems(listId, payload, omitMemberIds = false) {
+    return (payload.slots || [])
+        .map((member, index) => member ? {
+            user_id: tool48Cloud.user.id,
+            list_id: listId,
+            member_id: omitMemberIds ? null : (member.id == null ? null : String(member.id)),
+            member_name: getMemberDisplayName(member) || member.name_ja || member.name_en || '',
+            color_data: Array.isArray(member.colorData) ? member.colorData : [],
+            sort_order: index,
+            note: ''
+        } : null)
+        .filter(Boolean);
+}
+
+async function replaceCloudItems(listId, payload) {
+    const deleteResult = await tool48Cloud.client
+        .from('penlight_list_items')
+        .delete()
+        .eq('user_id', tool48Cloud.user.id)
+        .eq('list_id', listId);
+    if (deleteResult.error) throw deleteResult.error;
+
+    const rows = buildPenlightItems(listId, payload);
+    if (rows.length === 0) return;
+
+    let insertResult = await tool48Cloud.client.from('penlight_list_items').insert(rows);
+    if (insertResult.error && rows.some(row => row.member_id)) {
+        insertResult = await tool48Cloud.client
+            .from('penlight_list_items')
+            .insert(buildPenlightItems(listId, payload, true));
+    }
+    if (insertResult.error) throw insertResult.error;
+}
+
+async function maybeUnsetExistingDefault() {
+    const defaultCheckbox = document.getElementById('cloudDefaultCheckbox');
+    if (!defaultCheckbox?.checked) return;
+    const result = await tool48Cloud.client
+        .from('penlight_lists')
+        .update({ is_default: false })
+        .eq('user_id', tool48Cloud.user.id);
+    if (result.error) throw result.error;
+}
+
+async function loadCloudLists(showMessage = false) {
+    if (!tool48Cloud.client || !tool48Cloud.user) return;
+    if (showMessage) setCloudMessage('cloud_loading_lists');
+    const { data, error } = await tool48Cloud.client
+        .from('penlight_lists')
+        .select('id,title,performance_id,is_default,payload')
+        .eq('user_id', tool48Cloud.user.id)
+        .order('title', { ascending: true });
+
+    if (error) throw error;
+    tool48Cloud.lists = data || [];
+
+    const defaultList = tool48Cloud.lists.find(list => list.is_default);
+    if (!tool48Cloud.selectedListId && defaultList) tool48Cloud.selectedListId = defaultList.id;
+    renderTool48Cloud();
+
+    if (showMessage) setCloudMessage(tool48Cloud.lists.length ? 'cloud_lists_loaded' : 'cloud_no_lists');
+}
+
+function getSelectedCloudList() {
+    return tool48Cloud.lists.find(list => list.id === tool48Cloud.selectedListId) || null;
+}
+
+async function saveCurrentListToCloud() {
+    if (!tool48Cloud.user) {
+        setCloudMessage('cloud_login_required');
+        return;
+    }
+    setTool48CloudBusy(true);
+    try {
+        const payload = createPenlightPayload();
+        const title = document.getElementById('cloudListTitleInput')?.value.trim() || payload.title || 'Penlight List';
+        const isDefault = document.getElementById('cloudDefaultCheckbox')?.checked || false;
+        await maybeUnsetExistingDefault();
+
+        const { data, error } = await tool48Cloud.client
+            .from('penlight_lists')
+            .insert({
+                user_id: tool48Cloud.user.id,
+                title,
+                performance_id: payload.performance_id,
+                is_default: isDefault,
+                payload
+            })
+            .select('id,title,performance_id,is_default,payload')
+            .single();
+        if (error) throw error;
+
+        await replaceCloudItems(data.id, payload);
+        tool48Cloud.selectedListId = data.id;
+        tool48Cloud.dirty = false;
+        await loadCloudLists();
+        setCloudMessage('cloud_saved');
+    } catch (error) {
+        setCloudMessage('cloud_action_failed', { message: error.message || error });
+    } finally {
+        setTool48CloudBusy(false);
+    }
+}
+
+async function updateSelectedCloudList() {
+    const selected = getSelectedCloudList();
+    if (!selected) {
+        setCloudMessage('cloud_select_list_first');
+        return;
+    }
+    if (!window.confirm(tr('cloud_confirm_update'))) return;
+
+    setTool48CloudBusy(true);
+    try {
+        const payload = createPenlightPayload();
+        const title = document.getElementById('cloudListTitleInput')?.value.trim() || payload.title || selected.title;
+        const isDefault = document.getElementById('cloudDefaultCheckbox')?.checked || false;
+        await maybeUnsetExistingDefault();
+
+        const { error } = await tool48Cloud.client
+            .from('penlight_lists')
+            .update({
+                title,
+                performance_id: payload.performance_id,
+                is_default: isDefault,
+                payload
+            })
+            .eq('user_id', tool48Cloud.user.id)
+            .eq('id', selected.id);
+        if (error) throw error;
+
+        await replaceCloudItems(selected.id, payload);
+        tool48Cloud.dirty = false;
+        await loadCloudLists();
+        setCloudMessage('cloud_updated');
+    } catch (error) {
+        setCloudMessage('cloud_action_failed', { message: error.message || error });
+    } finally {
+        setTool48CloudBusy(false);
+    }
+}
+
+async function loadSelectedCloudList() {
+    const selected = getSelectedCloudList();
+    if (!selected) {
+        setCloudMessage('cloud_select_list_first');
+        return;
+    }
+    if (tool48Cloud.dirty && !window.confirm(tr('cloud_confirm_load'))) return;
+
+    setTool48CloudBusy(true);
+    try {
+        let payload = selected.payload;
+        if (!payload?.slots) {
+            const { data, error } = await tool48Cloud.client
+                .from('penlight_list_items')
+                .select('member_id,member_name,color_data,sort_order,note')
+                .eq('user_id', tool48Cloud.user.id)
+                .eq('list_id', selected.id)
+                .order('sort_order', { ascending: true });
+            if (error) throw error;
+            payload = {
+                version: 1,
+                tool: 'penlightlist',
+                title: selected.title,
+                performance_id: selected.performance_id,
+                display: getDisplaySettings(),
+                gridSize: data?.length || 1,
+                slots: (data || []).map(item => ({
+                    id: item.member_id,
+                    name_ja: item.member_name || '',
+                    name_en: item.member_name || '',
+                    colorData: item.color_data || []
+                }))
+            };
+        }
+
+        applyPenlightPayload(payload, { markDirty: false });
+        document.getElementById('cloudListTitleInput').value = selected.title || payload.title || '';
+        const defaultCheckbox = document.getElementById('cloudDefaultCheckbox');
+        if (defaultCheckbox) defaultCheckbox.checked = Boolean(selected.is_default);
+        tool48Cloud.dirty = false;
+        renderTool48Cloud();
+        setCloudMessage('cloud_loaded');
+    } catch (error) {
+        setCloudMessage('cloud_action_failed', { message: error.message || error });
+    } finally {
+        setTool48CloudBusy(false);
+    }
+}
+
+async function deleteSelectedCloudList() {
+    const selected = getSelectedCloudList();
+    if (!selected) {
+        setCloudMessage('cloud_select_list_first');
+        return;
+    }
+    if (!window.confirm(tr('cloud_confirm_delete'))) return;
+
+    setTool48CloudBusy(true);
+    try {
+        const itemDelete = await tool48Cloud.client
+            .from('penlight_list_items')
+            .delete()
+            .eq('user_id', tool48Cloud.user.id)
+            .eq('list_id', selected.id);
+        if (itemDelete.error) throw itemDelete.error;
+
+        const listDelete = await tool48Cloud.client
+            .from('penlight_lists')
+            .delete()
+            .eq('user_id', tool48Cloud.user.id)
+            .eq('id', selected.id);
+        if (listDelete.error) throw listDelete.error;
+
+        tool48Cloud.selectedListId = '';
+        tool48Cloud.lists = tool48Cloud.lists.filter(list => list.id !== selected.id);
+        renderTool48Cloud();
+        setCloudMessage('cloud_deleted');
+    } catch (error) {
+        setCloudMessage('cloud_action_failed', { message: error.message || error });
+    } finally {
+        setTool48CloudBusy(false);
+    }
+}
+
+async function saveFollowedPerformance() {
+    if (!tool48Cloud.user) {
+        setCloudMessage('cloud_login_required');
+        return;
+    }
+    const performanceId = inferPerformanceId();
+    if (!performanceId) {
+        setCloudMessage('cloud_performance_unavailable');
+        return;
+    }
+
+    setTool48CloudBusy(true);
+    try {
+        const existing = await tool48Cloud.client
+            .from('user_followed_performances')
+            .select('performance_id')
+            .eq('user_id', tool48Cloud.user.id)
+            .eq('performance_id', performanceId)
+            .maybeSingle();
+        if (existing.error) throw existing.error;
+        if (existing.data) {
+            setCloudMessage('cloud_already_followed');
+            return;
+        }
+
+        const result = await tool48Cloud.client
+            .from('user_followed_performances')
+            .insert({ user_id: tool48Cloud.user.id, performance_id: performanceId });
+        if (result.error) throw result.error;
+        setCloudMessage('cloud_followed');
+    } catch (error) {
+        setCloudMessage('cloud_action_failed', { message: error.message || error });
+    } finally {
+        setTool48CloudBusy(false);
+    }
+}
+
+async function signInTool48() {
+    if (!tool48Cloud.client) {
+        setCloudMessage('cloud_unavailable');
+        return;
+    }
+    const email = document.getElementById('cloudEmailInput')?.value.trim() || '';
+    const password = document.getElementById('cloudPasswordInput')?.value || '';
+    if (!email || !password) {
+        setCloudMessage('cloud_missing_email_password');
+        return;
+    }
+
+    setTool48CloudBusy(true);
+    setCloudMessage('cloud_signing_in');
+    const { data, error } = await tool48Cloud.client.auth.signInWithPassword({ email, password });
+    setTool48CloudBusy(false);
+    if (error) {
+        setCloudMessage('cloud_action_failed', { message: error.message });
+        return;
+    }
+    tool48Cloud.user = data.session?.user || null;
+    setCloudMessage('cloud_signed_in');
+    await loadCloudLists().catch(err => setCloudMessage('cloud_action_failed', { message: err.message || err }));
+    if (getLocalSaveEnvelope()) setCloudMessage('cloud_local_import_offer');
+    renderTool48Cloud();
+}
+
+async function signUpTool48() {
+    if (!tool48Cloud.client) {
+        setCloudMessage('cloud_unavailable');
+        return;
+    }
+    const nickname = document.getElementById('cloudNicknameInput')?.value.trim() || '';
+    const email = document.getElementById('cloudEmailInput')?.value.trim() || '';
+    const password = document.getElementById('cloudPasswordInput')?.value || '';
+    if (!nickname || !email || !password) {
+        setCloudMessage('cloud_missing_signup');
+        return;
+    }
+
+    setTool48CloudBusy(true);
+    setCloudMessage('cloud_signing_up');
+    const { data, error } = await tool48Cloud.client.auth.signUp({
+        email,
+        password,
+        options: {
+            data: { display_name: nickname },
+            emailRedirectTo: window.location.href
+        }
+    });
+    setTool48CloudBusy(false);
+    if (error) {
+        setCloudMessage('cloud_action_failed', { message: error.message });
+        return;
+    }
+
+    tool48Cloud.user = data.session?.user || tool48Cloud.user;
+    setCloudMessage(tool48Cloud.user ? 'cloud_signed_in' : 'cloud_signup_needs_confirm');
+    if (tool48Cloud.user) await loadCloudLists().catch(err => setCloudMessage('cloud_action_failed', { message: err.message || err }));
+    renderTool48Cloud();
+}
+
+async function signOutTool48() {
+    if (!tool48Cloud.client) return;
+    setTool48CloudBusy(true);
+    await tool48Cloud.client.auth.signOut();
+    tool48Cloud.user = null;
+    tool48Cloud.lists = [];
+    tool48Cloud.selectedListId = '';
+    tool48Cloud.dirty = false;
+    setTool48CloudBusy(false);
+    setCloudMessage('cloud_signed_out');
+    renderTool48Cloud();
+}
+
+function bindPenlightSaveEvents() {
+    document.getElementById('localSaveBtn')?.addEventListener('click', saveCurrentListLocally);
+    document.getElementById('localLoadBtn')?.addEventListener('click', loadLocalPenlightList);
+    document.getElementById('cloudListTitleInput')?.addEventListener('input', event => {
+        event.target.dataset.touched = 'true';
+    });
+    document.getElementById('cloudSignInBtn')?.addEventListener('click', signInTool48);
+    document.getElementById('cloudSignUpBtn')?.addEventListener('click', signUpTool48);
+    document.getElementById('cloudLogoutBtn')?.addEventListener('click', signOutTool48);
+    document.getElementById('cloudRefreshBtn')?.addEventListener('click', () => {
+        loadCloudLists(true).catch(error => setCloudMessage('cloud_action_failed', { message: error.message || error }));
+    });
+    document.getElementById('cloudFollowPerformanceBtn')?.addEventListener('click', saveFollowedPerformance);
+    document.getElementById('cloudSaveNewBtn')?.addEventListener('click', saveCurrentListToCloud);
+    document.getElementById('cloudLoadBtn')?.addEventListener('click', loadSelectedCloudList);
+    document.getElementById('cloudUpdateBtn')?.addEventListener('click', updateSelectedCloudList);
+    document.getElementById('cloudDeleteBtn')?.addEventListener('click', deleteSelectedCloudList);
+    document.getElementById('cloudListSelect')?.addEventListener('change', event => {
+        tool48Cloud.selectedListId = event.target.value;
+        const selected = getSelectedCloudList();
+        const titleInput = document.getElementById('cloudListTitleInput');
+        if (titleInput && selected) titleInput.value = selected.title || '';
+        const defaultCheckbox = document.getElementById('cloudDefaultCheckbox');
+        if (defaultCheckbox && selected) defaultCheckbox.checked = Boolean(selected.is_default);
+        renderTool48Cloud();
+    });
+}
+
+async function initPenlightSaveEnhancement() {
+    if (tool48Cloud.initialized) return;
+    tool48Cloud.initialized = true;
+    bindPenlightSaveEvents();
+    updateLocalSaveMeta();
+
+    if (!window.supabase?.createClient) {
+        setCloudMessage('cloud_unavailable');
+        renderTool48Cloud();
+        return;
+    }
+
+    tool48Cloud.client = window.supabase.createClient(TOOL48_SUPABASE_URL, TOOL48_SUPABASE_PUBLISHABLE_KEY, {
+        auth: {
+            persistSession: true,
+            autoRefreshToken: true,
+            detectSessionInUrl: true
+        }
+    });
+
+    try {
+        const { data } = await tool48Cloud.client.auth.getSession();
+        tool48Cloud.user = data.session?.user || null;
+        tool48Cloud.client.auth.onAuthStateChange((_event, session) => {
+            tool48Cloud.user = session?.user || null;
+            if (tool48Cloud.user) {
+                loadCloudLists().catch(error => setCloudMessage('cloud_action_failed', { message: error.message || error }));
+                if (getLocalSaveEnvelope()) setCloudMessage('cloud_local_import_offer');
+            } else {
+                tool48Cloud.lists = [];
+                tool48Cloud.selectedListId = '';
+            }
+            renderTool48Cloud();
+        });
+        if (tool48Cloud.user) {
+            await loadCloudLists().catch(error => setCloudMessage('cloud_action_failed', { message: error.message || error }));
+            if (getLocalSaveEnvelope()) setCloudMessage('cloud_local_import_offer');
+        }
+    } catch (error) {
+        setCloudMessage('cloud_action_failed', { message: error.message || error });
+    }
+    renderTool48Cloud();
+}
+
 function parseMemberData(rawArray) {
     return rawArray.map((m, idx) => {
         if (m.colorData && Array.isArray(m.colorData)) return m; 
@@ -248,6 +1025,7 @@ async function initApp() {
     if (membersDB.length > 0) {
         preloadImagesBatch(membersDB).catch(err => console.warn("Image preload failed:", err));
     }
+    initPenlightSaveEnhancement().catch(err => console.warn("Cloud save init failed:", err));
 }
 
 // 新增：動態生成下拉選單
@@ -278,23 +1056,34 @@ function populateScheduleDropdown() {
     });
 }
 
-document.getElementById('customTitle').addEventListener('input', () => { isTitleCustomized = true; });
+document.getElementById('customTitle').addEventListener('input', () => {
+    isTitleCustomized = true;
+    const cloudTitleInput = document.getElementById('cloudListTitleInput');
+    if (cloudTitleInput && !cloudTitleInput.dataset.touched) cloudTitleInput.value = document.getElementById('customTitle').value;
+    setPenlightDirty();
+});
 
 document.getElementById('langSelector').addEventListener('change', (e) => {
     currentLang = e.target.value;
     applyLanguage();
     updateTitleFromState();
     renderHTMLGrid(); 
+    setPenlightDirty();
 });
 
 function applyLanguage() {
     const d = langsDB[currentLang] || langsDB['zh-HK'] || langsDB['en'];
+    document.documentElement.lang = currentLang;
     document.querySelectorAll('[data-i18n]').forEach(el => {
         const key = el.getAttribute('data-i18n');
         if(d[key]) {
             if(el.tagName === 'INPUT' || el.tagName === 'OPTION') el.textContent = d[key];
             else el.textContent = d[key];
         }
+    });
+    document.querySelectorAll('[data-i18n-placeholder]').forEach(el => {
+        const key = el.getAttribute('data-i18n-placeholder');
+        if (d[key] || PENLIGHT_SAVE_FALLBACK_I18N[key]) el.placeholder = tr(key);
     });
     
     if (!isTitleCustomized && currentTitleState) updateTitleFromState();
@@ -309,6 +1098,7 @@ function applyLanguage() {
     // 新增：更新最新公演選單的第一行語言
     const schedSel = document.getElementById('scheduleSelector');
     if (schedSel && schedSel.options[0]) schedSel.options[0].textContent = d['opt_schedule'] || "-- 讀取最新公演名單 --";
+    renderTool48Cloud();
 }
 
 function updateTitleFromState() {
@@ -357,8 +1147,14 @@ function getDiagonalGradient(cd) {
     return c[0];
 }
 
-['cfgPhoto', 'cfgGen', 'cfgName', 'cfgNick'].forEach(id => document.getElementById(id).addEventListener('change', renderHTMLGrid));
-document.querySelectorAll('input[name="colorMode"]').forEach(r => r.addEventListener('change', renderHTMLGrid));
+['cfgPhoto', 'cfgGen', 'cfgName', 'cfgNick'].forEach(id => document.getElementById(id).addEventListener('change', () => {
+    setPenlightDirty();
+    renderHTMLGrid();
+}));
+document.querySelectorAll('input[name="colorMode"]').forEach(r => r.addEventListener('change', () => {
+    setPenlightDirty();
+    renderHTMLGrid();
+}));
 
 // 新增：監聽「最新公演選單」
 document.getElementById('scheduleSelector').addEventListener('change', (e) => {
@@ -392,6 +1188,7 @@ document.getElementById('scheduleSelector').addEventListener('change', (e) => {
             document.getElementById('customTitle').value = `${schedule.date} ${schedule.title}`;
             
             renderHTMLGrid();
+            setPenlightDirty();
         }
     }
     e.target.value = ''; // 選完還原
@@ -406,6 +1203,7 @@ document.getElementById('presetSelector').addEventListener('change', (e) => {
         isTitleCustomized = false;
         updateTitleFromState();
         renderHTMLGrid();
+        setPenlightDirty();
     }
     e.target.value = ''; 
 });
@@ -420,6 +1218,7 @@ document.getElementById('genSelector').addEventListener('change', (e) => {
             isTitleCustomized = false;
             updateTitleFromState();
             renderHTMLGrid();
+            setPenlightDirty();
         } else { alert("找不到該期生成員資料。請確保 members.json 資料庫已更新。"); }
     }
     e.target.value = '';
@@ -443,6 +1242,7 @@ function setGridSize(size) {
     const oldSlots = [...gridSlots];
     gridSlots = new Array(size).fill(null);
     oldSlots.forEach((m, i) => { if (i < size) gridSlots[i] = m; });
+    setPenlightDirty();
     renderHTMLGrid();
 }
 function changeGridBy(n) { setGridSize(Math.max(1, gridSlots.length + n)); }
@@ -524,14 +1324,14 @@ function openModal(idx) {
         const nameToUse = (currentLang === 'ko') ? m.name_ko : (['en', 'th', 'id'].includes(currentLang) ? m.name_en : m.name_ja);
         d.innerHTML = `<img data-img-src="${escapeAttr(m.image)}"><span>${nameToUse}</span>`;
         hydrateQueuedImages(d);
-        d.onclick = () => { gridSlots[activeSlotIndex] = m; closeModal(); renderHTMLGrid(); };
+        d.onclick = () => { gridSlots[activeSlotIndex] = m; closeModal(); setPenlightDirty(); renderHTMLGrid(); };
         b.appendChild(d);
     });
     document.getElementById('memberModal').classList.add('active');
 }
 
 function closeModal() { document.getElementById('memberModal').classList.remove('active'); }
-function removeMember(e, i) { e.stopPropagation(); gridSlots[i] = null; renderHTMLGrid(); }
+function removeMember(e, i) { e.stopPropagation(); gridSlots[i] = null; setPenlightDirty(); renderHTMLGrid(); }
 
 function hexToHSL(h) {
     let r = parseInt(h.slice(1,3),16)/255, g = parseInt(h.slice(3,5),16)/255, b = parseInt(h.slice(5,7),16)/255;
@@ -565,6 +1365,7 @@ function sortByColor() {
         return hslA.h - hslB.h;
     });
     gridSlots = [...filled, ...new Array(gridSlots.length - filled.length).fill(null)];
+    setPenlightDirty();
     renderHTMLGrid();
 }
 
@@ -572,6 +1373,7 @@ function sortByGen() {
     const f = gridSlots.filter(x => x !== null);
     f.sort((a,b) => a.genNum - b.genNum);
     gridSlots = [...f, ...new Array(gridSlots.length - f.length).fill(null)];
+    setPenlightDirty();
     renderHTMLGrid();
 }
 
@@ -591,7 +1393,10 @@ document.addEventListener('touchstart', (e) => {
     }
 }, {passive: true});
 
-document.getElementById('themeToggle').addEventListener('click', () => document.body.classList.toggle('dark-mode'));
+document.getElementById('themeToggle').addEventListener('click', () => {
+    document.body.classList.toggle('dark-mode');
+    setPenlightDirty();
+});
 
 function drawRoundedRect(ctx, x, y, width, height, radius) {
     ctx.beginPath(); ctx.moveTo(x + radius, y); ctx.lineTo(x + width - radius, y);
