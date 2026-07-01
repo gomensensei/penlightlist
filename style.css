@@ -547,3 +547,24 @@ body.dark-mode .cloud-danger-btn {
         flex-basis: 132px;
     }
 }
+
+/* Phase 2G account popover viewport guard. */
+.account-popover {
+    max-width: calc(100vw - 16px);
+    max-height: calc(100dvh - 64px);
+    overflow: auto;
+    z-index: 250;
+}
+
+@media (max-width: 560px) {
+    .account-popover {
+        position: fixed;
+        top: 52px;
+        right: 8px;
+        left: 8px;
+        width: auto;
+    }
+    .account-toggle {
+        max-width: min(124px, 32vw);
+    }
+}

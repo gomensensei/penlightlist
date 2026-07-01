@@ -900,9 +900,16 @@ function parseMemberData(rawArray) {
             nickname: m.nickname || m.name_en || m.name_ja || "",
             ki: m.generation || m.ki || "",
             genNum: parseFloat((m.generation || m.ki || "99").replace(/[^0-9.]/g, '')) || 99,
-            colorData: cData, image: m.image || ""
+            colorData: cData, image: m.image || "",
+            active: m.active,
+            selectable: m.selectable,
+            hiddenFromSelection: m.hiddenFromSelection
         };
     });
+}
+
+function isSelectableMember(member) {
+    return Boolean(member) && member.active !== false && member.selectable !== false && member.hiddenFromSelection !== true;
 }
 
 window.onerror = function(msg, url, line) {
@@ -1398,7 +1405,7 @@ document.getElementById('presetSelector').addEventListener('change', (e) => {
 document.getElementById('genSelector').addEventListener('change', (e) => {
     const gen = e.target.value;
     if (gen) {
-        const filtered = membersDB.filter(m => gen === "ドラフト生" ? m.ki.includes("ドラフト") : m.ki === gen);
+        const filtered = membersDB.filter(isSelectableMember).filter(m => gen === "ドラフト生" ? m.ki.includes("ドラフト") : m.ki === gen);
         if (filtered.length > 0) {
             gridSlots = [...filtered];
             currentTitleState = { type: 'gen', id: gen };
@@ -1506,7 +1513,7 @@ function openModal(idx) {
     activeSlotIndex = idx;
     const b = document.getElementById('modalBody');
     b.innerHTML = '';
-    membersDB.forEach(m => {
+    membersDB.filter(isSelectableMember).forEach(m => {
         const d = document.createElement('div'); d.className = 'member-option';
         const nameToUse = (currentLang === 'ko') ? m.name_ko : (['en', 'th', 'id'].includes(currentLang) ? m.name_en : m.name_ja);
         d.innerHTML = `<img data-img-src="${escapeAttr(m.image)}"><span>${nameToUse}</span>`;
