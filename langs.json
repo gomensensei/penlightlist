@@ -102,7 +102,7 @@
     "cloud_local_import_offer": "偵測到本機儲存，可將目前名單儲存到雲端。",
     "schedule_expand_btn": "展開日曆",
     "schedule_collapse_btn": "收起日曆",
-    "privacy_promise": "未經你明確同意，不會披露你的個人資料。"
+    "privacy_promise": "未經你同意，不會公開你的資料。"
   },
   "ja": {
     "app_title": "AKB48 出演メンバー＆サイリウムカラー",
@@ -207,7 +207,7 @@
     "cloud_local_import_offer": "ローカル保存があります。現在のリストをクラウドに保存できます。",
     "schedule_expand_btn": "一覧表示",
     "schedule_collapse_btn": "閉じる",
-    "privacy_promise": "明確な同意なしに、個人情報を開示することはありません。"
+    "privacy_promise": "同意なしにあなたのデータを公開しません。"
   },
   "en": {
     "app_title": "AKB48 Members & Penlight Colors",
@@ -312,7 +312,7 @@
     "cloud_local_import_offer": "Local save found. You can save the current list to cloud.",
     "schedule_expand_btn": "Expand",
     "schedule_collapse_btn": "Collapse",
-    "privacy_promise": "We will not disclose your personal data without your explicit consent."
+    "privacy_promise": "We will not make your data public without your consent."
   },
   "zh-CN": {
     "app_title": "AKB48 成员名单及应援色",
@@ -417,7 +417,7 @@
     "cloud_local_import_offer": "检测到本机保存，可将当前名单保存到云端。",
     "schedule_expand_btn": "展开日历",
     "schedule_collapse_btn": "收起日历",
-    "privacy_promise": "未经你明确同意，不会披露你的个人资料。"
+    "privacy_promise": "未经你同意，不会公开你的资料。"
   },
   "ko": {
     "app_title": "AKB48 멤버 목록 및 응원색",
@@ -522,7 +522,7 @@
     "cloud_local_import_offer": "로컬 저장이 있습니다. 현재 리스트를 클라우드에 저장할 수 있습니다.",
     "schedule_expand_btn": "전체 보기",
     "schedule_collapse_btn": "접기",
-    "privacy_promise": "명시적인 동의 없이 개인 정보를 공개하지 않습니다."
+    "privacy_promise": "동의 없이 데이터를 공개하지 않습니다."
   },
   "th": {
     "app_title": "รายชื่อสมาชิก AKB48 & สีปากกา",
@@ -627,7 +627,7 @@
     "cloud_local_import_offer": "พบบันทึกในเครื่อง สามารถบันทึกรายการปัจจุบันไปคลาวด์ได้",
     "schedule_expand_btn": "ดูทั้งหมด",
     "schedule_collapse_btn": "ย่อ",
-    "privacy_promise": "เราจะไม่เปิดเผยข้อมูลส่วนบุคคลของคุณหากไม่ได้รับความยินยอมอย่างชัดเจนจากคุณ"
+    "privacy_promise": "เราจะไม่เปิดเผยข้อมูลของคุณต่อสาธารณะโดยไม่ได้รับความยินยอมจากคุณ"
   },
   "id": {
     "app_title": "Daftar Anggota AKB48 & Warna",
@@ -732,6 +732,6 @@
     "cloud_local_import_offer": "Simpanan lokal ditemukan. Daftar saat ini bisa disimpan ke cloud.",
     "schedule_expand_btn": "Lihat semua",
     "schedule_collapse_btn": "Tutup",
-    "privacy_promise": "Kami tidak akan mengungkapkan data pribadi Anda tanpa persetujuan jelas dari Anda."
+    "privacy_promise": "Kami tidak akan mempublikasikan data Anda tanpa persetujuan Anda."
   }
 }
