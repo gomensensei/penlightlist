@@ -688,3 +688,158 @@ body.dark-mode .cloud-danger-btn {
     .footer-links { width: auto; gap: 8px 10px; flex: 0 0 auto; }
     .footer-link-icon { width: 12px; height: 12px; }
 }
+
+/* Mobile compact pass: placed last so the GitHub Pages build cannot be pulled back by earlier rules. */
+@media (max-width: 560px) {
+    body { font-size: 12.5px; line-height: 1.34; }
+    .main-container { padding: 9px !important; gap: 9px !important; }
+    .panel { padding: 12px !important; border-radius: 18px; }
+    .controls-panel { font-size: 0.74rem !important; }
+    .control-group { margin-bottom: 12px !important; }
+    .control-group label.title {
+        margin-bottom: 7px !important;
+        font-size: 0.72rem !important;
+        line-height: 1.22 !important;
+    }
+    .controls-row,
+    .select-group { gap: 6px !important; }
+    .select-group { margin-top: 6px !important; }
+    #presetSelector,
+    #genSelector,
+    #scheduleSelector,
+    .preset-select {
+        min-height: 34px !important;
+        padding: 7px 26px 7px 9px !important;
+        font-size: 0.7rem !important;
+        line-height: 1.22 !important;
+        border-radius: 8px !important;
+    }
+    .title-input-wrapper {
+        padding: 8px 10px !important;
+        gap: 7px !important;
+        margin-bottom: 0 !important;
+    }
+    .title-input-wrapper .icon-btn {
+        width: 28px !important;
+        height: 28px !important;
+    }
+    .custom-title-input {
+        font-size: 0.9rem !important;
+        line-height: 1.22 !important;
+        padding-bottom: 2px !important;
+    }
+    .quick-save-row {
+        grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+        gap: 6px !important;
+    }
+    .save-popover-wrap {
+        min-width: 0 !important;
+        width: 100% !important;
+    }
+    .save-dock-btn {
+        min-height: 34px !important;
+        padding: 5px 7px !important;
+        gap: 0 !important;
+        font-size: 0.66rem !important;
+        line-height: 1.12 !important;
+        border-radius: 12px !important;
+    }
+    .save-dock-sub {
+        min-height: 1em !important;
+        font-size: 0.58rem !important;
+        line-height: 1.05 !important;
+    }
+    .save-popover,
+    .account-popover { font-size: 0.72rem !important; }
+    .save-popover-title,
+    .save-section-title {
+        font-size: 0.72rem !important;
+        line-height: 1.2 !important;
+    }
+    .cloud-helper,
+    .cloud-status-pill,
+    .cloud-user-pill {
+        font-size: 0.66rem !important;
+        line-height: 1.2 !important;
+    }
+    .cloud-input {
+        min-height: 34px !important;
+        padding: 7px 9px !important;
+        font-size: 0.72rem !important;
+    }
+    .account-button-row,
+    .cloud-save-actions,
+    .flex-btns { gap: 5px !important; }
+    .schedule-rail-row {
+        grid-template-columns: 28px minmax(0, 1fr) 28px auto !important;
+        gap: 5px !important;
+        padding: 5px !important;
+    }
+    .schedule-rail { gap: 6px !important; }
+    .schedule-rail-arrow {
+        width: 28px !important;
+        height: 28px !important;
+        font-size: 1rem !important;
+    }
+    .schedule-chip {
+        max-width: 70vw !important;
+        min-height: 32px !important;
+        padding: 6px 8px !important;
+        font-size: 0.68rem !important;
+        line-height: 1.18 !important;
+    }
+    .schedule-rail-expand {
+        min-width: 48px !important;
+        min-height: 28px !important;
+        padding: 5px 7px !important;
+        font-size: 0.66rem !important;
+    }
+    .schedule-rail-row.is-expanded .schedule-chip {
+        min-height: 36px !important;
+        line-height: 1.2 !important;
+    }
+    .grid-controls {
+        display: grid !important;
+        grid-template-columns: repeat(5, minmax(0, 1fr)) !important;
+        gap: 5px !important;
+    }
+    .grid-controls .title { grid-column: 1 / -1 !important; }
+    .grid-controls .flex-btns { display: contents !important; }
+    .grid-controls .btn {
+        min-width: 0 !important;
+        min-height: 32px !important;
+        padding: 7px 2px !important;
+        font-size: 0.62rem !important;
+    }
+    .display-controls {
+        display: grid !important;
+        grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+        gap: 6px !important;
+    }
+    .display-controls .title { grid-column: 1 / -1 !important; }
+    .display-controls .toggle-label {
+        margin: 0 !important;
+        padding: 7px 6px !important;
+        font-size: 0.68rem !important;
+        line-height: 1.18 !important;
+    }
+    #htmlGrid { gap: 10px !important; }
+    #htmlGrid .grid-cell {
+        flex: 0 0 calc((100% - 20px) / 3) !important;
+        max-width: none !important;
+    }
+    .cell-overlay {
+        height: 42%;
+        background: linear-gradient(to top, rgba(0,0,0,0.42), rgba(0,0,0,0.12) 60%, transparent) !important;
+    }
+    .avatar-wrap {
+        width: 50cqw !important;
+        height: 50cqw !important;
+        margin-top: 2cqw !important;
+        margin-bottom: 0.5cqw !important;
+    }
+    .text-wrap { gap: 0.2cqw !important; }
+    .cell-gen { font-size: 4.8cqw !important; margin-bottom: 0 !important; }
+    .cell-name { font-size: 12.5cqw !important; line-height: 0.95 !important; }
+    .cell-nick { font-size: 5.6cqw !important; }
+}

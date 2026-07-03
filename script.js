@@ -89,6 +89,33 @@ function tr(key, replacements = {}) {
     return text;
 }
 
+const EXCLUDED_MEMBER_NAMES = ['花田藍衣', '花田 藍衣', 'Hanada Mei', 'Mei Hanada'];
+const EXCLUDED_MEMBER_KEYS = new Set(EXCLUDED_MEMBER_NAMES.map(normalizeMemberKey));
+
+function normalizeMemberKey(value) {
+    return String(value || '').replace(/\s+/g, '').toLowerCase();
+}
+
+function isExcludedMemberName(value) {
+    return EXCLUDED_MEMBER_KEYS.has(normalizeMemberKey(value));
+}
+
+function isExcludedMember(member) {
+    if (!member) return false;
+    return [member.name_ja, member.name_en, member.name_ko, member.nickname].some(isExcludedMemberName);
+}
+
+function filterExcludedMemberNames(names = []) {
+    return names.filter(name => !isExcludedMemberName(name));
+}
+
+function sanitizeSchedule(schedule) {
+    return {
+        ...schedule,
+        members: filterExcludedMemberNames(Array.isArray(schedule?.members) ? schedule.members : [])
+    };
+}
+
 function setCloudMessage(keyOrText, replacements = {}) {
     const text = keyOrText ? tr(keyOrText, replacements) : '';
     ['cloudMessage', 'cloudSaveMessage'].forEach(id => {
@@ -215,6 +242,7 @@ function createPenlightPayload() {
 
 function resolveMemberFromPayload(savedMember) {
     if (!savedMember) return null;
+    if (isExcludedMember(savedMember)) return null;
     const savedId = savedMember.id == null ? '' : String(savedMember.id);
     const byId = savedId ? membersDB.find(member => String(member.id) === savedId) : null;
     if (byId) return byId;
@@ -905,7 +933,7 @@ function parseMemberData(rawArray) {
             selectable: m.selectable,
             hiddenFromSelection: m.hiddenFromSelection
         };
-    });
+    }).filter(member => !isExcludedMember(member));
 }
 
 function isSelectableMember(member) {
@@ -1061,7 +1089,8 @@ async function initApp() {
 
         if (schedRes.ok) {
             try {
-                schedulesDB = await schedRes.json();
+                const rawSchedules = await schedRes.json();
+                schedulesDB = Array.isArray(rawSchedules) ? rawSchedules.map(sanitizeSchedule) : [];
                 populateScheduleDropdown(); 
             } catch(e) { console.warn("讀取 schedules.json 失敗"); }
         }
@@ -1084,7 +1113,7 @@ async function initApp() {
         if (schedulesDB && schedulesDB.length > 0) {
             const latestSchedule = schedulesDB[0]; // 讀取第一場 (最近期)
             const normalizeName = (name) => name.replace(/\s+/g, '');
-            const matchedMembers = latestSchedule.members.map(schedName => {
+            const matchedMembers = filterExcludedMemberNames(latestSchedule.members).map(schedName => {
                 const normSchedName = normalizeName(schedName);
                 return membersDB.find(m => normalizeName(m.name_ja) === normSchedName) || null;
             });
@@ -1225,7 +1254,7 @@ function loadScheduleById(selectedId) {
     if (!schedule) return false;
 
     const normalizeName = (name) => String(name || '').replace(/\s+/g, '');
-    const matchedMembers = schedule.members.map(schedName => {
+    const matchedMembers = filterExcludedMemberNames(schedule.members).map(schedName => {
         const normSchedName = normalizeName(schedName);
         return membersDB.find(m => normalizeName(m.name_ja) === normSchedName) || null;
     });
@@ -1360,7 +1389,7 @@ document.getElementById('scheduleSelector')?.addEventListener('change', (e) => {
             const normalizeName = (name) => name.replace(/\s+/g, '');
             
             // 去 Database 搵返真實成員出嚟
-            const matchedMembers = schedule.members.map(schedName => {
+            const matchedMembers = filterExcludedMemberNames(schedule.members).map(schedName => {
                 const normSchedName = normalizeName(schedName);
                 return membersDB.find(m => normalizeName(m.name_ja) === normSchedName) || null;
             });

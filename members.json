@@ -901,30 +901,6 @@
     "hiddenFromSelection": true
   },
   {
-    "id": "44",
-    "name_ja": "花田 藍衣",
-    "name_kana": "はなだ めい",
-    "name_en": "Mei Hanada",
-    "name_ko": "하나다 메이",
-    "nickname": "めいめい",
-    "ki": "19期生",
-    "genNum": 19,
-    "colorData": [
-      {
-        "color": "#FFD60A",
-        "name": "黄"
-      },
-      {
-        "color": "#ffffff",
-        "name": "白"
-      }
-    ],
-    "image": "https://d2r1lkk9i7row.cloudfront.net/hashiranokai/member/83101021.jpg",
-    "active": false,
-    "selectable": false,
-    "hiddenFromSelection": true
-  },
-  {
     "id": "45",
     "name_ja": "大賀 彩姫",
     "name_kana": "おおが さき",
