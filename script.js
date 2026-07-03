@@ -1087,19 +1087,30 @@ async function preloadImagesBatch(membersArray, onProgress) {
 
 async function getCanvasImageForMember(member) {
     if (!member?.image) return null;
-    if (member.preloadedImage?.complete && member.preloadedImage.naturalWidth > 0) {
+    const needsCors = /^https?:\/\//i.test(member.image);
+    if (!needsCors && member.preloadedImage?.complete && member.preloadedImage.naturalWidth > 0) {
         return member.preloadedImage;
     }
-    const needsCors = /^https?:\/\//i.test(member.image);
-    return loadImageQueued(member.image, { cors: needsCors });
+    if (!needsCors) return loadImageQueued(member.image, { cors: false });
+
+    const directImage = await loadImageQueued(member.image, { cors: true });
+    if (directImage) return directImage;
+
+    return loadImageQueued(toCorsProxyImageUrl(member.image), { cors: true });
+}
+
+function toCorsProxyImageUrl(url) {
+    if (!/^https?:\/\//i.test(url)) return url;
+    const withoutProtocol = url.replace(/^https?:\/\//i, '');
+    return `https://images.weserv.nl/?url=${encodeURIComponent(withoutProtocol)}`;
 }
 
 async function initApp() {
     try {
         const [memRes, langRes, schedRes] = await Promise.all([ 
-            fetch('members.json?v=20260704-export-fix'), 
-            fetch('langs.json?v=20260704-export-fix'),
-            fetch('schedules.json?v=20260704-export-fix').catch(() => ({ ok: false })) 
+            fetch('members.json?v=20260704-no-assets-proxy'), 
+            fetch('langs.json?v=20260704-no-assets-proxy'),
+            fetch('schedules.json?v=20260704-no-assets-proxy').catch(() => ({ ok: false })) 
         ]);
         
         if (!memRes.ok || !langRes.ok) throw new Error("Fetch failed");
@@ -1202,7 +1213,7 @@ function populateScheduleSelectLegacy() {
         const displayTitle = sched.title || sched.performance || sched.公演名 || sched.name || "未知公演";
         const displayDate = sched.date || sched.日付 || "";
         
-        opt.textContent = `📅 ${displayDate} - ${displayTitle}`;
+        opt.textContent = `${displayDate} - ${displayTitle}`;
         sel.appendChild(opt);
     });
 }

@@ -2,7 +2,7 @@
   "zh-HK": {
     "app_title": "AKB48 成員名單及應援色",
     "default_title": "「手をつなぎながら」公演",
-    "title_placeholder": "📝 點擊輸入公演名稱...",
+    "title_placeholder": "點擊輸入公演名稱...",
     "preset_placeholder": "-- 快速載入公演模板 (空白格) --",
     "gen_placeholder": "-- 選擇期數全體載入 --",
     "opt_schedule": "-- 讀取最新公演名單 --",
@@ -109,7 +109,7 @@
   "ja": {
     "app_title": "AKB48 出演メンバー＆サイリウムカラー",
     "default_title": "「手をつなぎながら」公演",
-    "title_placeholder": "📝 公演名を入力してください...",
+    "title_placeholder": "公演名を入力してください...",
     "preset_placeholder": "-- テンプレート読み込み (空枠) --",
     "gen_placeholder": "-- 期生で読み込み --",
     "opt_schedule": "-- 最新の公演リストを読み込む --",
@@ -216,7 +216,7 @@
   "en": {
     "app_title": "AKB48 Members & Penlight Colors",
     "default_title": "Tewo Tsunaginagara Stage",
-    "title_placeholder": "📝 Enter Stage/Concert Name...",
+    "title_placeholder": "Enter Stage/Concert Name...",
     "preset_placeholder": "-- Load Preset (Empty Grid) --",
     "gen_placeholder": "-- Load by Generation --",
     "opt_schedule": "-- Load Latest Stage List --",
@@ -323,7 +323,7 @@
   "zh-CN": {
     "app_title": "AKB48 成员名单及应援色",
     "default_title": "「手をつなぎながら」公演",
-    "title_placeholder": "📝 点击输入公演名称...",
+    "title_placeholder": "点击输入公演名称...",
     "preset_placeholder": "-- 快速载入公演模板 (空白格) --",
     "gen_placeholder": "-- 载入指定期生成员 --",
     "opt_schedule": "-- 读取最新公演名单 --",
@@ -430,7 +430,7 @@
   "ko": {
     "app_title": "AKB48 멤버 목록 및 응원색",
     "default_title": "「손을 잡으면서」 공연",
-    "title_placeholder": "📝 공연/콘서트 이름 입력...",
+    "title_placeholder": "공연/콘서트 이름 입력...",
     "preset_placeholder": "-- 프리셋 로드 (빈 그리드) --",
     "gen_placeholder": "-- 기수별 로드 --",
     "opt_schedule": "-- 최신 공연 목록 불러오기 --",
@@ -537,7 +537,7 @@
   "th": {
     "app_title": "รายชื่อสมาชิก AKB48 & สีปากกา",
     "default_title": "สเตจ Tewo Tsunaginagara",
-    "title_placeholder": "📝 ป้อนชื่อการแสดง...",
+    "title_placeholder": "ป้อนชื่อการแสดง...",
     "preset_placeholder": "-- โหลดพรีเซต (ช่องว่าง) --",
     "gen_placeholder": "-- โหลดตามรุ่น --",
     "opt_schedule": "-- โหลดรายชื่อสเตจล่าสุด --",
@@ -644,7 +644,7 @@
   "id": {
     "app_title": "Daftar Anggota AKB48 & Warna",
     "default_title": "Stage Tewo Tsunaginagara",
-    "title_placeholder": "📝 Masukkan nama acara...",
+    "title_placeholder": "Masukkan nama acara...",
     "preset_placeholder": "-- Muat Preset (Grid Kosong) --",
     "gen_placeholder": "-- Muat berdasarkan Generasi --",
     "opt_schedule": "-- Muat Daftar Stage Terbaru --",
