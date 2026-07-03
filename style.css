@@ -381,7 +381,7 @@ body.dark-mode .avatar-wrap { border-color: #333; }
 ruby { ruby-align: center; }
 rt { font-size: 4cqw; color: var(--text-sec); font-weight: 700; opacity: 0.9; margin-bottom: -0.5cqw;}
 .cell-gen { font-size: 5.4cqw; color: var(--text-sec); font-weight: 700; transition: all 0.3s ease; margin-bottom: .4cqw;}
-.cell-name { font-size: 12cqw; font-weight: 900; color: var(--text-main); line-height: .98; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;}
+.cell-name { font-size: 12cqw; font-weight: 900; color: var(--text-main); line-height: 1.08; padding-bottom: .08em; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;}
 .cell-nick { font-size: 6.2cqw; font-weight: 700; color: var(--text-sec); transition: all 0.3s ease;}
 .mode-block rt, .mode-block .cell-gen, .mode-block .cell-name, .mode-block .cell-nick { color: #FFFFFF !important; text-shadow: 0 1px 3px rgba(0,0,0,0.42); }
 
@@ -647,7 +647,7 @@ body.dark-mode .cloud-danger-btn {
     .text-wrap { gap: .2cqw; }
     rt { font-size: 3.4cqw; }
     .cell-gen { font-size: 4.8cqw; margin-bottom: 0; }
-    .cell-name { font-size: 12.5cqw; line-height: .95; }
+    .cell-name { font-size: 12.5cqw; line-height: 1.05; padding-bottom: .08em; }
     .cell-nick { font-size: 5.6cqw; }
     .color-display { gap: 1cqw; padding-bottom: 1cqw; line-height: 1.05; }
 }
@@ -840,6 +840,6 @@ body.dark-mode .cloud-danger-btn {
     }
     .text-wrap { gap: 0.2cqw !important; }
     .cell-gen { font-size: 4.8cqw !important; margin-bottom: 0 !important; }
-    .cell-name { font-size: 12.5cqw !important; line-height: 0.95 !important; }
+    .cell-name { font-size: 12.5cqw !important; line-height: 1.05 !important; padding-bottom: .08em !important; }
     .cell-nick { font-size: 5.6cqw !important; }
 }

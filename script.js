@@ -1063,22 +1063,43 @@ async function preloadImagesBatch(membersArray, onProgress) {
     const total = membersWithImages.length;
     let loaded = 0;
 
-    for (let i = 0; i < total; i += IMAGE_BATCH_SIZE) {
-        const batch = membersWithImages.slice(i, i + IMAGE_BATCH_SIZE);
-        await Promise.all(batch.map(async m => {
-            await loadImageQueued(m.image);
+    const loadPromises = membersWithImages.map(member => new Promise(resolve => {
+        const img = new Image();
+        img.decoding = "async";
+
+        const finish = (ok) => {
             loaded++;
-            if (onProgress) onProgress(loaded, total, m);
-        }));
+            member.imgLoaded = true;
+            member.imgLoadFailed = !ok;
+            if (ok) member.preloadedImage = img;
+            if (onProgress) onProgress(loaded, total, member);
+            resolve();
+        };
+
+        img.onload = () => finish(true);
+        img.onerror = () => finish(false);
+        img.src = member.image;
+    }));
+
+    const timeout = new Promise(resolve => setTimeout(resolve, 10000));
+    await Promise.race([Promise.all(loadPromises), timeout]);
+}
+
+async function getCanvasImageForMember(member) {
+    if (!member?.image) return null;
+    if (member.preloadedImage?.complete && member.preloadedImage.naturalWidth > 0) {
+        return member.preloadedImage;
     }
+    const needsCors = /^https?:\/\//i.test(member.image);
+    return loadImageQueued(member.image, { cors: needsCors });
 }
 
 async function initApp() {
     try {
         const [memRes, langRes, schedRes] = await Promise.all([ 
-            fetch('members.json'), 
-            fetch('langs.json'),
-            fetch('schedules.json').catch(() => ({ ok: false })) 
+            fetch('members.json?v=20260704-export-fix'), 
+            fetch('langs.json?v=20260704-export-fix'),
+            fetch('schedules.json?v=20260704-export-fix').catch(() => ({ ok: false })) 
         ]);
         
         if (!memRes.ok || !langRes.ok) throw new Error("Fetch failed");
@@ -1724,7 +1745,7 @@ async function drawCanvasExport() {
             }
 
             if (photo && member.image) {
-                const img = await loadImageQueued(member.image, { cors: true });
+                const img = await getCanvasImageForMember(member);
                 if (img) {
                     const avatarRadius = cellW * 0.22, cx = x + cellW / 2, cy = y + cellH * 0.33; 
                     ctx.beginPath(); ctx.arc(cx, cy, avatarRadius + 6, 0, Math.PI * 2); 
@@ -1800,7 +1821,9 @@ try {
         const dataUrl = canvas.toDataURL('image/png');
         
         // 偵測是否為手機或平板裝置 (iOS / Android)
-        const isMobile = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent);
+        const isMobile = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent)
+            || (navigator.maxTouchPoints > 1 && window.innerWidth <= 768)
+            || window.matchMedia('(max-width: 768px)').matches;
 
         if (isMobile) {
             // 手機版：彈出預覽圖，讓用家長按儲存 (利用 Gomensensei Core 架構)
@@ -1813,15 +1836,21 @@ try {
             
             // 多國語言提示字
             const hint = document.createElement('div');
-            const hintText = (currentLang === 'ja') ? '画像を長押しして「写真に追加」' : 
-                             (currentLang === 'zh-CN') ? '长按图片，选择「保存到相册」' : 
-                             (currentLang === 'en') ? 'Long press image to Save to Photos' : 
-                             (currentLang === 'ko') ? '이미지를 길게 눌러 사진 앱에 저장' :
-                             '請長按圖片，選擇「儲存影像」';
-            
-            hint.innerHTML = `<div style="color:white; font-size:1.1rem; font-weight:bold; margin-bottom:20px; text-align:center; background:var(--primary); padding:10px 20px; border-radius:30px; box-shadow:0 4px 15px rgba(255,64,129,0.5); animation: float 3s ease-in-out infinite;">👇 ${hintText} 👇</div>`;
-            
             // 生成圖片並加入 allow-save 類別 (解除 iOS 長按封鎖)
+            const hintTextMap = {
+                'zh-HK': '請長按圖片，然後選擇儲存圖片。',
+                'zh-CN': '请长按图片，然后选择保存图片。',
+                ja: '画像を長押しして保存してください。',
+                ko: '이미지를 길게 눌러 저장해 주세요.',
+                th: 'กดรูปภาพค้างไว้เพื่อบันทึก',
+                id: 'Tekan lama gambar untuk menyimpan.',
+                en: 'Long-press the image to save it.'
+            };
+            const hintPill = document.createElement('div');
+            hintPill.textContent = hintTextMap[currentLang] || hintTextMap.en;
+            hintPill.style.cssText = 'color:white; font-size:1rem; font-weight:bold; margin-bottom:20px; text-align:center; background:var(--primary); padding:10px 20px; border-radius:30px; box-shadow:0 4px 15px rgba(255,64,129,0.5); animation: float 3s ease-in-out infinite;';
+            hint.appendChild(hintPill);
+
             const img = document.createElement('img');
             img.src = dataUrl;
             img.style.cssText = 'max-width:100%; max-height:70vh; border-radius:16px; box-shadow:0 10px 40px rgba(0,0,0,0.6); object-fit:contain;';
