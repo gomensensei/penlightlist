@@ -22,7 +22,7 @@
         "name": "赤"
       }
     ],
-    "image": "assets/member/83100622.jpg"
+    "image": "https://d2r1lkk9i7row.cloudfront.net/mobile/member/83100622.jpg"
   },
   {
     "id": "3",
@@ -43,7 +43,7 @@
         "name": "白"
       }
     ],
-    "image": "assets/member/83100790.jpg"
+    "image": "https://d2r1lkk9i7row.cloudfront.net/mobile/member/83100790.jpg"
   },
   {
     "id": "4",
@@ -64,7 +64,7 @@
         "name": "ピンク"
       }
     ],
-    "image": "assets/member/83100791.jpg",
+    "image": "https://d2r1lkk9i7row.cloudfront.net/mobile/member/83100791.jpg",
     "active": false,
     "selectable": false,
     "hiddenFromSelection": true
@@ -88,7 +88,7 @@
         "name": "ピンク"
       }
     ],
-    "image": "assets/member/83100816.jpg"
+    "image": "https://d2r1lkk9i7row.cloudfront.net/mobile/member/83100816.jpg"
   },
   {
     "id": "6",
@@ -109,7 +109,7 @@
         "name": "緑"
       }
     ],
-    "image": "assets/member/83100846.jpg"
+    "image": "https://d2r1lkk9i7row.cloudfront.net/mobile/member/83100846.jpg"
   },
   {
     "id": "7",
@@ -130,7 +130,7 @@
         "name": "オレンジ"
       }
     ],
-    "image": "assets/member/83100997.jpg"
+    "image": "https://d2r1lkk9i7row.cloudfront.net/mobile/member/83100997.jpg"
   },
   {
     "id": "8",
@@ -151,7 +151,7 @@
         "name": "紫"
       }
     ],
-    "image": "assets/member/83100838.jpg"
+    "image": "https://d2r1lkk9i7row.cloudfront.net/mobile/member/83100838.jpg"
   },
   {
     "id": "9",
@@ -172,7 +172,7 @@
         "name": "赤"
       }
     ],
-    "image": "assets/member/83100814.jpg"
+    "image": "https://d2r1lkk9i7row.cloudfront.net/mobile/member/83100814.jpg"
   },
   {
     "id": "10",
@@ -193,7 +193,7 @@
         "name": "青"
       }
     ],
-    "image": "assets/member/83100993.jpg"
+    "image": "https://d2r1lkk9i7row.cloudfront.net/mobile/member/83100993.jpg"
   },
   {
     "id": "11",
@@ -218,7 +218,7 @@
         "name": "白"
       }
     ],
-    "image": "assets/member/83100828.jpg"
+    "image": "https://d2r1lkk9i7row.cloudfront.net/mobile/member/83100828.jpg"
   },
   {
     "id": "12",
@@ -239,7 +239,7 @@
         "name": "白"
       }
     ],
-    "image": "assets/member/83100824.jpg"
+    "image": "https://d2r1lkk9i7row.cloudfront.net/mobile/member/83100824.jpg"
   },
   {
     "id": "13",
@@ -260,7 +260,7 @@
         "name": "ピンク"
       }
     ],
-    "image": "assets/member/83100840.jpg"
+    "image": "https://d2r1lkk9i7row.cloudfront.net/mobile/member/83100840.jpg"
   },
   {
     "id": "14",
@@ -281,7 +281,7 @@
         "name": "青"
       }
     ],
-    "image": "assets/member/83100927.jpg"
+    "image": "https://d2r1lkk9i7row.cloudfront.net/mobile/member/83100927.jpg"
   },
   {
     "id": "15",
@@ -302,7 +302,7 @@
         "name": "白"
       }
     ],
-    "image": "assets/member/83100964.jpg",
+    "image": "https://d2r1lkk9i7row.cloudfront.net/mobile/member/83100964.jpg",
     "active": false,
     "selectable": false,
     "hiddenFromSelection": true
@@ -326,7 +326,7 @@
         "name": "白"
       }
     ],
-    "image": "assets/member/83100940.jpg",
+    "image": "https://d2r1lkk9i7row.cloudfront.net/mobile/member/83100940.jpg",
     "active": false,
     "selectable": false,
     "hiddenFromSelection": true
@@ -350,7 +350,7 @@
         "name": "赤"
       }
     ],
-    "image": "assets/member/83100941.jpg",
+    "image": "https://d2r1lkk9i7row.cloudfront.net/mobile/member/83100941.jpg",
     "active": false,
     "selectable": false,
     "hiddenFromSelection": true
@@ -374,7 +374,7 @@
         "name": "水色"
       }
     ],
-    "image": "assets/member/83100943.jpg"
+    "image": "https://d2r1lkk9i7row.cloudfront.net/mobile/member/83100943.jpg"
   },
   {
     "id": "19",
@@ -395,7 +395,7 @@
         "name": "濃いピンク"
       }
     ],
-    "image": "assets/member/83100949.jpg"
+    "image": "https://d2r1lkk9i7row.cloudfront.net/mobile/member/83100949.jpg"
   },
   {
     "id": "20",
@@ -416,7 +416,7 @@
         "name": "黄"
       }
     ],
-    "image": "assets/member/83100951.jpg"
+    "image": "https://d2r1lkk9i7row.cloudfront.net/mobile/member/83100951.jpg"
   },
   {
     "id": "21",
@@ -433,7 +433,7 @@
         "name": "黄"
       }
     ],
-    "image": "assets/member/83100937.jpg"
+    "image": "https://d2r1lkk9i7row.cloudfront.net/mobile/member/83100937.jpg"
   },
   {
     "id": "22",
@@ -454,7 +454,7 @@
         "name": "緑"
       }
     ],
-    "image": "assets/member/83100952.jpg"
+    "image": "https://d2r1lkk9i7row.cloudfront.net/mobile/member/83100952.jpg"
   },
   {
     "id": "23",
@@ -475,7 +475,7 @@
         "name": "紫"
       }
     ],
-    "image": "assets/member/83100998.jpg"
+    "image": "https://d2r1lkk9i7row.cloudfront.net/mobile/member/83100998.jpg"
   },
   {
     "id": "24",
@@ -496,7 +496,7 @@
         "name": "白"
       }
     ],
-    "image": "assets/member/83101000.jpg"
+    "image": "https://d2r1lkk9i7row.cloudfront.net/mobile/member/83101000.jpg"
   },
   {
     "id": "25",
@@ -517,7 +517,7 @@
         "name": "黄"
       }
     ],
-    "image": "assets/member/83101001.jpg"
+    "image": "https://d2r1lkk9i7row.cloudfront.net/mobile/member/83101001.jpg"
   },
   {
     "id": "26",
@@ -538,7 +538,7 @@
         "name": "青"
       }
     ],
-    "image": "assets/member/83101003.jpg"
+    "image": "https://d2r1lkk9i7row.cloudfront.net/mobile/member/83101003.jpg"
   },
   {
     "id": "27",
@@ -559,7 +559,7 @@
         "name": "紫"
       }
     ],
-    "image": "assets/member/83101004.jpg"
+    "image": "https://d2r1lkk9i7row.cloudfront.net/mobile/member/83101004.jpg"
   },
   {
     "id": "28",
@@ -580,7 +580,7 @@
         "name": "ピンク"
       }
     ],
-    "image": "assets/member/83101005.jpg"
+    "image": "https://d2r1lkk9i7row.cloudfront.net/mobile/member/83101005.jpg"
   },
   {
     "id": "29",
@@ -601,7 +601,7 @@
         "name": "白"
       }
     ],
-    "image": "assets/member/83101006.jpg"
+    "image": "https://d2r1lkk9i7row.cloudfront.net/mobile/member/83101006.jpg"
   },
   {
     "id": "30",
@@ -622,7 +622,7 @@
         "name": "ピンク"
       }
     ],
-    "image": "assets/member/83101007.jpg"
+    "image": "https://d2r1lkk9i7row.cloudfront.net/mobile/member/83101007.jpg"
   },
   {
     "id": "31",
@@ -643,7 +643,7 @@
         "name": "ピンク"
       }
     ],
-    "image": "assets/member/83101008.jpg"
+    "image": "https://d2r1lkk9i7row.cloudfront.net/mobile/member/83101008.jpg"
   },
   {
     "id": "32",
@@ -664,7 +664,7 @@
         "name": "水色"
       }
     ],
-    "image": "assets/member/83101009.jpg"
+    "image": "https://d2r1lkk9i7row.cloudfront.net/hashiranokai/member/83101009.jpg"
   },
   {
     "id": "33",
@@ -685,7 +685,7 @@
         "name": "黄"
       }
     ],
-    "image": "assets/member/83101010.jpg"
+    "image": "https://d2r1lkk9i7row.cloudfront.net/hashiranokai/member/83101010.jpg"
   },
   {
     "id": "34",
@@ -706,7 +706,7 @@
         "name": "緑"
       }
     ],
-    "image": "assets/member/83101011.jpg"
+    "image": "https://d2r1lkk9i7row.cloudfront.net/hashiranokai/member/83101011.jpg"
   },
   {
     "id": "35",
@@ -727,7 +727,7 @@
         "name": "薄ピンク"
       }
     ],
-    "image": "assets/member/83101012.jpg"
+    "image": "https://d2r1lkk9i7row.cloudfront.net/hashiranokai/member/83101012.jpg"
   },
   {
     "id": "36",
@@ -748,7 +748,7 @@
         "name": "水色"
       }
     ],
-    "image": "assets/member/83101013.jpg"
+    "image": "https://d2r1lkk9i7row.cloudfront.net/hashiranokai/member/83101013.jpg"
   },
   {
     "id": "37",
@@ -769,7 +769,7 @@
         "name": "黄"
       }
     ],
-    "image": "assets/member/83101014.jpg"
+    "image": "https://d2r1lkk9i7row.cloudfront.net/hashiranokai/member/83101014.jpg"
   },
   {
     "id": "38",
@@ -790,7 +790,7 @@
         "name": "黄"
       }
     ],
-    "image": "assets/member/83101015.jpg"
+    "image": "https://d2r1lkk9i7row.cloudfront.net/hashiranokai/member/83101015.jpg"
   },
   {
     "id": "39",
@@ -811,7 +811,7 @@
         "name": "オレンジ"
       }
     ],
-    "image": "assets/member/83101016.jpg"
+    "image": "https://d2r1lkk9i7row.cloudfront.net/hashiranokai/member/83101016.jpg"
   },
   {
     "id": "40",
@@ -832,7 +832,7 @@
         "name": "薄ピンク"
       }
     ],
-    "image": "assets/member/83101017.jpg"
+    "image": "https://d2r1lkk9i7row.cloudfront.net/hashiranokai/member/83101017.jpg"
   },
   {
     "id": "41",
@@ -853,7 +853,7 @@
         "name": "青"
       }
     ],
-    "image": "assets/member/83101018.jpg"
+    "image": "https://d2r1lkk9i7row.cloudfront.net/hashiranokai/member/83101018.jpg"
   },
   {
     "id": "42",
@@ -874,7 +874,7 @@
         "name": "紫"
       }
     ],
-    "image": "assets/member/83101019.jpg"
+    "image": "https://d2r1lkk9i7row.cloudfront.net/hashiranokai/member/83101019.jpg"
   },
   {
     "id": "43",
@@ -895,7 +895,7 @@
         "name": "白"
       }
     ],
-    "image": "assets/member/83101020.jpg",
+    "image": "https://d2r1lkk9i7row.cloudfront.net/hashiranokai/member/83101020.jpg",
     "active": false,
     "selectable": false,
     "hiddenFromSelection": true
@@ -919,7 +919,7 @@
         "name": "黄緑"
       }
     ],
-    "image": "assets/member/83101022.jpg"
+    "image": "https://d2r1lkk9i7row.cloudfront.net/hashiranokai/member/83101022.jpg"
   },
   {
     "id": "46",
@@ -940,7 +940,7 @@
         "name": "緑"
       }
     ],
-    "image": "assets/member/83101023.jpg"
+    "image": "https://d2r1lkk9i7row.cloudfront.net/hashiranokai/member/83101023.jpg"
   },
   {
     "id": "47",
@@ -961,7 +961,7 @@
         "name": "青"
       }
     ],
-    "image": "assets/member/83101024.jpg"
+    "image": "https://d2r1lkk9i7row.cloudfront.net/hashiranokai/member/83101024.jpg"
   },
   {
     "id": "48",
@@ -982,7 +982,7 @@
         "name": "紫"
       }
     ],
-    "image": "assets/member/83101025.jpg"
+    "image": "https://d2r1lkk9i7row.cloudfront.net/hashiranokai/member/83101025.jpg"
   },
   {
     "id": "49",
@@ -1003,7 +1003,7 @@
         "name": "黄緑"
       }
     ],
-    "image": "assets/member/83101026.jpg"
+    "image": "https://d2r1lkk9i7row.cloudfront.net/hashiranokai/member/83101026.jpg"
   },
   {
     "id": "50",
@@ -1024,7 +1024,7 @@
         "name": "濃いピンク"
       }
     ],
-    "image": "assets/member/83101027.jpg"
+    "image": "https://d2r1lkk9i7row.cloudfront.net/hashiranokai/member/83101027.jpg"
   },
   {
     "id": "51",
@@ -1045,7 +1045,7 @@
         "name": "オレンジ"
       }
     ],
-    "image": "assets/member/83101028.jpg"
+    "image": "https://d2r1lkk9i7row.cloudfront.net/hashiranokai/member/83101028.jpg"
   },
   {
     "id": "52",
@@ -1066,6 +1066,6 @@
         "name": "青"
       }
     ],
-    "image": "assets/member/83101029.jpg"
+    "image": "https://d2r1lkk9i7row.cloudfront.net/hashiranokai/member/83101029.jpg"
   }
 ]
