@@ -947,11 +947,12 @@ window.onerror = function(msg, url, line) {
 
 // 核心：非同步分批下載引擎 (Batch Preloader)
 const IMAGE_BATCH_SIZE = 5;
-const IMAGE_QUEUE_DELAY_MS = 90;
+const IMAGE_QUEUE_DELAY_MS = 35;
 const IMAGE_LOAD_TIMEOUT_MS = 5000;
 let activeImageLoads = 0;
 const imageLoadQueue = [];
 const imageLoadCache = new Map();
+let canvasWarmupTimer = null;
 
 function delay(ms) {
     return new Promise(resolve => setTimeout(resolve, ms));
@@ -1093,10 +1094,42 @@ async function getCanvasImageForMember(member) {
     }
     if (!needsCors) return loadImageQueued(member.image, { cors: false });
 
-    const directImage = await loadImageQueued(member.image, { cors: true });
+    const preferredUrl = isKnownNoCorsImageUrl(member.image)
+        ? toCorsProxyImageUrl(member.image)
+        : member.image;
+    const directImage = await loadImageQueued(preferredUrl, { cors: true });
     if (directImage) return directImage;
 
+    if (preferredUrl !== member.image) return null;
     return loadImageQueued(toCorsProxyImageUrl(member.image), { cors: true });
+}
+
+async function preloadCanvasImagesForExport(slots) {
+    const uniqueMembers = Array.from(new Map(
+        slots
+            .filter(member => member?.image)
+            .map(member => [member.image, member])
+    ).values());
+    const loadedPairs = await Promise.all(uniqueMembers.map(async member => {
+        const img = await getCanvasImageForMember(member);
+        return [member.image, img];
+    }));
+
+    return new Map(loadedPairs.filter(([, img]) => img));
+}
+
+function scheduleCanvasExportWarmup() {
+    clearTimeout(canvasWarmupTimer);
+    canvasWarmupTimer = setTimeout(() => {
+        if (!document.getElementById('cfgPhoto')?.checked) return;
+        preloadCanvasImagesForExport(gridSlots).catch(err => {
+            console.warn('Canvas export image warmup failed:', err);
+        });
+    }, 450);
+}
+
+function isKnownNoCorsImageUrl(url) {
+    return /^https:\/\/d2r1lkk9i7row\.cloudfront\.net\//i.test(url || '');
 }
 
 function toCorsProxyImageUrl(url) {
@@ -1108,9 +1141,9 @@ function toCorsProxyImageUrl(url) {
 async function initApp() {
     try {
         const [memRes, langRes, schedRes] = await Promise.all([ 
-            fetch('members.json?v=20260704-no-assets-proxy'), 
-            fetch('langs.json?v=20260704-no-assets-proxy'),
-            fetch('schedules.json?v=20260704-no-assets-proxy').catch(() => ({ ok: false })) 
+            fetch('members.json?v=20260704-export-warmup'), 
+            fetch('langs.json?v=20260704-export-warmup'),
+            fetch('schedules.json?v=20260704-export-warmup').catch(() => ({ ok: false })) 
         ]);
         
         if (!memRes.ok || !langRes.ok) throw new Error("Fetch failed");
@@ -1565,6 +1598,7 @@ function renderHTMLGrid() {
             }
             htmlGrid.appendChild(cell);
         });
+        scheduleCanvasExportWarmup();
     } catch(e) {
         console.error("Grid Rendering Failed:", e);
     }
@@ -1696,6 +1730,7 @@ async function drawCanvasExport() {
     const name = document.getElementById('cfgName').checked;
     const nick = document.getElementById('cfgNick').checked;
     const mode = document.querySelector('input[name="colorMode"]:checked').value;
+    const exportImageMap = photo ? await preloadCanvasImagesForExport(gridSlots) : new Map();
 
     for (let i = 0; i < gridSlots.length; i++) {
         let cellsInThisRow = cols;
@@ -1756,7 +1791,7 @@ async function drawCanvasExport() {
             }
 
             if (photo && member.image) {
-                const img = await getCanvasImageForMember(member);
+                const img = exportImageMap.get(member.image);
                 if (img) {
                     const avatarRadius = cellW * 0.22, cx = x + cellW / 2, cy = y + cellH * 0.33; 
                     ctx.beginPath(); ctx.arc(cx, cy, avatarRadius + 6, 0, Math.PI * 2); 
