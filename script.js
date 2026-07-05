@@ -126,8 +126,17 @@ function setCloudMessage(keyOrText, replacements = {}) {
     });
 }
 
+function setCloudRawMessage(message = '') {
+    ['cloudMessage', 'cloudSaveMessage'].forEach(id => {
+        const node = document.getElementById(id);
+        if (node) node.textContent = message;
+    });
+}
+
 function getCloudErrorMessage(error) {
     const message = error?.message || String(error || '');
+    const guardMessage = window.Tool48Security?.guardMessage(error);
+    if (guardMessage) return guardMessage;
     if (/permission denied for table penlight_lists/i.test(message)) {
         return tr('cloud_permission_fix_needed');
     }
@@ -414,7 +423,7 @@ function renderTool48Cloud() {
         if (node) node.disabled = cloudDisabled;
     });
 
-    ['cloudNicknameInput', 'cloudEmailInput', 'cloudPasswordInput', 'cloudSignInBtn', 'cloudSignUpBtn'].forEach(id => {
+    ['cloudNicknameInput', 'cloudEmailInput', 'cloudPasswordInput', 'cloudSignInBtn', 'cloudSignUpBtn', 'cloudResetPasswordBtn'].forEach(id => {
         const node = document.getElementById(id);
         if (node) node.disabled = !cloudReady || loggedIn || tool48Cloud.busy;
     });
@@ -737,12 +746,25 @@ async function signInTool48() {
 
     setTool48CloudBusy(true);
     setCloudMessage('cloud_signing_in');
-    const { data, error } = await tool48Cloud.client.auth.signInWithPassword({ email, password });
+    const form = document.getElementById('cloudLoggedOut');
+    let authResult;
+    try {
+        const captchaToken = await window.Tool48Security?.getCaptchaToken('signin', form);
+        authResult = await tool48Cloud.client.auth.signInWithPassword(
+            window.Tool48Security?.signInPayload(email, password, captchaToken) || { email, password }
+        );
+    } catch (error) {
+        authResult = { data: null, error };
+    }
+    const { data, error } = authResult;
     setTool48CloudBusy(false);
     if (error) {
+        window.Tool48Security?.recordAuthFailure(email);
+        window.Tool48Security?.resetCaptcha(form);
         setCloudMessage('cloud_action_failed', { message: getCloudErrorMessage(error) });
         return;
     }
+    window.Tool48Security?.clearAuthFailures(email);
     tool48Cloud.user = data.session?.user || null;
     setCloudMessage('cloud_signed_in');
     await loadCloudLists().catch(err => setCloudMessage('cloud_action_failed', { message: getCloudErrorMessage(err) }));
@@ -766,20 +788,34 @@ async function signUpTool48() {
 
     setTool48CloudBusy(true);
     setCloudMessage('cloud_signing_up');
-    const { data, error } = await tool48Cloud.client.auth.signUp({
-        email,
-        password,
-        options: {
-            data: { display_name: nickname },
-            emailRedirectTo: window.location.href
-        }
-    });
+    const form = document.getElementById('cloudLoggedOut');
+    let authResult;
+    try {
+        const captchaToken = await window.Tool48Security?.getCaptchaToken('signup', form);
+        authResult = await tool48Cloud.client.auth.signUp({
+            email,
+            password,
+            options: window.Tool48Security?.authOptions({
+                data: { display_name: nickname },
+                emailRedirectTo: window.location.href
+            }, captchaToken) || {
+                data: { display_name: nickname },
+                emailRedirectTo: window.location.href
+            }
+        });
+    } catch (error) {
+        authResult = { data: null, error };
+    }
+    const { data, error } = authResult;
     setTool48CloudBusy(false);
     if (error) {
+        window.Tool48Security?.recordAuthFailure(email);
+        window.Tool48Security?.resetCaptcha(form);
         setCloudMessage('cloud_action_failed', { message: getCloudErrorMessage(error) });
         return;
     }
 
+    window.Tool48Security?.clearAuthFailures(email);
     tool48Cloud.user = data.session?.user || tool48Cloud.user;
     setCloudMessage(tool48Cloud.user ? 'cloud_signed_in' : 'cloud_signup_needs_confirm');
     if (tool48Cloud.user) await loadCloudLists().catch(err => setCloudMessage('cloud_action_failed', { message: getCloudErrorMessage(err) }));
@@ -798,6 +834,35 @@ async function signOutTool48() {
     setTool48CloudBusy(false);
     setCloudMessage('cloud_signed_out');
     renderTool48Cloud();
+}
+
+async function resetTool48Password() {
+    if (!tool48Cloud.client) {
+        setCloudMessage('cloud_unavailable');
+        return;
+    }
+    const form = document.getElementById('cloudLoggedOut');
+    const email = document.getElementById('cloudEmailInput')?.value.trim() || '';
+    if (!email) {
+        setCloudRawMessage(window.Tool48Security?.text('resetMissingEmail') || '');
+        return;
+    }
+    setTool48CloudBusy(true);
+    setCloudRawMessage(window.Tool48Security?.text('resetSending') || '');
+    try {
+        if (window.Tool48Security?.requestPasswordReset) {
+            await window.Tool48Security.requestPasswordReset(tool48Cloud.client, email, form);
+        } else {
+            await tool48Cloud.client.auth.resetPasswordForEmail(email, { redirectTo: window.location.href });
+        }
+        setCloudRawMessage(window.Tool48Security?.text('resetSent') || '');
+    } catch (error) {
+        window.Tool48Security?.recordAuthFailure(email);
+        window.Tool48Security?.resetCaptcha(form);
+        setCloudMessage('cloud_action_failed', { message: getCloudErrorMessage(error) });
+    } finally {
+        setTool48CloudBusy(false);
+    }
 }
 
 function closeAccountPopover() {
@@ -876,6 +941,7 @@ function bindPenlightSaveEvents() {
         if (action === 'signup') signUpTool48();
         else signInTool48();
     });
+    document.getElementById('cloudResetPasswordBtn')?.addEventListener('click', resetTool48Password);
     document.getElementById('cloudLogoutBtn')?.addEventListener('click', signOutTool48);
     document.getElementById('cloudRefreshBtn')?.addEventListener('click', () => {
         loadCloudLists(true).catch(error => setCloudMessage('cloud_action_failed', { message: getCloudErrorMessage(error) }));

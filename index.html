@@ -3,6 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <meta name="tool48-turnstile-site-key" content="">
     
     <title data-i18n="app_title">AKB48 成員名單及應援色生成器</title>
     <meta name="description" content="由粉絲 ゴメン先生 製作，專為 AKB48 粉絲打造的應援名單生成工具，快速製作公演及演唱會推し名單。">
@@ -23,6 +24,7 @@
     
     <script src="https://unpkg.com/lucide@latest"></script>
     <link rel="stylesheet" href="style.css?v=20260704-export-warmup">
+    <link rel="stylesheet" href="tool48-install.css?v=20260706-security">
 </head>
 <body>
 
@@ -57,6 +59,7 @@
                             <button class="btn" id="cloudSignInBtn" type="submit" data-auth-action="signin" data-i18n="cloud_sign_in">Sign in</button>
                             <button class="btn" id="cloudSignUpBtn" type="submit" data-auth-action="signup" data-i18n="cloud_create_account">Create account</button>
                         </div>
+                        <button class="tool48-reset-link" id="cloudResetPasswordBtn" type="button" data-tool48-reset-password>Forgot password</button>
                     </form>
                     <div class="cloud-user-section" id="cloudLoggedIn" hidden>
                         <div class="cloud-user-row">
@@ -253,6 +256,8 @@
     </div>
 
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2" defer></script>
+    <script src="tool48-security.js?v=20260706-security" defer></script>
     <script src="script.js?v=20260704-export-warmup" defer></script>
+    <script src="tool48-install.js?v=20260706-security" defer></script>
 </body>
 </html>
