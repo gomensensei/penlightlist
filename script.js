@@ -20,6 +20,7 @@ const htmlGrid = document.getElementById('htmlGrid');
 const TOOL48_SUPABASE_URL = 'https://jappifgnjssqxvjodgiv.supabase.co';
 const TOOL48_SUPABASE_PUBLISHABLE_KEY = 'sb_publishable_oXfJyHkRtn1BHBw-9ictBQ__01qBCZg';
 const PENLIGHT_LOCAL_SAVE_KEY = 'tool48.penlightlist.localState.v1';
+const PENLIGHT_CLOUD_LIST_LIMIT = 3;
 
 const PERFORMANCE_ID_BY_PRESET = {
     '16_koko': 'kokokarada',
@@ -64,6 +65,7 @@ const PENLIGHT_SAVE_FALLBACK_I18N = {
     cloud_confirm_update: 'Update the selected cloud list?',
     cloud_confirm_delete: 'Delete the selected cloud list?',
     cloud_action_failed: 'Cloud action failed: {message}',
+    cloud_list_limit_reached: 'Cloud save can keep up to 3 lists. Delete an old list before saving a new one.',
     cloud_permission_fix_needed: 'Database permission is missing. Run supabase-penlight-cloud-save-grants.sql in Supabase SQL Editor, then try again.',
     cloud_local_import_offer: 'Local save found. You can save the current list to cloud.',
     schedule_expand_btn: 'Expand',
@@ -129,7 +131,23 @@ function getCloudErrorMessage(error) {
     if (/permission denied for table penlight_lists/i.test(message)) {
         return tr('cloud_permission_fix_needed');
     }
+    if (/tool48_penlight_cloud_list_limit_reached|penlight_lists limit/i.test(message)) {
+        return getPenlightCloudListLimitMessage();
+    }
     return message;
+}
+
+function getPenlightCloudListLimitMessage() {
+    const messages = {
+        'zh-HK': '雲端最多可保存 3 個名單。請先刪除舊名單，再保存新名單。',
+        ja: 'クラウド保存は最大3件までです。古いリストを削除してから新しく保存してください。',
+        en: 'Cloud save can keep up to 3 lists. Delete an old list before saving a new one.',
+        'zh-CN': '云端最多可保存 3 个名单。请先删除旧名单，再保存新名单。',
+        ko: '클라우드에는 최대 3개 리스트까지 저장할 수 있습니다. 새로 저장하기 전에 이전 리스트를 삭제해 주세요.',
+        th: 'Cloud save เก็บได้สูงสุด 3 รายการ โปรดลบรายการเก่าก่อนบันทึกรายการใหม่',
+        id: 'Cloud save dapat menyimpan hingga 3 daftar. Hapus daftar lama sebelum menyimpan yang baru.'
+    };
+    return messages[currentLang] || messages.en;
 }
 
 function getCloudUserName() {
@@ -488,7 +506,8 @@ async function loadCloudLists(showMessage = false) {
         .from('penlight_lists')
         .select('id,title,performance_id,is_default,payload')
         .eq('user_id', tool48Cloud.user.id)
-        .order('title', { ascending: true });
+        .order('title', { ascending: true })
+        .limit(PENLIGHT_CLOUD_LIST_LIMIT);
 
     if (error) throw error;
     tool48Cloud.lists = data || [];
@@ -514,6 +533,11 @@ async function saveCurrentListToCloud() {
         const payload = createPenlightPayload();
         const title = payload.title || 'Penlight List';
         const isDefault = document.getElementById('cloudDefaultCheckbox')?.checked || false;
+        if (tool48Cloud.lists.length >= PENLIGHT_CLOUD_LIST_LIMIT) {
+            setCloudMessage(getPenlightCloudListLimitMessage());
+            setTool48CloudBusy(false);
+            return;
+        }
         await maybeUnsetExistingDefault();
 
         const { data, error } = await tool48Cloud.client
