@@ -1,24 +1,5 @@
 [
   {
-    "id": "20260810_1830",
-    "date": "08月10日(月) 18:30",
-    "title": "ＲＥＳＥＴ公演",
-    "members": [
-      "秋山由奈",
-      "黒須遥香",
-      "迫由芽実",
-      "成田香姫奈",
-      "橋本陽菜",
-      "八木愛月",
-      "山内瑞葵",
-      "山口結愛"
-    ],
-    "sources": [
-      "https://ameblo.jp/akihabara48/entry-12973643875.html",
-      "https://ameblo.jp/akihabara48/entry-12974529550.html"
-    ]
-  },
-  {
     "id": "20260811_1800",
     "date": "08月11日(火) 18:00",
     "title": "ＲＥＳＥＴ公演",
@@ -185,12 +166,13 @@
       "久保姫菜乃",
       "黒須遥香",
       "迫由芽実",
-      "山口結愛",
+      "山﨑空",
       "山根涼羽",
       "丸山ひなた"
     ],
     "sources": [
-      "https://ameblo.jp/akihabara48/entry-12974378216.html"
+      "https://ameblo.jp/akihabara48/entry-12974378216.html",
+      "https://ameblo.jp/akihabara48/entry-12975427672.html"
     ]
   },
   {
@@ -203,12 +185,39 @@
       "久保姫菜乃",
       "黒須遥香",
       "迫由芽実",
-      "山口結愛",
+      "山﨑空",
       "山根涼羽",
       "丸山ひなた"
     ],
     "sources": [
-      "https://ameblo.jp/akihabara48/entry-12974378216.html"
+      "https://ameblo.jp/akihabara48/entry-12974378216.html",
+      "https://ameblo.jp/akihabara48/entry-12975427672.html"
+    ]
+  },
+  {
+    "id": "20260828_1830",
+    "date": "08月28日(金) 18:30",
+    "title": "ここからだ公演",
+    "members": [
+      "新井彩永",
+      "岩立沙穂",
+      "太田有紀",
+      "奥本カイリ",
+      "久保姫菜乃",
+      "黒須遥香",
+      "坂川陽香",
+      "髙橋彩音",
+      "永野芹佳",
+      "成田香姫奈",
+      "福岡聖菜",
+      "布袋百椛",
+      "正鋳真優",
+      "水島美結",
+      "武藤小麟",
+      "山根涼羽"
+    ],
+    "sources": [
+      "https://ameblo.jp/akihabara48/entry-12975427672.html"
     ]
   }
 ]
