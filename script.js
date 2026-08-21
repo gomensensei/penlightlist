@@ -1232,7 +1232,7 @@ async function initApp() {
     try {
         const [memRes, langRes, schedRes] = await Promise.all([ 
             fetch('members.json?v=20260704-export-warmup'), 
-            fetch('langs.json?v=20260704-export-warmup'),
+            fetch('langs.json?v=20260821-yume-template'),
             fetch('schedules.json?v=20260704-export-warmup').catch(() => ({ ok: false })) 
         ]);
         
