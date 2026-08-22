@@ -4,19 +4,20 @@
     "date": "08月23日(日) 13:00",
     "title": "ＲＥＳＥＴ公演",
     "members": [
-      "太田有紀",
-      "行天優莉奈",
-      "久保姫菜乃",
       "黒須遥香",
+      "久保姫菜乃",
+      "大賀彩姫",
       "迫由芽実",
-      "山﨑空",
-      "山根涼羽",
-      "丸山ひなた"
+      "太田有紀",
+      "丸山ひなた",
+      "行天優莉奈",
+      "山根涼羽"
     ],
     "sources": [
       "https://ameblo.jp/akihabara48/entry-12974378216.html",
       "https://ameblo.jp/akihabara48/entry-12975427672.html",
-      "https://ameblo.jp/akihabara48/entry-12975824279.html"
+      "https://ameblo.jp/akihabara48/entry-12975824279.html",
+      "https://ameblo.jp/akihabara48/entry-12976483122.html"
     ]
   },
   {
@@ -24,19 +25,20 @@
     "date": "08月23日(日) 17:30",
     "title": "ＲＥＳＥＴ公演",
     "members": [
-      "太田有紀",
-      "行天優莉奈",
-      "久保姫菜乃",
       "黒須遥香",
+      "久保姫菜乃",
+      "大賀彩姫",
       "迫由芽実",
-      "山﨑空",
-      "山根涼羽",
-      "丸山ひなた"
+      "太田有紀",
+      "丸山ひなた",
+      "行天優莉奈",
+      "山根涼羽"
     ],
     "sources": [
       "https://ameblo.jp/akihabara48/entry-12974378216.html",
       "https://ameblo.jp/akihabara48/entry-12975427672.html",
-      "https://ameblo.jp/akihabara48/entry-12975824279.html"
+      "https://ameblo.jp/akihabara48/entry-12975824279.html",
+      "https://ameblo.jp/akihabara48/entry-12976483122.html"
     ]
   },
   {
@@ -245,6 +247,99 @@
     "sources": [
       "https://ameblo.jp/akihabara48/entry-12975659278.html",
       "https://ameblo.jp/akihabara48/entry-12976128310.html"
+    ]
+  },
+  {
+    "id": "20260901_1830",
+    "date": "09月01日(火) 18:30",
+    "title": "RESET公演",
+    "members": [
+      "太田有紀",
+      "久保姫菜乃",
+      "坂川陽香",
+      "徳永羚海",
+      "平田侑希",
+      "布袋百椛",
+      "山口結愛",
+      "山根涼羽"
+    ],
+    "sources": [
+      "https://ameblo.jp/akihabara48/entry-12976326934.html",
+      "https://ameblo.jp/akihabara48/entry-12976419779.html"
+    ]
+  },
+  {
+    "id": "20260902_1830",
+    "date": "09月02日(水) 18:30",
+    "title": "RESET公演",
+    "members": [
+      "新井彩永",
+      "川村結衣",
+      "長友彩海",
+      "成田香姫奈",
+      "福岡聖菜",
+      "水島美結",
+      "武藤小麟",
+      "山口結愛"
+    ],
+    "sources": [
+      "https://ameblo.jp/akihabara48/entry-12976326934.html"
+    ]
+  },
+  {
+    "id": "20260902_1900",
+    "date": "09月02日(水) 19:00",
+    "title": "ＲＥＳＥＴ公演",
+    "members": [
+      "新井彩永",
+      "川村結衣",
+      "長友彩海",
+      "成田香姫奈",
+      "福岡聖菜",
+      "水島美結",
+      "武藤小麟",
+      "山口結愛"
+    ],
+    "sources": [
+      "https://ameblo.jp/akihabara48/entry-12976419779.html"
+    ]
+  },
+  {
+    "id": "20260909_1830",
+    "date": "09月09日(水) 18:30",
+    "title": "手をつなぎながら公演",
+    "members": [
+      "奥本カイリ",
+      "正鋳真優",
+      "大賀彩姫",
+      "丸山ひなた",
+      "髙橋舞桜",
+      "田中沙友利",
+      "牧戸愛茉",
+      "渡邉葵心"
+    ],
+    "sources": [
+      "https://ameblo.jp/akihabara48/entry-12976326934.html",
+      "https://ameblo.jp/akihabara48/entry-12976419779.html"
+    ]
+  },
+  {
+    "id": "20260910_1830",
+    "date": "09月10日(木) 18:30",
+    "title": "夢のポップスター公演",
+    "members": [
+      "新井彩永",
+      "久保姫菜乃",
+      "倉野尾成美",
+      "坂川陽香",
+      "髙橋彩音",
+      "山内瑞葵",
+      "山口結愛",
+      "山﨑空"
+    ],
+    "sources": [
+      "https://ameblo.jp/akihabara48/entry-12976326934.html",
+      "https://ameblo.jp/akihabara48/entry-12976419779.html"
     ]
   }
 ]
