@@ -1,8 +1,10 @@
 import os
+import re
 import feedparser
 import requests
 from bs4 import BeautifulSoup
 from google import genai
+from google.genai import errors
 import json
 from datetime import datetime
 import pytz
@@ -14,30 +16,24 @@ if not API_KEY:
     exit(1)
 
 client = genai.Client(api_key=API_KEY)
+MODEL = 'gemini-3.1-flash-lite'
 
 # 2. 讀取 RSS
 RSS_URL = "https://rssblog.ameba.jp/akihabara48/rss20.xml"
 print("🔍 正在掃描 AKB48 官方 Blog...")
-feed = feedparser.parse(RSS_URL)
+rss_response = requests.get(RSS_URL, timeout=30)
+rss_response.raise_for_status()
+feed = feedparser.parse(rss_response.content)
+if not feed.entries:
+    raise SystemExit('Official AKB48 RSS returned no entries; schedules.json was not changed.')
 
 keywords = ["公演スケジュール", "メンバー変更", "出演メンバー", "公演受付開始", "公演のご案内"]
-clean_title = lambda t: t.replace(" ", "").replace("　", "")
+clean_title = lambda t: re.sub(r"\s+", "", t)
 
 target_urls = []
 for e in feed.entries:
     if any(k in clean_title(e.title) for k in keywords):
-        target_urls.append({"link": e.link, "title": e.title})
-
-# 🌟 救援名單 (如果你覺得無需要可以留空 list)
-rescue_list = [
-    {"link": "https://ameblo.jp/akihabara48/entry-12962469245.html", "title": "【救援】原本大名單"},
-    {"link": "https://ameblo.jp/akihabara48/entry-12962706641.html", "title": "【救援】變更通知"}
-]
-
-existing_links = [t["link"] for t in target_urls]
-for r in rescue_list:
-    if r["link"] not in existing_links:
-        target_urls.append(r)
+        target_urls.append({"link": e.link, "title": e.title, "published": e.get("published", "")})
 
 # 由舊至新處理
 target_urls.reverse()
@@ -48,8 +44,8 @@ if os.path.exists('schedules.json'):
     try:
         with open('schedules.json', 'r', encoding='utf-8') as f:
             existing_schedules = json.load(f)
-    except:
-        existing_schedules = []
+    except (OSError, ValueError) as error:
+        raise SystemExit('Could not read schedules.json; refusing to overwrite it.') from error
 
 processed_urls = set()
 for item in existing_schedules:
@@ -72,11 +68,14 @@ else:
             print(f"⏩ 已經處理過，跳過：{title}")
             continue
 
-        print(f"🎯 處理新文章：{title}")
-        response = requests.get(link)
+        print(f"🎯 處理新文章：{title} ({link})")
+        response = requests.get(link, timeout=30)
+        response.raise_for_status()
         response.encoding = response.apparent_encoding
         soup = BeautifulSoup(response.text, 'html.parser')
         article_body = soup.find(attrs={"data-uranus-component": "entryBody"})
+        if not article_body:
+            raise SystemExit(f'Article body missing: {link}; schedules.json was not changed.')
         
         if article_body:
             blog_text = article_body.get_text(separator="\n", strip=True)
@@ -97,6 +96,9 @@ else:
             3. 尋找「【出演】」字眼(且伴隨休演出現的代打)，將其放入 "added_members"。
             4. 名字必須去除空格，轉為日文漢字。
             5. 【標題強制統一】：無論原文寫法為何，"title" 必須強制統一為「XXX」公演 的格式。
+            6. 不要將休館日、報名截止、非劇場活動轉成公演；沒有公演資料就輸出 []。
+            7. 不要猜年份，使用文章或發布日期作準，並注意跨年。發布日期：{entry.get('published', '')}
+            8. 如只寫全體成員或名單未公布，full_members 留空；不要把說明當成人名，也不要自行補名。
 
             內容：
             {blog_text}
@@ -104,17 +106,23 @@ else:
             
             try:
                 ai_response = client.models.generate_content(
-                    model='gemini-3.1-flash-lite-preview',
+                    model=MODEL,
                     contents=prompt,
+                    config={"response_mime_type": "application/json"},
                 )
                 result_text = ai_response.text.strip()
                 if "```json" in result_text:
                     result_text = result_text.split("```json")[1].split("```")[0].strip()
                 
                 new_data = json.loads(result_text)
-                if isinstance(new_data, list):
+                if not isinstance(new_data, list):
+                    raise ValueError('Expected a JSON array')
+                if new_data:
                     for item in new_data:
                         sched_id = item['id']
+                        datetime.strptime(sched_id, '%Y%m%d_%H%M')
+                        if not re.fullmatch(r'[0-9]{8}_[0-9]{4}', sched_id):
+                            raise ValueError('Invalid schedule ID')
                         new_full = item.get('full_members', [])
                         added = item.get('added_members', [])
                         removed = item.get('removed_members', [])
@@ -153,8 +161,10 @@ else:
                             all_data_map[sched_id]['sources'].append(link)
                             
                         print(f"✅ 更新成功：{sched_id} (目前人數: {len(all_data_map[sched_id]['members'])})")
-            except Exception as e:
-                print(f"⚠️ 解析文章失敗: {e}")
+            except errors.APIError as error:
+                raise SystemExit(f'Gemini {MODEL} failed (HTTP {error.code}) for {link}; schedules.json was not changed.') from None
+            except (ValueError, TypeError, KeyError, AttributeError) as error:
+                raise SystemExit(f'Invalid Gemini response for {link} ({type(error).__name__}); schedules.json was not changed.') from None
 
 # 5. 清理過期公演
 jst = pytz.timezone('Asia/Tokyo')
